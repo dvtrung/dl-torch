@@ -3,7 +3,7 @@ from torch.utils.data import DataLoader
 from tqdm import tqdm
 
 from configs import Configs
-from utils.model_utils import get_model, get_dataset
+from utils.model_utils import get_model, get_dataset, get_optimizer
 from utils.logging import logger
 from utils.ops_utils import Tensor, LongTensor
 
@@ -20,7 +20,9 @@ def train(params):
         dataset_train = Dataset("train", params)
         dataset_test = Dataset("test", params)
     model = Model(params, dataset_train)
-    model.cuda()
+    if torch.cuda.is_available():
+        logger.info("Cuda available: " + torch.cuda.get_device_name(0))
+        model.cuda()
 
     logger.info("Train size: %d" % len(dataset_train))
 
@@ -36,18 +38,15 @@ def train(params):
         collate_fn=dataset_test.collate_fn)
 
     logger.info("Training model...")
-    logger.info(torch.cuda.get_device_name(0))
 
-    optim = torch.optim.Adam(model.parameters(), lr=params.optimizer.learning_rate)
+    optim = get_optimizer(params, model)
     epoch = 0
     for ei in range(epoch + 1, epoch + params.num_epochs + 1):
         loss_sum = 0
 
-        for item in tqdm(data_train, desc="Epoch %d" % ei):
-            wx, y = item['wtokens'], item['wtags']
-
+        for batch in tqdm(data_train, desc="Epoch %d" % ei):
             model.zero_grad()
-            loss = torch.mean(model(None, wx, y))  # forward pass and compute loss
+            loss = model.loss(batch)
             loss.backward()  # compute gradients
             optim.step()  # update parameters
             loss = loss.item()

@@ -1,5 +1,6 @@
 import os
 from torch.utils.data import Dataset
+from torch.utils.data.dataloader import default_collate
 
 class BaseDataset(Dataset):
     def __init__(self, mode, params):
@@ -13,3 +14,6 @@ class BaseDataset(Dataset):
     @classmethod
     def prepare(cls):
         pass
+
+    def collate_fn(self, batch):
+        return default_collate(batch)

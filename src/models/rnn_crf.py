@@ -28,6 +28,10 @@ class Model(BaseModel):
         h = self.rnn(cx, wx, mask)
         return LongTensor(self.crf.decode(h, mask)).view(mask.shape[0], -1)
 
+    def loss(self, batch):
+        wx, y = batch['wtokens'], batch['wtags']
+        return torch.mean(model(None, wx, y))
+
 
 class embed(nn.Module):
     def __init__(self, params, char_vocab_size, word_vocab_size, embed_size):

@@ -1,0 +1,9 @@
+model: autoencoder
+dataset:
+  name: mnist
+batch_size: 16
+num_epochs: 30
+optimizer:
+  name: adam
+  learning_rate: 0.01
+  weight_decay: 1e-5
