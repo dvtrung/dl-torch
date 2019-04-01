@@ -1,3 +1,4 @@
+import os
 import torch
 
 class BaseModel(torch.nn.Module):
@@ -6,9 +7,7 @@ class BaseModel(torch.nn.Module):
         self.params = params
         self.dataset = dataset
 
-    def save(self, tag):
-        path = os.path.join("saved_models", self.params.path, tag + ".pt")
-        torch.save(self.state_dict(), path)
+        self.global_step = 0
 
     def load(self, tag):
         path = os.path.join("saved_models", self.params.path, tag + ".pt")

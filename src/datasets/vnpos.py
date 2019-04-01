@@ -218,9 +218,6 @@ class Dataset(BaseDataset):
                 wtags=[self.tag_to_idx["<sos>"]] + [int(i) for i in line[1].split(' ')]
             ))
 
-        if self.debug:
-            data = data[:10]
-
         for line in []:# fo:
             line = line.strip().split(',')
             wtokens = [int(i) for i in line[0].split(' ')]

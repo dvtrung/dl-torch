@@ -1,4 +1,4 @@
-import logging
+import logging, os
 import logging.handlers as handlers
 import time
 
@@ -7,11 +7,20 @@ logger.setLevel(logging.INFO)
 logging.basicConfig()
 
 # Here we define our formatter
-formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
 
-#logHandler = handlers.TimedRotatingFileHandler('timed_app.log', when='M', interval=1, backupCount=2)
-#logHandler.setLevel(logging.INFO)
-# Here we set our logHandler's formatter
-#logHandler.setFormatter(formatter)
+def set_log_dir(path):
+    os.makedirs(path, exist_ok=True)
 
-#logger.addHandler(logHandler)
+    logInfoHandler = logging.FileHandler(
+        os.path.join(path, "info.log"))
+    logInfoHandler.setLevel(logging.INFO)
+    logInfoHandler.setFormatter(formatter)
+
+    logDebugHandler = logging.FileHandler(
+        os.path.join(path, "debug.log"))
+    logDebugHandler.setLevel(logging.DEBUG)
+    # logDebugHandler.setFormatter(formatter)
+
+    logger.addHandler(logInfoHandler)
+    logger.addHandler(logDebugHandler)

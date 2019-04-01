@@ -49,7 +49,7 @@ class Configs():
             help="path to model's configuration file")
         parser.add_argument('--debug', action="store_true")
         parser.add_argument('--verbose', action="store_true")
-        parser.add_argument('--load')
+        parser.add_argument('--load', default=None)
         self.args = parser.parse_args()
 
 
@@ -58,6 +58,6 @@ class Configs():
             try:
                 params = yaml.load(stream, Loader=yaml_loader)
                 self.params = AttrDict(params)
-                self.params.add('name', self.args.config_path)
+                self.params.add('path', self.args.config_path)
             except yaml.YAMLError as exc:
                 print(exc)

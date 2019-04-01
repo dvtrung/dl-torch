@@ -1,11 +1,13 @@
 model: rnn_crf
 dataset:
   name: vnpos
-batch_size: 16
+batch_size: 128
+test_batch_size: 256
 num_epochs: 30
 optimizer:
-  name: sgd
+  name: adam
   learning_rate: 0.01
+  weight_decay: 1e-5
 
 embed_unit: 'word'
 embed_size: 300

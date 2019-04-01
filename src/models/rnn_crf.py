@@ -12,7 +12,7 @@ class Model(BaseModel):
     def __init__(self, params, dataset):
         super().__init__(params, dataset)
         self.params = params
-        self.rnn = RNN(params, dataset.vocab_char_size, dataset.vocab_word_size, dataset.num_tags)
+        self.rnn = RNN(params, dataset.vocab_char_size, dataset.vocab_word_size, dataset.num_tags, dataset.tag_to_idx["<pad>"])
         self.crf = crf(params, dataset.num_tags, dataset.tag_to_idx["<sos>"], dataset.tag_to_idx["<eos>"], dataset.tag_to_idx["<pad>"])
         self = self.cuda() if CUDA else self
 
@@ -30,13 +30,18 @@ class Model(BaseModel):
 
     def loss(self, batch):
         wx, y = batch['wtokens'], batch['wtags']
-        return torch.mean(model(None, wx, y))
+        return torch.mean(self.forward(None, wx, y))
+
+    def predict(self, batch):
+        wx, y = batch['wtokens'], batch['wtags']
+        return self.decode(None, wx)
 
 
 class embed(nn.Module):
-    def __init__(self, params, char_vocab_size, word_vocab_size, embed_size):
+    def __init__(self, params, char_vocab_size, word_vocab_size, embed_size, pad_idx):
         super().__init__()
         self.params = params
+        self.pad_idx = pad_idx
         num_embeds = self.params.embed_unit.count("+") + 1 # number of embeddings (1, 2)
         dim = embed_size // num_embeds # dimension of each embedding vector
 
@@ -44,7 +49,7 @@ class embed(nn.Module):
         if self.params.embed_unit[:4] == "char":
             self.char_embed = self.cnn(char_vocab_size, dim)
         if self.params.embed_unit[-4:] == "word":
-            self.word_embed = nn.Embedding(word_vocab_size, dim, padding_idx = self.params.pad_idx)
+            self.word_embed = nn.Embedding(word_vocab_size, dim, padding_idx=pad_idx)
 
     class cnn(nn.Module):
         def __init__(self, dim_in, dim_out):
@@ -54,7 +59,7 @@ class embed(nn.Module):
             self.kernel_sizes = [3]
 
             # architecture
-            self.embed = nn.Embedding(dim_in, self.embed_size, padding_idx = self.params.pad_idx)
+            self.embed = nn.Embedding(dim_in, self.embed_size, padding_idx = self.pad_idx)
             self.conv = nn.ModuleList([nn.Conv2d(
                 in_channels = 1, # Ci
                 out_channels = self.num_featmaps, # Co
@@ -84,12 +89,12 @@ class embed(nn.Module):
 
 
 class RNN(nn.Module):
-    def __init__(self, params, char_vocab_size, word_vocab_size, num_tags):
+    def __init__(self, params, char_vocab_size, word_vocab_size, num_tags, pad_idx):
         super().__init__()
 
         self.params = params
         # architecture
-        self.embed = embed(params, char_vocab_size, word_vocab_size, params.embed_size)
+        self.embed = embed(params, char_vocab_size, word_vocab_size, params.embed_size, pad_idx)
         self.num_dirs = 2 if params.rnn_type == 'bilstm' else 1
         if params.rnn_type in ['lstm', 'bilstm']:
             self.rnn = nn.LSTM(
@@ -145,7 +150,7 @@ class crf(nn.Module):
         # initialize forward variables in log space
         batch_size = h.shape[0]
         score = maybe_cuda(torch.full((batch_size, self.num_tags), -10000.)) # [B, C]
-        score[:, self.params.sos_idx] = 0.
+        score[:, self.sos_idx] = 0.
         trans = self.trans.unsqueeze(0) # [1, C, C]
         for t in range(h.size(1)): # recursion through the sequence
             mask_t = mask[:, t].unsqueeze(1)
@@ -153,7 +158,7 @@ class crf(nn.Module):
             score_t = score.unsqueeze(1) + emit_t + trans # [B, 1, C] -> [B, C, C]
             score_t = log_sum_exp(score_t) # [B, C, C] -> [B, C]
             score = score_t * mask_t + score * (1 - mask_t)
-        score = log_sum_exp(score + self.trans[self.params.eos_idx])
+        score = log_sum_exp(score + self.trans[self.eos_idx])
         return score # partition function
 
     def score(self, h, y, mask): # calculate the score of a given sequence
@@ -167,7 +172,7 @@ class crf(nn.Module):
             trans_t = torch.cat([trans[y[t + 1], y[t]] for y in y])
             score += (emit_t + trans_t) * mask_t
         last_tag = y.gather(1, mask.sum(1).long().unsqueeze(1)).squeeze(1)
-        score += self.trans[self.params.eos_idx, last_tag]
+        score += self.trans[self.eos_idx, last_tag]
         return score
 
     def decode(self, h, mask): # Viterbi decoding
