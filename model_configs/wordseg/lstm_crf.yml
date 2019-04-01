@@ -1,0 +1,15 @@
+model: rnn_crf
+dataset:
+  name: vnpos
+batch_size: 16
+num_epochs: 30
+optimizer:
+  name: sgd
+  learning_rate: 0.01
+
+embed_unit: 'word'
+embed_size: 300
+rnn_type: 'bilstm'
+hidden_size: 1000
+dropout: 0.5
+num_layers: 2
