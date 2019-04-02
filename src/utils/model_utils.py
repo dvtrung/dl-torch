@@ -2,11 +2,11 @@ import importlib, os
 import torch
 
 def get_model(params):
-    i = importlib.import_module("models." + params.model)
+    i = importlib.import_module("models." + params.model.lower())
     return i.Model
 
 def get_dataset(params):
-    i = importlib.import_module("datasets." + params.dataset.name)
+    i = importlib.import_module("datasets." + params.dataset.name.lower())
     return i.Dataset
 
 def get_optimizer(params, model):
