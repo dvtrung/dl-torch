@@ -6,3 +6,4 @@ bin
 __pycache__
 logs/**
 saved_models/**
+*.swp

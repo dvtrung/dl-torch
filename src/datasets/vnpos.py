@@ -1,6 +1,7 @@
 import os, glob, re
 from utils.logging import logger
 from utils.utils import maybe_download, maybe_unzip
+from utils.metrics import ser
 import torch
 
 from datasets.base import BaseDataset
@@ -261,19 +262,12 @@ class Dataset(BaseDataset):
 
         return dict(wtokens=wtokens, wtags=wtags)
 
-    def eval(self, pr, gt):
-        count, correct = 0, 0
-        is_correct = False
-        pr = pr.cpu()
-        gt = gt.cpu()[1:]
-        for i in range(len(gt)):
-            if gt[i] != self.tag_to_idx["<pad>"] and gt[i] != self.tag_to_idx["<sos>"]:
-                if gt[i] == self.tag_to_idx["<sow>"]:
-                    count += 1
-                    if pr[i] == self.tag_to_idx["<sow>"]:
-                        if is_correct: correct += 1
-                        is_correct = True
-                if gt[i] != pr[i]: is_correct = False
-
-        if is_correct: correct += 1
-        return correct / count
+    def eval(self, y_pred, batch, metrics):
+        ret = 0
+        for k in range(len(y_pred)):
+            pr = y_pred[k]
+            gt = batch['wtags'][k].cpu()[1:]
+            gt = [i for i in gt if i != self.tag_to_idx['<pad>']]
+            pr = pr[:len(gt)]
+            ret += ser(pr, gt, [self.tag_to_idx['<sow>']])
+        return ret

@@ -1,4 +1,5 @@
 import os
+import torch
 from torchvision import transforms
 from torchvision.datasets import MNIST
 
@@ -24,8 +25,12 @@ class Dataset(BaseDataset):
         x = x.view(x.size(0), 1, 28, 28)
         return x
 
-    def eval(self, pr, gt):
-        return (gt == pr).item()
+    def eval(self, y_pred, batch, metric='acc'):
+        if metric == 'acc':
+            return np.sum(batch[-1] == y_pred).item()
+        elif metric == 'mse':
+            criterion = torch.nn.MSELoss()
+            return criterion(y_pred.view(-1), batch[0].cpu().view(-1)).item()
 
     def __len__(self):
         return len(self.mnist)

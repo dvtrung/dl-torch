@@ -10,17 +10,17 @@ def get_dataset(params):
     return i.Dataset
 
 def get_optimizer(params, model):
-    op_params = params.optimizer
+    op_params = params.optimizer.copy()
+    del op_params['name']
+
     if params.optimizer.name == 'sgd':
         return torch.optim.SGD(
             model.parameters(),
-            lr=params.optimizer.learning_rate,
-            momentum=params.optimizer.momentum)
+            **op_params)
     elif params.optimizer.name == 'adam':
         return torch.optim.Adam(
             model.parameters(),
-            lr=params.optimizer.learning_rate,
-            weight_decay=params.optimizer.weight_decay)
+            **op_params)
 
 def save_checkpoint(tag, params, model, optim):
     os.makedirs(os.path.join("saved_models", params.path), exist_ok=True)

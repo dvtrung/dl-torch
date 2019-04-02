@@ -7,6 +7,8 @@ class AttrDict(dict):
     seed = 1
     num_epochs = 30
     shuffle = False
+    batch_size = None
+    test_batch_size = None
 
     def __init__(self, *args, **kwargs):
         super(AttrDict, self).__init__(*args, **kwargs)

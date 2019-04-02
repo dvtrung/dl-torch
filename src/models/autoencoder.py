@@ -18,21 +18,24 @@ class Model(BaseModel):
             nn.Linear(64, 128),
             nn.ReLU(True), nn.Linear(128, 28 * 28), nn.Tanh())
 
-    def forward(self, x):
-        x = self.encoder(x)
-        x = self.decoder(x)
-        return x
+    def forward(self, batch):
+        img, _ = batch
+        img = img.view(img.size(0), -1)
+        h = self.encoder(img)
+        output = self.decoder(h)
+        return output
+
+    def predict(self, batch):
+        return self.forward(batch).cpu()
 
     def loss(self, batch):
-        criterion = nn.MSELoss()
         img, _ = batch
         img = img.view(img.size(0), -1)
-        output = self.forward(img)
+        criterion = nn.MSELoss()
+        output = self.forward(batch)
         return criterion(output, img)
 
-    def log(self):
-        img, _ = batch
-        img = img.view(img.size(0), -1)
-        output = self.forward(img)
+    def log(self, batch):
+        output = self.forward(batch)
         pic = to_img(output.cpu().data)
         save_image(pic, './mlp_img/image_{}.png'.format(epoch))
