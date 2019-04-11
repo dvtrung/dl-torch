@@ -4,7 +4,7 @@ import torch.nn as nn
 
 from models.base import BaseModel
 
-class Model(BaseModel):
+class BasicModel(BaseModel):
     def __init__(self, params, dataset):
         super().__init__(params, dataset)
         self.conv1 = nn.Conv2d(1, 20, 5, 1)

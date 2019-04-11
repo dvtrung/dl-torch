@@ -1,4 +1,4 @@
-model: rnn_crf
+model: rnn_crf.Model
 dataset:
   name: vnpos
   tag_type: pos

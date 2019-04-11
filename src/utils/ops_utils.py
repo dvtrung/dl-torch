@@ -11,5 +11,9 @@ def LongTensor(*args):
     x = torch.LongTensor(args)
     return x.cuda() if CUDA else x
 
+def FloatTensor(*args):
+    x = torch.FloatTensor(args)
+    return x.cuda() if CUDA else x
+
 def maybe_cuda(x):
     return x.cuda() if CUDA else x

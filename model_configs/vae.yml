@@ -1,4 +1,4 @@
-model: vae.Autoencoder
+model: vae.VariationalAutoencoder
 dataset:
   name: mnist
 batch_size: 128

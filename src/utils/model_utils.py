@@ -9,8 +9,9 @@ from utils.logging import logger
 
 def get_model(params):
     """Return the model class by its name."""
-    i = importlib.import_module("models." + params.model)
-    return i.Model
+    module_name, class_name = params.model.rsplit('.', 1)
+    i = importlib.import_module("models." + module_name)
+    return getattr(i, class_name)
 
 def get_dataset(params):
     """Return the dataset class by its name."""

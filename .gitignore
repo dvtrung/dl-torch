@@ -6,6 +6,7 @@ bin
 __pycache__
 logs/**
 saved_models/**
+model_outputs/**
 *.swp
 .pytest_cache
 .hypothesis

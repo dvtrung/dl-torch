@@ -1,4 +1,4 @@
-model: cnn
+model: cnn.BasicModel
 dataset:
   name: mnist
 batch_size: 32
