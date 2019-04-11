@@ -25,7 +25,7 @@ class Model(BaseModel):
         output = self.decoder(h)
         return output
 
-    def predict(self, batch):
+    def infer(self, batch):
         return self.forward(batch).cpu()
 
     def loss(self, batch):

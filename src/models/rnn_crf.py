@@ -26,14 +26,14 @@ class Model(BaseModel):
     def decode(self, cx, wx): # for prediction
         mask = wx.data.gt(0).float()
         h = self.rnn(cx, wx, mask)
-        return LongTensor(self.crf.decode(h, mask)).view(mask.shape[0], -1)
+        return self.crf.decode(h, mask)
 
     def loss(self, batch):
-        wx, y = batch['wtokens'], batch['wtags']
+        wx, y = batch['word_tokens'], batch['word_tags']
         return torch.mean(self.forward(None, wx, y))
 
-    def predict(self, batch):
-        wx, y = batch['wtokens'], batch['wtags']
+    def infer(self, batch):
+        wx, y = batch['word_tokens'], batch['word_tags']
         return self.decode(None, wx)
 
 

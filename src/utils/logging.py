@@ -9,16 +9,16 @@ logging.basicConfig()
 # Here we define our formatter
 formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
 
-def set_log_dir(path):
-    os.makedirs(path, exist_ok=True)
+def set_log_dir(params):
+    os.makedirs(params.log_dir, exist_ok=True)
 
     logInfoHandler = logging.FileHandler(
-        os.path.join(path, "info.log"))
+        os.path.join(params.log_dir, "info.log"))
     logInfoHandler.setLevel(logging.INFO)
     logInfoHandler.setFormatter(formatter)
 
     logDebugHandler = logging.FileHandler(
-        os.path.join(path, "debug.log"))
+        os.path.join(params.log_dir, "debug.log"))
     logDebugHandler.setLevel(logging.DEBUG)
     # logDebugHandler.setFormatter(formatter)
 

@@ -23,7 +23,7 @@ class Model(BaseModel):
         x = self.fc2(x)
         return F.log_softmax(x, dim=1)
 
-    def predict(self, batch):
+    def infer(self, batch):
         logits = self.forward(batch)
         return torch.max(logits, 1)[1]
 

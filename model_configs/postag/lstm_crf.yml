@@ -1,7 +1,7 @@
 model: rnn_crf
 dataset:
   name: vnpos
-  tag_type: seg
+  tag_type: pos
 batch_size: 128
 test_batch_size: 16
 num_epochs: 30

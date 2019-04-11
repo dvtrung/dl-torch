@@ -2,11 +2,13 @@
 
 This project provides a codebase for deep learning experiments with Pytorch.
 
-- [ ] Efficient way of logging and managing training models
+- [ ] Writing minimal code to set up an experiment
+- [ ] Efficient way of logging and analyzing training models
 - [ ] Terminal GUI for tracking experiments
-- [ ] Export minimal code and run in Google Colab or remote instance
+- [ ] Integration with Google Colab or remote SSH server
 
-#
+# Set up an experiment
+
 ## Define dataset
 
 ```python
@@ -26,7 +28,7 @@ class Model(BaseModel):
      def __init__(self, params, dataset):
         super().__init__(params, dataset)
 
-    def predict(self, batch):
+    def infer(self, batch):
         ...
 
     def forward(self, batch):
@@ -36,7 +38,7 @@ class Model(BaseModel):
         ...
 ```
 
-# Configuration example
+## Configuration
 
 ```yaml
 model: autoencoder
@@ -50,13 +52,17 @@ optimizer:
   weight_decay: 1e-5
 ```
 
-# Training & Evaluation
+## Train
 
 ```
 python src/train.py -c <config_path>
 ```
 
-# Models
+# Logs & Outputs
+
+# Examples
+
+## Models
 
 |Model|Usage|
 |------|-----|
@@ -66,7 +72,7 @@ python src/train.py -c <config_path>
 | [attention](docs/models/attention.md) | Sequence to sequence |
 
 
-# Datasets
+## Datasets
 
 |Dataset|Description|
 |------|-----|

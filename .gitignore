@@ -7,3 +7,4 @@ __pycache__
 logs/**
 saved_models/**
 *.swp
+.pytest_cache

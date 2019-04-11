@@ -3,6 +3,8 @@ from six.moves import urllib
 import time
 import zipfile
 
+from utils.logging import set_log_dir
+
 urllib_start_time = 0
 
 def reporthook(count, block_size, total_size):
@@ -45,3 +47,8 @@ def maybe_unzip(filename, work_directory, folder):
         zip_ref = zipfile.ZipFile(os.path.join(work_directory, filename), 'r')
         zip_ref.extractall(os.path.join(work_directory, folder))
         zip_ref.close()
+
+def init_dirs(params):
+    os.makedirs(params.log_dir, exist_ok=True)
+    if params.mode == "train":
+        set_log_dir(params)

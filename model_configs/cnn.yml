@@ -5,7 +5,7 @@ batch_size: 32
 test_batch_size: 1024
 num_epochs: 30
 metrics:
-  - mse
+  - acc
 optimizer:
   name: adam
   lr: 0.001
