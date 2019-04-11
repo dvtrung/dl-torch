@@ -1,14 +1,17 @@
+"""MNIST dataset"""
+
 import os
 import torch
 from torchvision import transforms
 from torchvision.datasets import MNIST
-import numpy as np
 from sklearn.metrics import accuracy_score
+import matplotlib.pyplot as plt
 
 from datasets.base import BaseDataset
-from utils.ops_utils import Tensor, LongTensor, maybe_cuda
+from utils.ops_utils import LongTensor, maybe_cuda
 
 class Dataset(BaseDataset):
+    """MNIST dataset"""
     def __init__(self, mode, params, args=None):
         super().__init__(mode, params, args)
         img_transform = transforms.Compose([
@@ -23,11 +26,11 @@ class Dataset(BaseDataset):
 
     def to_img(self, x):
         x = 0.5 * (x + 1)
-        x = x.clamp(0, 1)
-        x = x.view(x.size(0), 1, 28, 28)
+        x = x.clip(0, 1)
+        x = x.reshape(28, 28)
         return x
 
-    def eval(self, y_pred, batch, metric='acc'):
+    def evaluate(self, y_pred, batch, metric='acc'):
         if metric == 'acc':
             return accuracy_score(batch[-1].cpu(), y_pred.cpu()) * y_pred.shape[0]
         elif metric == 'mse':
@@ -39,3 +42,19 @@ class Dataset(BaseDataset):
 
     def __getitem__(self, idx):
         return (maybe_cuda(self.mnist[idx][0]), LongTensor(self.mnist[idx][1]))
+
+    def get_inp_from_batch(self, batch, i):
+        return (batch[0][i], batch[1][i])
+
+    def format_output(self, y_pred, inp, display=None, tag=None):
+        y_pred = y_pred.cpu().detach().numpy()
+        if display is None:
+            return str(y_pred)
+        elif display == "img":
+            plt.subplot(1, 2, 1)
+            plt.imshow(self.to_img(inp[0].cpu().detach().numpy()))
+            plt.subplot(1, 2, 2)
+            plt.imshow(self.to_img(y_pred))
+            fn = os.path.join(self.params.output_dir, 'infer-%s.png' % tag)
+            plt.savefig(fn)
+            return "file: %s" % fn

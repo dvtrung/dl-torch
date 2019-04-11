@@ -16,3 +16,4 @@ rnn_type: 'bilstm'
 hidden_size: 1000
 dropout: 0.5
 num_layers: 2
+output_format: word+tag

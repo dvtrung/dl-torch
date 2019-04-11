@@ -1,7 +1,10 @@
-import os, sys
-from six.moves import urllib
+"""General utils"""
+import os
+import sys
 import time
 import zipfile
+from shutil import rmtree
+from six.moves import urllib
 
 from utils.logging import set_log_dir
 
@@ -50,5 +53,7 @@ def maybe_unzip(filename, work_directory, folder):
 
 def init_dirs(params):
     os.makedirs(params.log_dir, exist_ok=True)
+    rmtree(params.output_dir)
+    os.makedirs(params.output_dir)
     if params.mode == "train":
         set_log_dir(params)

@@ -1,10 +1,16 @@
 model: autoencoder
 dataset:
   name: mnist
-batch_size: 16
-num_epochs: 30
+batch_size: 128
+num_epochs: 100
+encoder:
+  hidden_sizes: [128, 64, 12, 3]
+decoder:
+  hidden_sizes: [12, 64, 128]
 optimizer:
   name: adam
   lr: 0.01
+  weight_decay: 1e-5
 metrics:
   - mse
+output_format: img

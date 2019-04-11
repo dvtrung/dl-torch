@@ -1,5 +1,11 @@
+"""RNN-CRF model.
+References:
+ - Bidirectional LSTM-CRF Models for Sequence Tagging (https://arxiv.org/abs/1508.01991)
+"""
+
 import torch
-from torch import nn
+import torch.nn as nn
+import torch.nn.functional as F
 
 from models.base import BaseModel
 from utils.ops_utils import Tensor, LongTensor, maybe_cuda
@@ -9,11 +15,22 @@ CUDA = torch.cuda.is_available()
 
 
 class Model(BaseModel):
+    """Model."""
     def __init__(self, params, dataset):
         super().__init__(params, dataset)
         self.params = params
-        self.rnn = RNN(params, dataset.vocab_char_size, dataset.vocab_word_size, dataset.num_tags, dataset.tag_to_idx["<pad>"])
-        self.crf = crf(params, dataset.num_tags, dataset.tag_to_idx["<sos>"], dataset.tag_to_idx["<eos>"], dataset.tag_to_idx["<pad>"])
+        self.rnn = RNN(
+            params,
+            dataset.vocab_char_size,
+            dataset.vocab_word_size,
+            dataset.num_tags,
+            dataset.tag_to_idx["<pad>"])
+        self.crf = CRF(
+            params,
+            dataset.num_tags,
+            dataset.tag_to_idx["<sos>"],
+            dataset.tag_to_idx["<eos>"],
+            dataset.tag_to_idx["<pad>"])
         self = self.cuda() if CUDA else self
 
     def forward(self, cx, wx, y): # for training
@@ -61,9 +78,9 @@ class embed(nn.Module):
             # architecture
             self.embed = nn.Embedding(dim_in, self.embed_size, padding_idx = self.pad_idx)
             self.conv = nn.ModuleList([nn.Conv2d(
-                in_channels = 1, # Ci
-                out_channels = self.num_featmaps, # Co
-                kernel_size = (i, self.embed_size) # (height, width)
+                in_channels=1, # Ci
+                out_channels=self.num_featmaps, # Co
+                kernel_size=(i, self.embed_size) # (height, width)
             ) for i in self.kernel_sizes]) # num_kernels (K)
             self.dropout = nn.Dropout(self.params.dropout)
             self.fc = nn.Linear(len(self.kernel_sizes) * self.num_featmaps, dim_out)
@@ -127,7 +144,7 @@ class RNN(nn.Module):
         return h
 
 
-class crf(nn.Module):
+class CRF(nn.Module):
     def __init__(self, params, num_tags, sos_idx, eos_idx, pad_idx):
         super().__init__()
         self.num_tags = num_tags

@@ -305,7 +305,7 @@ class Dataset(NLPDataset):
 
         return dict(word_tokens=word_tokens, word_tags=word_tags)
 
-    def eval(self, y_pred, batch, metric):
+    def evaluate(self, y_pred, batch, metric):
         ret = 0
         for k in range(len(y_pred)):
             pr = y_pred[k]
@@ -315,11 +315,11 @@ class Dataset(NLPDataset):
             # print(pr, gt, ser(pr, gt, [self.tag_to_idx['<sow>']]))
             if metric == 'ser':
                 ret += ser(pr, gt, [self.tag_to_idx['<w>']])
-        return ret
+        return ret / len(y_pred)
 
     def format_output(self, y_pred, inp, display=None):
         if display is None:
-            return str(y)
+            return str(y_pred)
         elif display == "word+delimiter":
             ret = []
             for w, t in zip(inp['word_tokens'], y_pred):

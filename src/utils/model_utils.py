@@ -1,19 +1,24 @@
-import importlib, os
-import torch
+"""Model utils"""
+
+import importlib
+import os
 import json
-from tqdm import tqdm
+import torch
 
 from utils.logging import logger
 
 def get_model(params):
+    """Return the model class by its name."""
     i = importlib.import_module("models." + params.model)
     return i.Model
 
 def get_dataset(params):
+    """Return the dataset class by its name."""
     i = importlib.import_module("datasets." + params.dataset.name)
     return i.Dataset
 
 def get_optimizer(params, model):
+    """Return the optimizer object by its type."""
     op_params = params.optimizer.copy()
     del op_params['name']
 
@@ -48,8 +53,11 @@ def load_checkpoint(tag, params, model, optim):
         model.load_state_dict(checkpoint['model'])
         if optim is not None:
             optim.load_state_dict(checkpoint['optim'])
+    else:
+        raise Exception("Checkpoint not found.")
 
 def load_results(params):
+    """Load all saved results at each checkpoint."""
     path = os.path.join(params.log_dir, "results.json")
     if os.path.exists(path):
         with open(os.path.join(params.log_dir, "results.json")) as f:
@@ -61,6 +69,7 @@ def load_results(params):
         }
 
 def add_result(params, new_result):
+    """Add a checkpoint for evaluation result."""
     ret = load_results(params)
     ret["evaluations"].append(new_result)
     for m in params.metrics:

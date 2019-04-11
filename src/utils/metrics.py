@@ -1,17 +1,24 @@
-def ser(pr, gt, pass_ids):
+"""Evaluation metrics"""
+
+def ser(predicted, ground_truth, pass_ids):
+    """Segment error rate."""
     count = 0
     correct = 0
     is_correct = False
-    for i in range(len(pr)):
-        if gt[i] not in pass_ids:
+    for i, _pr in enumerate(predicted):
+        _gt = ground_truth[i]
+        if _gt not in pass_ids:
             count += 1
-            if pr[i] not in pass_ids:
-                if is_correct: correct += 1
-            is_correct = pr[i] == gt[i]
-        if gt[i] != pr[i]: is_correct = False
+            if _pr not in pass_ids:
+                if is_correct:
+                    correct += 1
+            is_correct = _pr == _gt
+        if _gt != _pr:
+            is_correct = False
 
-    if is_correct: correct += 1
+    if is_correct:
+        correct += 1
     if count == 0:
-        print(gt)
-        print(pr)
+        print(ground_truth)
+        print(predicted)
     return correct / count
