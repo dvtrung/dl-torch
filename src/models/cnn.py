@@ -4,6 +4,7 @@ import torch.nn as nn
 
 from models.base import BaseModel
 
+
 class BasicModel(BaseModel):
     def __init__(self, params, dataset):
         super().__init__(params, dataset)
@@ -13,7 +14,7 @@ class BasicModel(BaseModel):
         self.fc2 = nn.Linear(500, 10)
 
     def forward(self, batch):
-        x, _ = batch
+        x = batch['X']
         x = F.relu(self.conv1(x))
         x = F.max_pool2d(x, 2, 2)
         x = F.relu(self.conv2(x))
@@ -26,8 +27,3 @@ class BasicModel(BaseModel):
     def infer(self, batch):
         logits = self.forward(batch)
         return torch.max(logits, 1)[1]
-
-    def loss(self, batch):
-        x, y = batch
-        y_pred = self.forward(batch)
-        return F.nll_loss(y_pred, y.view(-1))

@@ -10,6 +10,7 @@ import matplotlib.pyplot as plt
 from datasets.base import BaseDataset
 from utils.ops_utils import LongTensor, maybe_cuda
 
+
 class Dataset(BaseDataset):
     """MNIST dataset"""
     def __init__(self, mode, params, args=None):
@@ -32,19 +33,19 @@ class Dataset(BaseDataset):
 
     def evaluate(self, y_pred, batch, metric='acc'):
         if metric == 'acc':
-            return accuracy_score(batch[-1].cpu(), y_pred.cpu()) * y_pred.shape[0]
+            return accuracy_score(batch['Y'].cpu(), y_pred.cpu()) * y_pred.shape[0], y_pred.shape[0]
         elif metric == 'mse':
             criterion = torch.nn.MSELoss()
-            return criterion(y_pred.view(-1), batch[0].cpu().view(-1)).item()
+            return criterion(y_pred.view(-1), batch['X'].cpu().view(-1)).item(), y_pred.shape[0]
 
     def __len__(self):
         return len(self.mnist)
 
     def __getitem__(self, idx):
-        return (maybe_cuda(self.mnist[idx][0]), LongTensor(self.mnist[idx][1]))
-
-    def get_inp_from_batch(self, batch, i):
-        return (batch[0][i], batch[1][i])
+        return {
+            'X': maybe_cuda(self.mnist[idx][0]),
+            'Y': LongTensor(self.mnist[idx][1])
+        }
 
     def format_output(self, y_pred, inp, display=None, tag=None):
         y_pred = y_pred.cpu().detach().numpy()

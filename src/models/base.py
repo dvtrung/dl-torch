@@ -28,3 +28,6 @@ class BaseModel(torch.nn.Module):
     def loss(self, batch):
         """Loss"""
         return None
+
+    def initHidden(self):
+        pass

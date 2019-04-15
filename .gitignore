@@ -10,3 +10,4 @@ model_outputs/**
 *.swp
 .pytest_cache
 .hypothesis
+.idea

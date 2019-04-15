@@ -11,7 +11,6 @@ from models.base import BaseModel
 from utils.ops_utils import Tensor, LongTensor, maybe_cuda
 
 CUDA = torch.cuda.is_available()
-#CUDA = False
 
 
 class Model(BaseModel):
@@ -33,11 +32,11 @@ class Model(BaseModel):
             dataset.tag_to_idx["<pad>"])
         self = self.cuda() if CUDA else self
 
-    def forward(self, cx, wx, y): # for training
-        mask = wx.data.gt(0).float()
-        h = self.rnn(cx, wx, mask)
+    def forward(self, batch):  # for training
+        mask = batch['X'].data.gt(0).float()
+        h = self.rnn(None, batch['X'], mask)
         Z = self.crf.forward(h, mask)
-        score = self.crf.score(h, y, mask)
+        score = self.crf.score(h, batch['Y'], mask)
         return Z - score # NLL loss
 
     def decode(self, cx, wx): # for prediction
@@ -46,12 +45,11 @@ class Model(BaseModel):
         return self.crf.decode(h, mask)
 
     def loss(self, batch):
-        wx, y = batch['word_tokens'], batch['word_tags']
-        return torch.mean(self.forward(None, wx, y))
+        X, Y = batch['X'], batch['Y']
+        return torch.mean(self.forward(None, X, Y))
 
     def infer(self, batch):
-        wx, y = batch['word_tokens'], batch['word_tags']
-        return self.decode(None, wx)
+        return self.decode(None, batch['X'])
 
 
 class embed(nn.Module):
@@ -101,7 +99,7 @@ class embed(nn.Module):
     def forward(self, cx, wx):
         ch = self.char_embed(cx) if self.params.embed_unit[:4] == "char" else Tensor()
         wh = self.word_embed(wx) if self.params.embed_unit[-4:] == "word" else Tensor()
-        h = torch.cat([ch, wh], 2)
+        h = torch.cat((ch, wh), 2)
         return h
 
 
@@ -162,7 +160,6 @@ class CRF(nn.Module):
         self.trans.data[self.pad_idx, self.eos_idx] = 0.
         self.trans.data[self.pad_idx, self.pad_idx] = 0.
 
-
     def forward(self, h, mask): # forward algorithm
         # initialize forward variables in log space
         batch_size = h.shape[0]
@@ -178,7 +175,7 @@ class CRF(nn.Module):
         score = log_sum_exp(score + self.trans[self.eos_idx])
         return score # partition function
 
-    def score(self, h, y, mask): # calculate the score of a given sequence
+    def score(self, h, y, mask):  # calculate the score of a given sequence
         batch_size = h.shape[0]
         score = maybe_cuda(torch.zeros(batch_size))
         h = h.unsqueeze(3)

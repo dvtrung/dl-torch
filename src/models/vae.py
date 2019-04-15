@@ -71,14 +71,17 @@ class VariationalAutoencoder(BaseModel):
         img = img.view(img.size(0), -1)
         mu, logvar = self.encode(img)
         z = self.reparametrize(mu, logvar)
-        return self.decode(z)
+        return self.decode(z), mu, logvar
 
     def infer(self, batch):
-        return self.forward(batch).cpu()
+        return self.forward(batch)[0].cpu()
 
     def loss(self, batch):
         img, _ = batch
         img = img.view(img.size(0), -1)
-        criterion = nn.MSELoss()
-        output = self.forward(batch)
-        return criterion(output, img)
+        output, mu, logvar = self.forward(batch)
+
+        BCE = F.binary_cross_entropy(output, img.view(-1, 784), reduction='sum')
+        KLD = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp())
+
+        return BCE + KLD

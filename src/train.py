@@ -6,23 +6,25 @@ import torch
 from torch.utils.data import DataLoader
 
 from configs import Configs
-from utils.model_utils import get_model, get_dataset, get_optimizer, \
+from utils.model_utils import get_model, get_dataset, get_optimizer, get_loss_fn, \
     load_checkpoint, save_checkpoint
 from utils.logging import logger
 from utils.utils import init_dirs
 from evaluate import evaluate
+
 
 def train(params, args):
     """Train."""
     torch.manual_seed(params.seed)
 
     dataset_cls = get_dataset(params)
+    # Init dataset
+    dataset_cls.prepare(force=args.force_preprocessing)
     model_cls = get_model(params)
+    loss_fn = get_loss_fn(params)
 
     logger.info("Dataset: %s. Model: %s", str(dataset_cls), str(model_cls))
 
-    # Init dataset
-    dataset_cls.prepare(force=args.force_preprocessing)
     if args.debug:
         dataset_train = dataset_cls("debug", params)
         dataset_test = dataset_cls("debug", params)
@@ -33,14 +35,14 @@ def train(params, args):
     # Init model
     model = model_cls(params, dataset_train)
     if torch.cuda.is_available():
-        logger.info("Cuda available: %s", torch.cuda.get_device_name(0))
+        logger.info("CUDA available: %s", torch.cuda.get_device_name(0))
         model.cuda()
 
     # Init optimizer
-    optim = get_optimizer(params, model)
+    optimizer = get_optimizer(params, model)
 
     if args.load:
-        load_checkpoint(args.load, params, model, optim)
+        load_checkpoint(args.load, params, model, optimizer)
         init_dirs(params)
         logger.info("Saved model loaded: %s", args.load)
         logger.info("Epoch: %f", model.global_step / len(dataset_train))
@@ -70,9 +72,10 @@ def train(params, args):
         with tqdm(data_train, desc="Epoch %d" % current_epoch) as t:
             for epoch_step, batch in enumerate(t):
                 model.zero_grad()
-                loss = model.loss(batch)
+                output = model.forward(batch)
+                loss = loss_fn(batch, output)
                 loss.backward()
-                optim.step()
+                optimizer.step()
                 loss_sum += loss.item()
                 t.set_postfix(loss=loss.item())
 
@@ -87,17 +90,19 @@ def train(params, args):
             if best_res[metric] == res:
                 save_checkpoint(
                     "best" if len(params.metrics) == 1 else "best-%s" % metric,
-                    params, model, optim)
+                    params, model, optimizer)
                 logger.info("Best checkpoint for %s saved", metric)
 
         logger.info(str(res))
-        #logger.info("Loss: %f, Acc: %f" % (loss, res))
-        save_checkpoint("epoch-%02d" % current_epoch, params, model, optim)
+        # logger.info("Loss: %f, Acc: %f" % (loss, res))
+        save_checkpoint("epoch-%02d" % current_epoch, params, model, optimizer)
+
 
 def main():
     """Read config and train model."""
     configs = Configs(mode="train")
     train(configs.params, configs.args)
+
 
 if __name__ == "__main__":
     main()

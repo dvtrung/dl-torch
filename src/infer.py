@@ -8,6 +8,7 @@ from utils.model_utils import get_dataset, get_model, load_checkpoint
 from utils.logging import logger
 from utils.utils import init_dirs
 
+
 def infer(model, dataset, params):
     """Infer results"""
 
@@ -23,10 +24,11 @@ def infer(model, dataset, params):
             count += 1
             logger.info(dataset.format_output(
                 _y,
-                dataset.get_inp_from_batch(batch, i),
+                dataset.get_input_from_batch(batch, i),
                 display=params.output_format,
                 tag="%06d" % count))
         # logger.info('\n'.join([str(r) for r in ret]))
+
 
 def main():
     """Main program"""
@@ -50,7 +52,14 @@ def main():
     load_checkpoint(args.load, params, model, None)
     init_dirs(params)
 
-    infer(model, dataset_infer, params)
+    if args.input:
+        dataset_infer.load_from_input(args.input)
+        infer(model, dataset_infer, params)
+    else:
+        s = input('--> ')
+        dataset_infer.load_from_input(s)
+        infer(model, dataset_infer, params)
+
 
 if __name__ == "__main__":
     main()

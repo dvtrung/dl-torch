@@ -3,10 +3,11 @@ import os
 import sys
 import time
 import zipfile
-from shutil import rmtree
+import shutil
 from six.moves import urllib
+import requests
 
-from utils.logging import set_log_dir
+from utils.logging import set_log_dir, logger
 
 urllib_start_time = 0
 
@@ -33,12 +34,20 @@ def maybe_download(filename, work_directory, source_url):
     Returns:
         Path to resulting file.
     """
-    global urllib_start_time
     if not os.path.exists(work_directory):
         os.makedirs(work_directory)
     filepath = os.path.join(work_directory, filename)
     if not os.path.exists(filepath):
-        print("Download file from", source_url)
+        r = requests.get(source_url, stream=True)
+        if r.status_code == 200:
+            with open(filepath, 'wb') as f:
+                r.raw.decode_content = True
+                shutil.copyfileobj(r.raw, f)
+    return filepath
+
+    global urllib_start_time
+    if not os.path.exists(filepath):
+        logger.log("Download file from", source_url)
         urllib_start_time = time.time()
         urllib.request.urlretrieve(source_url, filepath, reporthook)
     return filepath
@@ -53,7 +62,7 @@ def maybe_unzip(filename, work_directory, folder):
 
 def init_dirs(params):
     os.makedirs(params.log_dir, exist_ok=True)
-    rmtree(params.output_dir, ignore_errors=True)
+    shutil.rmtree(params.output_dir, ignore_errors=True)
     os.makedirs(params.output_dir)
     if params.mode == "train":
         set_log_dir(params)

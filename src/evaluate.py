@@ -15,13 +15,14 @@ def evaluate(model, dataset, params, save_result=False, output=False):
         batch_size=params.test_batch_size or params.batch_size,
         collate_fn=dataset.collate_fn)
 
-    total = 0
+    total = {key: 0 for key in params.metrics}
     acc = {key: 0. for key in params.metrics}
     for batch in tqdm(data_loader, desc="Eval"):
         y_pred = model.infer(batch)
         for key in params.metrics:
-            acc[key] += dataset.evaluate(y_pred, batch, metric=key) * len(y_pred)
-        total += len(y_pred)
+            _acc, _total = dataset.evaluate(y_pred, batch, metric=key)
+            acc[key] += _acc
+            total[key] += _total
         if output:
             for predicted, item in zip(y_pred, batch):
                 inp = item["word_tags"].cpu().numpy()
@@ -32,7 +33,7 @@ def evaluate(model, dataset, params, save_result=False, output=False):
 
     result = {
         "epoch": "%.2f" % model.epoch,
-        "result": {key: acc[key] / total for key in acc}
+        "result": {key: acc[key] / total[key] for key in acc}
     }
     best_result = add_result(params, result) if save_result else None
 
