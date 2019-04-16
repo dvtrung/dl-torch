@@ -1,6 +1,7 @@
 datasets/**
 private
 .vscode
+.idea
 credentials.json
 bin
 __pycache__
@@ -10,4 +11,4 @@ model_outputs/**
 *.swp
 .pytest_cache
 .hypothesis
-.idea
+.env

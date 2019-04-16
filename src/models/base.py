@@ -1,5 +1,7 @@
 import os
+import abc
 import torch
+
 
 class BaseModel(torch.nn.Module):
     def __init__(self, params, dataset):
@@ -21,13 +23,7 @@ class BaseModel(torch.nn.Module):
     def epoch(self):
         return self.global_step / len(self.dataset)
 
+    @abc.abstractmethod
     def infer(self, batch):
         """Infer"""
         return None
-
-    def loss(self, batch):
-        """Loss"""
-        return None
-
-    def initHidden(self):
-        pass
