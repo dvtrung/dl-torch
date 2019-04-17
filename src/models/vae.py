@@ -8,7 +8,8 @@ import torch.nn.functional as F
 from torch.autograd import Variable
 
 from utils.ops_utils import FloatTensor
-from models.base import BaseModel
+from models.base import BaseModel, default_params
+
 
 class Autoencoder(BaseModel):
     """Autoencoder"""
@@ -26,7 +27,7 @@ class Autoencoder(BaseModel):
             nn.Linear(128, 28 * 28), nn.Tanh())
 
     def forward(self, batch):
-        img, _ = batch
+        img = batch['X']
         img = img.view(img.size(0), -1)
         hidden = self.encoder(img)
         output = self.decoder(hidden)
@@ -35,13 +36,10 @@ class Autoencoder(BaseModel):
     def infer(self, batch):
         return self.forward(batch).cpu()
 
-    def loss(self, batch):
-        img, _ = batch
-        img = img.view(img.size(0), -1)
-        criterion = nn.MSELoss()
-        output = self.forward(batch)
-        return criterion(output, img)
 
+@default_params(dict(
+    loss="vae_loss"
+))
 class VariationalAutoencoder(BaseModel):
     """VAE"""
     def __init__(self, params, dataset):
@@ -67,7 +65,7 @@ class VariationalAutoencoder(BaseModel):
         return torch.sigmoid(self.fc4(h3))
 
     def forward(self, batch):
-        img, _ = batch
+        img = batch['X']
         img = img.view(img.size(0), -1)
         mu, logvar = self.encode(img)
         z = self.reparametrize(mu, logvar)
@@ -76,12 +74,18 @@ class VariationalAutoencoder(BaseModel):
     def infer(self, batch):
         return self.forward(batch)[0].cpu()
 
-    def loss(self, batch):
-        img, _ = batch
-        img = img.view(img.size(0), -1)
-        output, mu, logvar = self.forward(batch)
+    @classmethod
+    def _get_loss_fn(cls, loss_type=None):
+        if loss_type == "vae_loss":
+            def loss_fn(batch, output):
+                img = batch['X']
+                img = img.view(img.size(0), -1)
+                output, mu, logvar = output
 
-        BCE = F.binary_cross_entropy(output, img.view(-1, 784), reduction='sum')
-        KLD = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp())
+                BCE = F.binary_cross_entropy(output, img.view(-1, 784), reduction='sum')
+                KLD = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp())
 
-        return BCE + KLD
+                return BCE + KLD
+            return loss_fn
+        else:
+            return super().loss_fn(loss_type)

@@ -41,10 +41,11 @@ class Model(BaseModel):
 ## Configuration
 
 ```yaml
-model: autoencoder
+model: 
+  name: autoencoder
 dataset:
   name: mnist
-batch_size: 16
+batch_size: 256
 num_epochs: 30
 optimizer:
   name: adam

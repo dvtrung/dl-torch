@@ -1,0 +1,12 @@
+model:
+  name: cnn.VGG
+  vgg_type: VGG16
+dataset:
+  name: vision.CIFAR10
+batch_size: 256
+num_epochs: 30
+metrics:
+  - acc
+optimizer:
+  name: adam
+  lr: 0.001

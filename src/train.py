@@ -6,7 +6,7 @@ import torch
 from torch.utils.data import DataLoader
 
 from configs import Configs
-from utils.model_utils import get_model, get_dataset, get_optimizer, get_loss_fn, \
+from utils.model_utils import get_model, get_dataset, get_optimizer, \
     load_checkpoint, save_checkpoint
 from utils.logging import logger
 from utils.utils import init_dirs
@@ -17,14 +17,10 @@ def train(params, args):
     """Train."""
     torch.manual_seed(params.seed)
 
-    dataset_cls = get_dataset(params)
     # Init dataset
+    dataset_cls = get_dataset(params)
+    assert dataset_cls
     dataset_cls.prepare(force=args.force_preprocessing)
-    model_cls = get_model(params)
-    loss_fn = get_loss_fn(params)
-
-    logger.info("Dataset: %s. Model: %s", str(dataset_cls), str(model_cls))
-
     if args.debug:
         dataset_train = dataset_cls("debug", params)
         dataset_test = dataset_cls("debug", params)
@@ -33,13 +29,15 @@ def train(params, args):
         dataset_test = dataset_cls("test", params)
 
     # Init model
+    model_cls = get_model(params)
+    assert model_cls
     model = model_cls(params, dataset_train)
+
+    logger.info("Dataset: %s. Model: %s", str(dataset_cls), str(model_cls))
+
     if torch.cuda.is_available():
         logger.info("CUDA available: %s", torch.cuda.get_device_name(0))
         model.cuda()
-
-    # Init optimizer
-    optimizer = get_optimizer(params, model)
 
     if args.load:
         load_checkpoint(args.load, params, model, optimizer)
@@ -71,11 +69,7 @@ def train(params, args):
 
         with tqdm(data_train, desc="Epoch %d" % current_epoch) as t:
             for epoch_step, batch in enumerate(t):
-                model.zero_grad()
-                output = model.forward(batch)
-                loss = loss_fn(batch, output)
-                loss.backward()
-                optimizer.step()
+                loss = model.training_step(batch)
                 loss_sum += loss.item()
                 t.set_postfix(loss=loss.item())
 

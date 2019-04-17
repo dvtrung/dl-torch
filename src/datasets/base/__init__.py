@@ -5,14 +5,13 @@ from utils.logging import logger
 
 
 class BaseDataset(Dataset):
-    def __init__(self, mode, params, args):
+    def __init__(self, mode, params):
         super(Dataset).__init__()
         self.debug = mode == "debug"
         if mode == "debug":
             mode = "train"
         self.mode = mode
         self.params = params
-        self.args = args
 
         logger.info("Load '%s' dataset" % mode)
 
@@ -41,3 +40,13 @@ class BaseDataset(Dataset):
     @staticmethod
     def get_input_from_batch(batch, i):
         return {key: batch[key][i] for key in batch}
+
+
+def default_params(default):
+    def wrap_fn(cls):
+        class wrap_cls(cls):
+            def __init__(self, mode, params):
+                params.dataset.extend_default_keys(default)
+                super().__init__(mode, params)
+        return wrap_cls
+    return wrap_fn

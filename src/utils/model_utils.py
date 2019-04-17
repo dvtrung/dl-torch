@@ -10,7 +10,7 @@ from utils.logging import logger
 
 def get_model(params):
     """Return the model class by its name."""
-    module_name, class_name = params.model.rsplit('.', 1)
+    module_name, class_name = params.model.name.rsplit('.', 1)
     i = importlib.import_module("models." + module_name)
     return getattr(i, class_name)
 
@@ -27,19 +27,18 @@ def get_loss_fn(params):
     i = importlib.import_module("utils.losses")
     return getattr(i, params.loss)
 
-def get_optimizer(params, model):
+
+def get_optimizer(cfg, model_parameters):
     """Return the optimizer object by its type."""
-    op_params = params.optimizer.copy()
+    op_params = cfg.copy()
     del op_params['name']
 
-    if params.optimizer.name == 'sgd':
-        return torch.optim.SGD(
-            model.parameters(),
-            **op_params)
-    elif params.optimizer.name == 'adam':
-        return torch.optim.Adam(
-            model.parameters(),
-            **op_params)
+    optimizer = {
+        'sgd': torch.optim.SGD,
+        'adam': torch.optim.Adam
+    }[cfg.name]
+    return optimizer(model_parameters, **op_params)
+
 
 def save_checkpoint(tag, params, model, optim):
     """Save current training state"""
@@ -52,6 +51,7 @@ def save_checkpoint(tag, params, model, optim):
     }
     fn = os.path.join("saved_models", params.path, tag + ".pt")
     torch.save(state, fn)
+
 
 def load_checkpoint(tag, params, model, optim):
     """Load from saved state"""
@@ -68,6 +68,7 @@ def load_checkpoint(tag, params, model, optim):
     else:
         raise Exception("Checkpoint not found.")
 
+
 def load_results(params):
     """Load all saved results at each checkpoint."""
     path = os.path.join(params.log_dir, "results.json")
@@ -80,6 +81,7 @@ def load_results(params):
             "evaluations": []
         }
 
+
 def add_result(params, new_result):
     """Add a checkpoint for evaluation result."""
     ret = load_results(params)
@@ -91,6 +93,7 @@ def add_result(params, new_result):
     with open(os.path.join(params.log_dir, "results.json"), "w") as f:
         f.write(json.dumps(ret, indent=4))
     return ret["best_results"]
+
 
 def rnn_cell(cell):
     if cell == 'lstm':

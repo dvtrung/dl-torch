@@ -3,16 +3,11 @@ import torch
 
 CUDA = torch.cuda.is_available()
 
+LongTensor = torch.cuda.LongTensor if CUDA else torch.LongTensor
+FloatTensor = torch.cuda.FloatTensor if CUDA else torch.FloatTensor
+
 def Tensor(*args):
     x = torch.Tensor(args)
-    return x.cuda() if CUDA else x
-
-def LongTensor(*args):
-    x = torch.LongTensor(args)
-    return x.cuda() if CUDA else x
-
-def FloatTensor(*args):
-    x = torch.FloatTensor(args)
     return x.cuda() if CUDA else x
 
 def maybe_cuda(x):

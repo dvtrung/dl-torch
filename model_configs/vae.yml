@@ -1,12 +1,13 @@
-model: vae.VariationalAutoencoder
+model:
+  name: vae.VariationalAutoencoder
+  encoder:
+    hidden_sizes: [128, 64, 12, 3]
+  decoder:
+    hidden_sizes: [12, 64, 128]
 dataset:
-  name: mnist
+  name: vision.MNIST
 batch_size: 128
 num_epochs: 100
-encoder:
-  hidden_sizes: [128, 64, 12, 3]
-decoder:
-  hidden_sizes: [12, 64, 128]
 optimizer:
   name: adam
   lr: 0.01

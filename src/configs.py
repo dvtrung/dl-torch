@@ -5,6 +5,7 @@ import re
 import argparse
 import yaml
 
+
 class AttrDict(dict):
     """Dictionary with key as property."""
     model = None
@@ -24,9 +25,23 @@ class AttrDict(dict):
             if isinstance(self[key], dict):
                 self[key] = AttrDict(self[key])
 
+    def __getattr__(self, item):
+        return None
+
     def set(self, field, value):
         """Set key value."""
         setattr(self, field, value)
+
+    def extend_default_keys(self, d):
+        for key in d:
+            if isinstance(d[key], dict):
+                if key in self:
+                    self[key].extend_default_keys(d[key])
+                else:
+                    setattr(self, key, AttrDict(d[key]))
+            else:
+                if key not in self:
+                    setattr(self, key, d[key])
 
     @property
     def log_dir(self):
@@ -38,6 +53,7 @@ class AttrDict(dict):
     def output_dir(self):
         result_dir = os.path.join("model_outputs", self.path)
         return result_dir
+
 
 def get_yaml_loader():
     """Get custom yaml loader that allows loading floating-point number"""
@@ -54,6 +70,7 @@ def get_yaml_loader():
         list(u'-+0123456789.'))
     return yaml_loader
 
+
 def str2bool(val):
     """Convert boolean argument."""
     if val.lower() in ('yes', 'true', 't', 'y', '1'):
@@ -62,6 +79,7 @@ def str2bool(val):
         return False
     else:
         raise argparse.ArgumentTypeError('Boolean value expected.')
+
 
 class Configs():
     """All configurations"""

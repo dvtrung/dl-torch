@@ -1,0 +1,12 @@
+model:
+  name: cnn.BasicModel
+dataset:
+  name: vision.MNIST
+loss: nll_loss.NLLLoss
+batch_size: 256
+num_epochs: 30
+metrics:
+  - acc
+optimizer:
+  name: adam
+  lr: 0.001

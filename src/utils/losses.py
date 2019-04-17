@@ -1,4 +1,5 @@
 import torch
+import torch.nn as nn
 import torch.nn.functional as F
 
 
@@ -21,3 +22,10 @@ def seq_nll_loss(batch, output):
 
 def output_mean(batch, output):
     return torch.mean(output)
+
+
+def mse_loss(batch, output):
+    img = batch['X']
+    img = img.view(img.size(0), -1)
+    criterion = nn.MSELoss()
+    return criterion(output, img)

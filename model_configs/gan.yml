@@ -1,0 +1,13 @@
+model:
+  name: gan.GAN
+dataset:
+  name: vision.MNIST
+batch_size: 128
+num_epochs: 100
+optimizer:
+  name: adam
+  lr: 0.0002
+  betas: [0.5, 0.99]
+metrics:
+  - mse
+output_format: img
