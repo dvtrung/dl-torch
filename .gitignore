@@ -1,7 +1,7 @@
 datasets/**
 private
 .vscode
-.idea
+.idea/
 credentials.json
 bin
 __pycache__
@@ -12,3 +12,5 @@ model_outputs/**
 .pytest_cache
 .hypothesis
 .env
+*.swo
+*.ipynb

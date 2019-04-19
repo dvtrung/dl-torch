@@ -1,5 +1,6 @@
 model:
   name: gan.GAN
+  latent_dim: 100
 dataset:
   name: vision.MNIST
 batch_size: 128
