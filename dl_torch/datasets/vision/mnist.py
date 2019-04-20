@@ -62,9 +62,7 @@ class MNIST(BaseDataset):
 
     def collate_fn(self, batch):
         ret = super().collate_fn(batch)
-        return dict(X=ret[0], Y=ret[1])
-
-        return dict(X=X, Y=Y)
+        return dict(X=maybe_cuda(ret[0]), Y=maybe_cuda(ret[1]))
 
     def format_output(self, y_pred, inp, display=None, tag=None):
         y_pred = y_pred.cpu().detach().numpy()

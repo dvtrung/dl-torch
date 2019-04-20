@@ -37,9 +37,6 @@ class Autoencoder(BaseModel):
         return self.forward(batch).cpu()
 
 
-@default_params(dict(
-    loss="vae_loss"
-))
 class VariationalAutoencoder(BaseModel):
     """VAE"""
     def __init__(self, params, dataset):
@@ -58,7 +55,7 @@ class VariationalAutoencoder(BaseModel):
     def reparametrize(self, mu, logvar):
         std = torch.exp(0.5 * logvar)
         eps = torch.randn_like(std)
-        return mu + eps*std
+        return mu + eps * std
 
     def decode(self, z):
         h3 = F.relu(self.fc3(z))
@@ -74,18 +71,18 @@ class VariationalAutoencoder(BaseModel):
     def infer(self, batch):
         return self.forward(batch)[0].cpu()
 
-    @classmethod
-    def _get_loss_fn(cls, loss_type=None):
-        if loss_type == "vae_loss":
-            def loss_fn(batch, output):
-                img = batch['X']
-                img = img.view(img.size(0), -1)
-                output, mu, logvar = output
+    @staticmethod
+    def get_loss(batch, output):
+        img = batch['X']
+        img = img.view(img.size(0), -1)
+        output, mu, logvar = output
 
-                BCE = F.binary_cross_entropy(output, img.view(-1, 784), reduction='sum')
-                KLD = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp())
+        BCE = F.binary_cross_entropy(output, img.view(-1, 784), reduction='sum')
+        
+        # see Appendix B from VAE paper:
+        # Kingma and Welling. Auto-Encoding Variational Bayes. ICLR, 2014
+        # https://arxiv.org/abs/1312.6114
+        # 0.5 * sum(1 + log(sigma^2) - mu^2 - sigma^2)
+        KLD = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp())
 
-                return BCE + KLD
-            return loss_fn
-        else:
-            return super().loss_fn(loss_type)
+        return BCE + KLD

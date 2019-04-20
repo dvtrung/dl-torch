@@ -17,7 +17,7 @@ class CIFAR10(BaseDataset):
         super().__init__(mode, params)
         img_transform = transforms.Compose([
             transforms.ToTensor(),
-            # transforms.Normalize((0.1307,), (0.3081,))
+            transforms.Normalize((0.4914, 0.4822, 0.4465), (0.247, 0.243, 0.261))
         ])
         self.cifar = TorchCIFAR10(
             os.path.join("datasets", "cifar10"),
@@ -45,6 +45,4 @@ class CIFAR10(BaseDataset):
 
     def collate_fn(self, batch):
         ret = super().collate_fn(batch)
-        return dict(X=ret[0], Y=ret[1])
-
-        return dict(X=X, Y=Y)
+        return dict(X=maybe_cuda(ret[0]), Y=maybe_cuda(ret[1]))

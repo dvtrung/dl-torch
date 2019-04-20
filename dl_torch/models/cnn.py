@@ -14,10 +14,9 @@ class ImageClassificationBaseModel(BaseModel):
         logits = self.forward(batch)
         return torch.max(logits, 1)[1]
 
-    @classmethod
-    def loss_fn(cls, loss_type=None):
-        assert loss_type is None
-        return nll_loss
+    @staticmethod
+    def get_loss(batch, output):
+        return nll_loss(batch, output)
 
 
 class BasicModel(ImageClassificationBaseModel):
@@ -43,7 +42,7 @@ class BasicModel(ImageClassificationBaseModel):
 @default_params(dict(
     vgg_type="VGG11"
 ))
-class VGG(BaseModel):
+class VGG(ImageClassificationBaseModel):
     LAYERS = {
         'VGG11': [64, 'M', 128, 'M', 256, 256, 'M', 512, 512, 'M', 512, 512, 'M'],
         'VGG13': [64, 64, 'M', 128, 128, 'M', 256, 256, 'M', 512, 512, 'M', 512, 512, 'M'],
@@ -69,9 +68,11 @@ class VGG(BaseModel):
         self.features = nn.Sequential(*layers)
 
         self.classifier = nn.Linear(512, dataset.num_classes)
+        self.softmax = nn.LogSoftmax(dim=0)
 
     def forward(self, batch):
         out = self.features(batch['X'])
         out = out.view(out.size(0), -1)
         out = self.classifier(out)
+        out = self.softmax(out)
         return out

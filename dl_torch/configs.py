@@ -101,17 +101,22 @@ class Configs():
             dest="config_path",
             help="path to model's configuration file")
         if self.mode == "train":
-            parser.add_argument('--train', type=str2bool, nargs='?', const=True, default=True)
-            parser.add_argument('--debug', action="store_true")
+            parser.add_argument('--debug', action="store_true",
+                help="train and eval on the same small data to check if the model works")
         parser.add_argument('--download', action="store_true", 
-            help="Force to download, unzip and preprocess the data")
+            help="force to download, unzip and preprocess the data")
         parser.add_argument('--preprocess', action="store_true", 
-            help="Force to preprocess the data")
+            help="force to preprocess the data")
         parser.add_argument('--verbose', action="store_true")
         parser.add_argument('-l, --load', dest="load", default=None, 
             required=self.mode in ["eval", "infer"],
-            help="Tag of the checkpoint to load")
-        if self.mode == "infer":
+            help="tag of the checkpoint to load")
+        parser.add_argument('--cuda', action='store_true', default=False,
+            help='enables CUDA training')
+        if self.mode == "train":
+            parser.add_argument('--num_processes', type=int, default=1, metavar='N',
+                help="how many training process to use")
+        elif self.mode == "infer":
             parser.add_argument(
                 '-i --input',
                 nargs="*", action="append",
