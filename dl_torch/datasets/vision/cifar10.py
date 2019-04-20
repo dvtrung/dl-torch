@@ -41,7 +41,10 @@ class CIFAR10(BaseDataset):
         return len(self.cifar)
 
     def __getitem__(self, idx):
-        return {
-            'X': maybe_cuda(self.cifar[idx][0]),
-            'Y': LongTensor(self.cifar[idx][1])
-        }
+        return self.cifar[idx]
+
+    def collate_fn(self, batch):
+        ret = super().collate_fn(batch)
+        return dict(X=ret[0], Y=ret[1])
+
+        return dict(X=X, Y=Y)
