@@ -24,12 +24,12 @@ def evaluate(model, dataset, params, save_result=False, output=False):
             acc[key] += _acc
             total[key] += _total
         if output:
-            for predicted, item in zip(y_pred, batch):
-                inp = item["word_tags"].cpu().numpy()
-                logger.info(dataset.format_output(inp, item, display="word+tag"))
-                logger.info(dataset.format_output(predicted, item, display="word+tag"))
-                for key in params.metrics:
-                    logger.info("%s: %.2f", key, dataset.evaluate(y_pred, batch, metric=key))
+            for i, predicted in enumerate(y_pred):
+                item = dataset.get_item_from_batch(batch, i)
+                inp = item['Y'].cpu().numpy()
+                logger.info(dataset.format_output(inp, item))
+                logger.info(dataset.format_output(predicted, item))
+                logger.info("---")
 
     result = {
         "epoch": "%.2f" % model.epoch,
@@ -62,7 +62,7 @@ def main():
 
     if args.load is None:
         raise Exception("A saved model file must be specified.")
-    load_checkpoint(args.load, params, model, None)
+    load_checkpoint(args.load, params, model)
     init_dirs(params)
 
     logger.info("Saved model loaded: %s", args.load)

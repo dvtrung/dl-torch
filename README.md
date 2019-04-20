@@ -42,9 +42,11 @@ class Model(BaseModel):
 
 ```yaml
 model: 
-  name: autoencoder
+  name: {model import path}
+  ...{model configs}
 dataset:
-  name: mnist
+  name: {dataset import path}
+  ...{dataset configs}
 batch_size: 256
 num_epochs: 30
 optimizer:

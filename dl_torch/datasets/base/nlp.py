@@ -49,7 +49,7 @@ def prepare_vocab_words(
     os.makedirs(os.path.join(working_dir, "vocab"), exist_ok=True)
     word_freqs = {}
     for ls in sentences:
-        ls = ' '.join(ls).replace('_', ' ').split(' ')
+        ls = normalize_string(' '.join(ls).replace('_', ' ')).split(' ')
         for word in ls:
             if word.strip() == '':
                 continue
@@ -68,20 +68,26 @@ def normalize_string(sent):
     # x = re.sub("[^ a-zA-Z0-9\uAC00-\uD7A3]+", " ", x)
     # x = re.sub("[\u3040-\u30FF]+", "\u3042", x) # convert Hiragana and Katakana to あ
     # x = re.sub("[\u4E00-\u9FFF]+", "\u6F22", x) # convert CJK unified ideographs to 漢
-    sent = unicodeToAscii(sent.lower().strip())
-    sent = re.sub(r"([.!?])", r" \1", sent)
-    sent = re.sub(r"[^a-zA-Z.!?]+", r" ", sent)
+    #sent = unicodeToAscii(sent.lower().strip())
+    #sent = re.sub(r"([.!?])", r" \1", sent)
+    #sent = re.sub(r"[^a-zA-Z.!?]+", r" ", sent)
     sent = re.sub("\s+", " ", sent)
     sent = re.sub("^ | $", "", sent)
 
     words = sent.split(' ')
     ret = []
     for word in words:
-        if all(c <= 'a' or c >= 'z' for c in word):
-            ret.append('<non-word>')
-        else:
-            ret.append(word)
+        ret.append(normalize_word(word))
     return ' '.join(ret)
+
+def normalize_word(word):
+    punctuations = [',', '.', '-', '"', ':', '!', '(', ')', '...']
+    if word in punctuations:
+        return '<punc>'
+    elif any('0' <= c <= '9' for c in word):
+        return '<non-word>'
+    else:
+        return word.lower()
 
 
 def token_to_idx(d, w): return d[w] if w in d else d['<oov>']

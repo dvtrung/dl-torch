@@ -20,7 +20,7 @@ def train(params, args):
     # Init dataset
     dataset_cls = get_dataset(params)
     assert dataset_cls
-    dataset_cls.prepare(force=args.force_preprocessing)
+    dataset_cls.prepare(download=args.download, preprocess=args.preprocess)
     if args.debug:
         dataset_train = dataset_cls("debug", params)
         dataset_test = dataset_cls("debug", params)
@@ -89,7 +89,7 @@ def train(params, args):
 
         logger.info(str(res))
         # logger.info("Loss: %f, Acc: %f" % (loss, res))
-        save_checkpoint("epoch-%02d" % current_epoch, params, model, optimizer)
+        save_checkpoint("epoch-%02d" % current_epoch, params, model)
 
 
 def main():
