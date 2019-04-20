@@ -103,9 +103,14 @@ class Configs():
         if self.mode == "train":
             parser.add_argument('--train', type=str2bool, nargs='?', const=True, default=True)
             parser.add_argument('--debug', action="store_true")
-        parser.add_argument('--force-preprocessing', action="store_true")
+        parser.add_argument('--download', action="store_true", 
+            help="Force to download, unzip and preprocess the data")
+        parser.add_argument('--preprocess', action="store_true", 
+            help="Force to preprocess the data")
         parser.add_argument('--verbose', action="store_true")
-        parser.add_argument('-l, --load', dest="load", default=None, required=self.mode in ["eval", "infer"])
+        parser.add_argument('-l, --load', dest="load", default=None, 
+            required=self.mode in ["eval", "infer"],
+            help="Tag of the checkpoint to load")
         if self.mode == "infer":
             parser.add_argument(
                 '-i --input',

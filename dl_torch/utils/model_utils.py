@@ -40,7 +40,7 @@ def get_optimizer(cfg, model_parameters):
     return optimizer(model_parameters, **op_params)
 
 
-def save_checkpoint(tag, params, model, optim):
+def save_checkpoint(tag, params, model):
     """Save current training state"""
     os.makedirs(os.path.join("saved_models", params.path), exist_ok=True)
     state = {

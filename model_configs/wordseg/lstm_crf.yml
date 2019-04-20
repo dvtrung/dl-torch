@@ -10,13 +10,13 @@ dataset:
   name: vnpos.Dataset
   embed_unit: 'word'
   tag_type: seg
+  output_format: word+delimiter
 loss: output_mean
-batch_size: 8
-test_batch_size: 16
+batch_size: 128
+test_batch_size: 128
 num_epochs: 30
 optimizer:
   name: adam
   lr: 0.01
 metrics:
   - ser
-output_format: word+tag

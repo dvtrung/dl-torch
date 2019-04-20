@@ -8,6 +8,7 @@ import re
 import torch
 import shutil
 from tqdm import tqdm
+import numpy as np
 
 from utils.logging import logger
 from utils.utils import maybe_download, maybe_unzip
@@ -65,8 +66,7 @@ def maybe_preprocess(path, working_dir):
     os.makedirs(working_dir)
     os.mkdir(os.path.join(working_dir, "vocab"))
 
-    # punctuations = [',', '.', '-', '"', ':', '!', '(', ')', '...']
-    # punc = [p + " " for p in punctuations]
+    original_sentences = {'train': [], 'test': []}
     sentences = {'train': [], 'test': []}
     postags = {'train': [], 'test': []}
     for mode in ['train', 'test']:
@@ -75,19 +75,22 @@ def maybe_preprocess(path, working_dir):
                 sent = sent.strip()
                 if sent == '':
                     continue
-                words = [s.split('//')[0] for s in sent.split(' ')]
+                words = [normalize_word(s.split('//')[0]) for s in sent.split(' ')]
                 tags = []
                 for word in sent.split(' '):
-                    if 'a' <= word.lower()[0] <= 'z':
-                        tags.append(word.split('//')[1])
+                    word = word.lower()
+                    if 'a' <= word[0] <= 'z':
+                        if len(word.split('//')[1]) <= 2:
+                            tags.append(word.split('//')[1])
                     else:
                         tags.append("<punc>")
+                original_sentences[mode].append(sent)
                 sentences[mode].append(words)
                 postags[mode].append(tags)
 
     prepare_vocab_chars(working_dir, sentences['train'])
-    prepare_vocab_words(working_dir, sentences['train'], min_freq=1)
-    prepare_vocab_words(working_dir, postags['train'], name="pos_tags", min_freq=1, default_tags=['<w>', '<oov>'])
+    prepare_vocab_words(working_dir, sentences['train'], min_freq=0)
+    prepare_vocab_words(working_dir, postags['train'], name="pos_tags", min_freq=0, default_tags=['<w>', '<oov>'])
     prepare_tag_list(working_dir)
 
     word_token_to_idx = load_tkn_to_idx(os.path.join(working_dir, "vocab", "words.txt"))
@@ -96,19 +99,18 @@ def maybe_preprocess(path, working_dir):
 
     for mode in ['train', 'test']:
         data = []
-        for p_tags, words in zip(postags[mode], sentences[mode]):
-            line = ' '.join(words)
-            chars = tokenize(line, 'char')
-            line = normalize_word(line)
+        for p_tags, compound_words, sent in \
+                zip(postags[mode], sentences[mode], original_sentences[mode]):
+            chars = tokenize(sent, 'char')
             words = []
             seg_tags = []
             pos_tags = []
-            for w, tag in zip(line.split(' '), p_tags):
+            for w, tag in zip(compound_words, p_tags):
                 if '_' in w:
                     w = w.split('_')
                     words += w
                     seg_tags += [1] + [0] * (len(w) - 1)
-                    pos_tags += [tag] + [0] * (len(w) - 1)
+                    pos_tags += [tag] + ['<w>'] * (len(w) - 1)
                 else:
                     words.append(w)
                     seg_tags.append(1)
@@ -149,12 +151,17 @@ class Dataset(NLPDataset):
             "vocab",
             "seg_tags.txt" if self.params.dataset.tag_type == "seg" else "pos_tags.txt"))
 
+
+        def _add_tag(tag):
+            self.tag_to_idx[tag] = len(self.tag_to_idx)
+            self.idx_to_tag.append(tag)
+        
         if '<pad>' not in self.tag_to_idx:
-            self.tag_to_idx["<pad>"] = len(self.tag_to_idx)
+            _add_tag('<pad>')
         if '<sos>' not in self.tag_to_idx:
-            self.tag_to_idx["<sos>"] = len(self.tag_to_idx)
+            _add_tag('<sos>')
         if '<eos>' not in self.tag_to_idx:
-            self.tag_to_idx["<eos>"] = len(self.tag_to_idx)
+            _add_tag('<eos>')
 
         self.vocab_char_size = len(self.char_to_idx)
         self.vocab_word_size = len(self.idx_to_word)
@@ -163,7 +170,7 @@ class Dataset(NLPDataset):
         # Load data
         self.data = []
         if self.mode in ["test", "train"]:
-            self.data = self.load_data_from_file(os.path.join(self.working_dir, self.mode + ".csv"))
+            self.data = self.load_data_from_file(os.path.join(self.processed_data_dir, self.mode + ".csv"))
         elif self.mode == "infer":
             self.data = []
 
@@ -185,12 +192,12 @@ class Dataset(NLPDataset):
     @classmethod
     def maybe_preprocess(cls, force=False):
         if force:
-            shutil.rmtree(self.processed_data_dir)
-            while os.path.exists(self.processed_data_dir):
+            shutil.rmtree(cls.processed_data_dir)
+            while os.path.exists(cls.processed_data_dir):
                 pass
         maybe_preprocess(
-            os.path.join(self.raw_data_dir, "Du lieu vnPOS", "vnPOS"),
-            self.processed_data_dir
+            os.path.join(cls.raw_data_dir, "Du lieu vnPOS", "vnPOS"),
+            cls.processed_data_dir
         )
 
     def load_data_from_file(self, path):
@@ -251,50 +258,68 @@ class Dataset(NLPDataset):
         return self.data[idx]
 
     def collate_fn(self, batch):
-        word_tokens = [LongTensor(item['X']).view(-1) for item in batch]
-        word_tags = [LongTensor(item['Y']).view(-1) for item in batch]
-        word_tokens = torch.nn.utils.rnn.pad_sequence(
-            word_tokens, batch_first=True,
+        X = [LongTensor(item['X']).view(-1) for item in batch]
+        X_len = [len(item['X']) for item in batch]
+        Y = [LongTensor(item['Y']).view(-1) for item in batch]
+        X = torch.nn.utils.rnn.pad_sequence(
+            X, batch_first=True,
             padding_value=self.word_to_idx["<pad>"])
-        word_tags = torch.nn.utils.rnn.pad_sequence(
-            word_tags, batch_first=True,
+        Y = torch.nn.utils.rnn.pad_sequence(
+            Y, batch_first=True,
             padding_value=self.tag_to_idx["<pad>"])
 
-        return dict(X=word_tokens, Y=word_tags)
+        return dict(
+            X=X, 
+            X_len=X_len,
+            Y=Y)
 
     def evaluate(self, y_pred, batch, metric):
-        ret = 0
+        correct_total = 0
+        count_total = 0
         for k, predicted in enumerate(y_pred):
             ground_truth = batch['Y'][k].cpu()[1:]
             ground_truth = [i for i in ground_truth if i != self.tag_to_idx['<pad>']]
             predicted = predicted[:len(ground_truth)]
             if metric == 'ser':
-                ret += ser(predicted, ground_truth, [self.tag_to_idx['<w>']])
-        return ret / len(y_pred)
+                ground_truth = np.array(ground_truth)
+                mask = ground_truth != self.tag_to_idx['<punc>']
+                predicted = np.array(predicted)[mask]
+                ground_truth = ground_truth[mask]
+                
+                correct, count = ser(predicted, ground_truth, [self.tag_to_idx['<w>']])
+                correct_total += correct
+                count_total += count
+        return correct_total, count_total
 
-    def format_output(self, y_pred, inp, display=None):
-        if display is None:
+    def format_output(self, y_pred, inp):
+        if y_pred[0] == self.tag_to_idx['<sos>']:
+            y_pred = y_pred[1:]
+
+        if self.cfg.output_format is None:
             return str(y_pred)
 
-        if display == "word+delimiter":
+        if self.cfg.output_format == "word+delimiter":
             ret = []
-            for word, tag in zip(inp['X'], y_pred):
-                if word == self.word_to_idx["<pad>"]:
-                    continue
-                if tag == 1 and not ret:
+            for word_id, tag in zip(inp['X'], y_pred):
+                if word_id == self.word_to_idx["<pad>"]:
+                    break
+                if tag == self.tag_to_idx['<sow>'] and ret:
                     ret.append('/')
-                ret.append(self.idx_to_word[word])
-            return ' '.join(ret[-1])
+                ret.append(self.idx_to_word[word_id])
+            return ' '.join(ret)
 
-        if display == "word+tag":
+        if self.cfg.output_format == "word+tag":
             ret = []
             prev_tag = None
-            for word, tag in zip(inp['X'], y_pred):
-                if word == self.word_to_idx["<pad>"]:
-                    continue
-                ret.append(self.idx_to_word[word])
-                if tag != self.tag_to_idx["<w>"]:
+            for word_id, tag in zip(inp['X'], y_pred):
+                if word_id == self.word_to_idx["<pad>"]:
+                    break  # end of reference
+                
+                if tag != self.tag_to_idx["<w>"]:  # new tag
                     if prev_tag is not None:
-                        ret.append('//' + self.idx_to_tag[prev_tag])
+                        ret.append('[%s]' % self.idx_to_tag[prev_tag])
                     prev_tag = tag
+                ret.append(self.idx_to_word[word_id])
+            if prev_tag: 
+                ret.append('[%s]' % self.idx_to_tag[prev_tag])
             return ' '.join(ret)

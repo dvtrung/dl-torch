@@ -21,18 +21,20 @@ class BaseDataset(Dataset):
         return self.params.dataset
 
     @classmethod
-    def prepare(cls, force=False):
-        cls.maybe_download_and_extract(force)
-        cls.maybe_preprocess(force)
+    def prepare(cls, download=False, preprocess=False):
+        cls.maybe_download_and_extract(download)
+        cls.maybe_preprocess(download or preprocess)
 
     @classmethod
     @abc.abstractmethod
     def maybe_download_and_extract(cls, force=False):
+        """Download and extract data"""
         pass
 
     @classmethod
     @abc.abstractmethod
     def maybe_preprocess(cls, force=False):
+        """Preprocess data"""
         pass
 
     def collate_fn(self, batch):
@@ -40,10 +42,34 @@ class BaseDataset(Dataset):
 
     @abc.abstractmethod
     def evaluate(self, y_pred, batch, metric):
-        return None
+        """Evaluate a batch.
+
+        Args:
+            y_pred:
+            batch:
+            metric (str): name of the metric
+
+        Returns:
+            int: Total sum toward metric value
+            int: Total sum toward number of samples
+        """
+        raise Exception("Dataset method 'evaluate' must be implemented")
+
+    @abc.abstractmethod
+    def format_output(self, y_pred, inp):
+        """Print or save model output
+
+        Args:
+            y_pred:
+            inp:
+        
+        Returns:
+            str: the formatted string
+        """
+        raise Exception("Dataset method 'format_output' must be implemented")
 
     @staticmethod
-    def get_input_from_batch(batch, i):
+    def get_item_from_batch(batch, i):
         return {key: batch[key][i] for key in batch}
 
 

@@ -65,13 +65,13 @@ def maybe_unzip(filename, work_directory, folder):
         zip_ref = zipfile.ZipFile(os.path.join(work_directory, filename), 'r')
         zip_ref.extractall(_dir)
         zip_ref.close()
-    if ext == '.lzma':
+    elif ext == '.lzma':
         logger.info("Unzip %s", os.path.join(work_directory, filename))
         tar = tarfile.open(filename)
         tar.extractall(path=_dir)
         tar.close()
     else:
-        raise Exception("File type is not supported")
+        raise Exception("File type is not supported (%s)" % ext)
 
 def init_dirs(params):
     os.makedirs(params.log_dir, exist_ok=True)
