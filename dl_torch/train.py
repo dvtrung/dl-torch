@@ -57,9 +57,9 @@ def train_epoch(current_epoch, params, args, model, data_train, dataset_test):
     save_checkpoint("epoch-%02d" % current_epoch, params, model)
 
 
-def main():
+def main(argv=None):
     """Read config and train model."""
-    configs = Configs(mode="train")
+    configs = Configs(mode="train", argv=argv)
     params, args = configs.params, configs.args
 
     torch.manual_seed(params.seed)

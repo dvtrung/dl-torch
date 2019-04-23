@@ -4,12 +4,12 @@ import os
 
 import nltk
 import torch
-from datasets.base.nlp import NLPDataset, load_tkn_to_idx, load_idx_to_tkn, \
+from dl_torch.datasets.base.nlp import NLPDataset, load_tkn_to_idx, load_idx_to_tkn, \
     prepare_vocab_words, normalize_string, token_to_idx
 from tqdm import tqdm
-from utils.logging import logger
-from utils.ops_utils import LongTensor
-from utils.utils import maybe_download, maybe_unzip
+from dl_torch.utils.logging import logger
+from dl_torch.utils.ops_utils import LongTensor
+from dl_torch.utils.utils import maybe_download, maybe_unzip
 
 DOWNLOAD_URL_FRA_ENG = "https://www.manythings.org/anki/fra-eng.zip"
 

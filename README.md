@@ -9,10 +9,26 @@ This project provides a codebase for deep learning experiments with Pytorch.
 
 # Set up an experiment
 
+# Folder structure
+
+```
+Experiment/
+|-- model_configs
+|-- model_outputs
+|-- logs
+|-- saved_models
+|-- src
+|   |-- datasets
+|   |   |-- <dataset>.py
+|   |-- models
+|   |   |-- <model>.py
+|-- README.md
+```
+
 ## Define dataset
 
 ```python
-from datasets.base import BaseDataset
+from dl_torch.datasets.base import BaseDataset
 
 class Dataset(BaseDataset):
     def __init__(self, mode, params):
@@ -22,7 +38,7 @@ class Dataset(BaseDataset):
 ## Construct model
 
 ```python
-from models.base import BaseModel
+from dl_torch.models.base import BaseModel
 
 class Model(BaseModel):
      def __init__(self, params, dataset):
@@ -41,7 +57,7 @@ class Model(BaseModel):
 ## Configuration
 
 ```yaml
-model: 
+model:
   name: {model import path}
   ...{model configs}
 dataset:
@@ -58,26 +74,5 @@ optimizer:
 ## Train
 
 ```
-python src/train.py -c <config_path>
+python -m dl_torch.train -c <config_path>
 ```
-
-# Logs & Outputs
-
-# Examples
-
-## Models
-
-|Model|Usage|
-|------|-----|
-| [rnn-crf](docs/models/rnn-crf.md) | Sequence labelling |
-| cnn | Image recognition |
-| autoencoder |  |
-| [attention](docs/models/attention.md) | Sequence to sequence |
-
-
-## Datasets
-
-|Dataset|Description|
-|------|-----|
-| mnist | |
-| vnpos | |

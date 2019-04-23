@@ -86,12 +86,12 @@ class Configs():
     params = None
     args = None
 
-    def __init__(self, mode, args=None):
+    def __init__(self, mode, argv=None):
         self.mode = mode
-        self.parse_args(args)
+        self.parse_args(argv)
         self.get_params()
 
-    def parse_args(self, args=None):
+    def parse_args(self, argv=None):
         """Parse arguments."""
         parser = argparse.ArgumentParser(description="")
 
@@ -122,10 +122,10 @@ class Configs():
                 nargs="*", action="append",
                 dest="input")
 
-        if args is None:
+        if argv is None:
             self.args = parser.parse_args()
         else:
-            self.args = parser.parse_args(args)
+            self.args = parser.parse_args(argv)
 
     def get_params(self):
         """Load model configs from yaml file"""
