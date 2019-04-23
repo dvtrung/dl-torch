@@ -6,16 +6,15 @@ import torch
 from torch.utils.data import DataLoader
 import torch.multiprocessing as mp
 
-from configs import Configs
-from utils.model_utils import get_model, get_dataset, \
+from .configs import Configs
+from .utils.model_utils import get_model, get_dataset, \
     load_checkpoint, save_checkpoint
-from utils.logging import logger
-from utils.utils import init_dirs
-from evaluate import evaluate
+from .utils.logging import logger
+from .utils.utils import init_dirs
+from .evaluate import evaluate
 
 
-def train(model, dataset_train, dataset_test):
-    return 0
+def train(params, args, model, dataset_train, dataset_test):
     data_train = DataLoader(
         dataset_train,
         batch_size=params.batch_size,
@@ -25,7 +24,7 @@ def train(model, dataset_train, dataset_test):
 
     epoch = int(model.global_step / len(dataset_train))
     for current_epoch in range(epoch + 1, epoch + params.num_epochs + 1):
-        train_epoch(current_epoch, params, args, model, dataset_train, dataset_test, data_train)
+        train_epoch(current_epoch, params, args, model, data_train, dataset_test)
 
 
 def train_epoch(current_epoch, params, args, model, data_train, dataset_test):
@@ -86,7 +85,6 @@ def main():
     if torch.cuda.is_available():
         logger.info("CUDA available: %s", torch.cuda.get_device_name(0))
         model.cuda()
-    model.share_memory()
 
     if args.load:
         load_checkpoint(args.load, params, model)
@@ -106,6 +104,7 @@ def main():
     if args.num_processes == 1:
         train(configs.params, configs.args, model, dataset_train, dataset_test)
     else:
+        model.share_memory()
         # TODO: Implement multiprocessing
         mp.set_start_method('spawn')
         processes = []

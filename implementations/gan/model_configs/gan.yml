@@ -1,8 +1,8 @@
 model:
-  name: gan.GAN
+  name: src.models.gan.GAN
   latent_dim: 100
 dataset:
-  name: vision.MNIST
+  name: dl_torch.datasets.vision.MNIST
 batch_size: 128
 num_epochs: 100
 optimizer:

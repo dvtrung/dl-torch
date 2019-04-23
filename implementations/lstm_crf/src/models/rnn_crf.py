@@ -7,8 +7,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from models.base import BaseModel
-from utils.ops_utils import Tensor, LongTensor, maybe_cuda
+from dl_torch.models.base import BaseModel
+from dl_torch.utils.ops_utils import Tensor, LongTensor, maybe_cuda
 
 CUDA = torch.cuda.is_available()
 

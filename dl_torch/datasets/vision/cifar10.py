@@ -1,13 +1,14 @@
 """MNIST dataset"""
 
 import os
+import tempfile
 import torch
 from torchvision import transforms
 from torchvision.datasets import CIFAR10 as TorchCIFAR10
 from sklearn.metrics import accuracy_score
 
-from datasets.base import BaseDataset, default_params
-from utils.ops_utils import LongTensor, maybe_cuda
+from ..base import BaseDataset, default_params
+from ...utils.ops_utils import LongTensor, maybe_cuda
 
 
 class CIFAR10(BaseDataset):
@@ -20,7 +21,7 @@ class CIFAR10(BaseDataset):
             transforms.Normalize((0.4914, 0.4822, 0.4465), (0.247, 0.243, 0.261))
         ])
         self.cifar = TorchCIFAR10(
-            os.path.join("datasets", "cifar10"),
+            os.path.join(tempfile.gettempdir(), "datasets", "cifar10"),
             train=mode == "train",
             transform=img_transform,
             download=True)

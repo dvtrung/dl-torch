@@ -1,2 +1,2 @@
-from datasets.vision.mnist import MNIST
-from datasets.vision.cifar10 import CIFAR10
+from .mnist import MNIST
+from .cifar10 import CIFAR10

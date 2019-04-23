@@ -103,12 +103,12 @@ class Configs():
         if self.mode == "train":
             parser.add_argument('--debug', action="store_true",
                 help="train and eval on the same small data to check if the model works")
-        parser.add_argument('--download', action="store_true", 
+        parser.add_argument('--download', action="store_true",
             help="force to download, unzip and preprocess the data")
-        parser.add_argument('--preprocess', action="store_true", 
+        parser.add_argument('--preprocess', action="store_true",
             help="force to preprocess the data")
         parser.add_argument('--verbose', action="store_true")
-        parser.add_argument('-l, --load', dest="load", default=None, 
+        parser.add_argument('-l, --load', dest="load", default=None,
             required=self.mode in ["eval", "infer"],
             help="tag of the checkpoint to load")
         parser.add_argument('--cuda', action='store_true', default=False,
@@ -129,12 +129,15 @@ class Configs():
 
     def get_params(self):
         """Load model configs from yaml file"""
-        with open(os.path.join("model_configs", self.args.config_path + ".yml"), 'r') as stream:
-            try:
+        path = os.path.join("model_configs", self.args.config_path + ".yml")
+        try:
+            with open(path, 'r') as stream:
                 params = yaml.load(stream, Loader=get_yaml_loader())
                 params = AttrDict(params)
                 params.set("mode", self.mode)
                 params.set('path', self.args.config_path)
                 self.params = params
-            except yaml.YAMLError as exc:
-                print(exc)
+        except yaml.YAMLError as exc:
+            raise Exception("Invalid config syntax.")
+        except FileNotFoundError:
+            raise Exception("Config file '%s' not found." % path)

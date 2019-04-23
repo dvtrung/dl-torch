@@ -8,7 +8,7 @@ import shutil
 from six.moves import urllib
 import requests
 
-from utils.logging import set_log_dir, logger
+from .logging import set_log_dir, logger
 
 urllib_start_time = 0
 
@@ -48,7 +48,7 @@ def maybe_download(filename, work_directory, source_url):
 
     global urllib_start_time
     if not os.path.exists(filepath):
-        logger.info("Download file from", source_url)
+        logger.info("Download file at %s to %s", source_url, filename)
         urllib_start_time = time.time()
         urllib.request.urlretrieve(source_url, filepath, reporthook)
     return filepath

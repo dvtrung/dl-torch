@@ -5,16 +5,17 @@ Available at http://vnlp.net/wp-content/uploads/2009/06/du-lieu-vnpos1.zip
 import os
 import glob
 import re
+import tempfile
 import torch
 import shutil
 from tqdm import tqdm
 import numpy as np
 
-from utils.logging import logger
-from utils.utils import maybe_download, maybe_unzip
-from utils.metrics import ser
-from utils.ops_utils import Tensor, LongTensor
-from datasets.base.nlp import NLPDataset, load_idx_to_tkn, load_tkn_to_idx, \
+from dl_torch.utils.logging import logger
+from dl_torch.utils.utils import maybe_download, maybe_unzip
+from dl_torch.utils.metrics import ser
+from dl_torch.utils.ops_utils import LongTensor
+from dl_torch.datasets.base.nlp import NLPDataset, load_idx_to_tkn, load_tkn_to_idx, \
     prepare_vocab_words, token_to_idx, normalize_string as normalize_word
 
 DOWNLOAD_URL = "http://vnlp.net/wp-content/uploads/2009/06/du-lieu-vnpos1.zip"
@@ -131,7 +132,7 @@ def maybe_preprocess(path, working_dir):
 
 
 class Dataset(NLPDataset):
-    working_dir = os.path.join("datasets", "vnpos")
+    working_dir = os.path.join(tempfile.gettempdir(), "datasets", "vnpos")
     raw_data_dir = os.path.join(working_dir, "raw")
     processed_data_dir = os.path.join(working_dir, "data")
 
@@ -155,7 +156,7 @@ class Dataset(NLPDataset):
         def _add_tag(tag):
             self.tag_to_idx[tag] = len(self.tag_to_idx)
             self.idx_to_tag.append(tag)
-        
+
         if '<pad>' not in self.tag_to_idx:
             _add_tag('<pad>')
         if '<sos>' not in self.tag_to_idx:
@@ -182,12 +183,11 @@ class Dataset(NLPDataset):
 
     @classmethod
     def maybe_download_and_extract(cls, force=False):
-        working_dir = os.path.join("datasets", "vnpos")
         maybe_download(
             "data.zip",
-            working_dir,
+            cls.working_dir,
             DOWNLOAD_URL)
-        maybe_unzip("data.zip", working_dir, "raw")
+        maybe_unzip("data.zip", cls.working_dir, "raw")
 
     @classmethod
     def maybe_preprocess(cls, force=False):
@@ -269,7 +269,7 @@ class Dataset(NLPDataset):
             padding_value=self.tag_to_idx["<pad>"])
 
         return dict(
-            X=X, 
+            X=X,
             X_len=X_len,
             Y=Y)
 
@@ -285,7 +285,7 @@ class Dataset(NLPDataset):
                 mask = ground_truth != self.tag_to_idx['<punc>']
                 predicted = np.array(predicted)[mask]
                 ground_truth = ground_truth[mask]
-                
+
                 correct, count = ser(predicted, ground_truth, [self.tag_to_idx['<w>']])
                 correct_total += correct
                 count_total += count
@@ -314,12 +314,12 @@ class Dataset(NLPDataset):
             for word_id, tag in zip(inp['X'], y_pred):
                 if word_id == self.word_to_idx["<pad>"]:
                     break  # end of reference
-                
+
                 if tag != self.tag_to_idx["<w>"]:  # new tag
                     if prev_tag is not None:
                         ret.append('[%s]' % self.idx_to_tag[prev_tag])
                     prev_tag = tag
                 ret.append(self.idx_to_word[word_id])
-            if prev_tag: 
+            if prev_tag:
                 ret.append('[%s]' % self.idx_to_tag[prev_tag])
             return ' '.join(ret)

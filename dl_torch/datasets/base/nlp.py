@@ -4,7 +4,7 @@ import os
 import re
 import unicodedata
 
-from datasets.base import BaseDataset
+from .base import BaseDataset
 
 
 # Turn a Unicode string to plain ASCII, thanks to

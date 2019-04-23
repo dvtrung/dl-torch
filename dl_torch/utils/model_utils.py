@@ -5,26 +5,26 @@ import os
 import json
 import torch
 
-from utils.logging import logger
+from .logging import logger
 
 
 def get_model(params):
     """Return the model class by its name."""
     module_name, class_name = params.model.name.rsplit('.', 1)
-    i = importlib.import_module("models." + module_name)
+    i = importlib.import_module(module_name)
     return getattr(i, class_name)
 
 
 def get_dataset(params):
     """Return the dataset class by its name."""
     module_name, class_name = params.dataset.name.rsplit('.', 1)
-    i = importlib.import_module("datasets." + module_name)
+    i = importlib.import_module(module_name)
     return getattr(i, class_name)
 
 
 def get_loss_fn(params):
     """Return the loss class by its name."""
-    i = importlib.import_module("utils.losses")
+    i = importlib.import_module("dl_torch.utils.losses")
     return getattr(i, params.loss)
 
 

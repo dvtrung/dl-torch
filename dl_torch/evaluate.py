@@ -2,11 +2,11 @@ from tqdm import tqdm
 import torch
 from torch.utils.data import DataLoader
 
-from configs import Configs
-from utils.model_utils import get_dataset, get_model, \
+from .configs import Configs
+from .utils.model_utils import get_dataset, get_model, \
     add_result, load_checkpoint
-from utils.logging import logger
-from utils.utils import init_dirs
+from .utils.logging import logger
+from .utils.utils import init_dirs
 
 def evaluate(model, dataset, params, save_result=False, output=False):
     """Evaluate model and save result."""

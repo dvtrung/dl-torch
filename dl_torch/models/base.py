@@ -2,7 +2,7 @@ import os
 import abc
 import torch
 
-from utils.model_utils import get_optimizer
+from ..utils.model_utils import get_optimizer
 
 
 class BaseModel(torch.nn.Module):

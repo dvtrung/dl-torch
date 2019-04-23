@@ -1,14 +1,15 @@
 """MNIST dataset"""
 
 import os
+import tempfile
 import torch
 from torchvision import transforms
 from torchvision.datasets import MNIST as TorchMNIST
 from sklearn.metrics import accuracy_score
 import matplotlib.pyplot as plt
 
-from datasets.base import BaseDataset, default_params
-from utils.ops_utils import LongTensor, maybe_cuda
+from ..base import BaseDataset, default_params
+from ...utils.ops_utils import LongTensor, maybe_cuda
 
 
 class MNIST(BaseDataset):
@@ -24,7 +25,7 @@ class MNIST(BaseDataset):
             [transforms.Resize(28), transforms.ToTensor(), transforms.Normalize([0.5], [0.5])]
         )
         self.mnist = TorchMNIST(
-            os.path.join("datasets", "mnist"),
+            os.path.join(tempfile.gettempdir(), "datasets", "mnist"),
             train=mode == "train",
             transform=img_transform,
             download=True)
