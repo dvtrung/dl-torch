@@ -282,9 +282,10 @@ class Dataset(NLPDataset):
             predicted = predicted[:len(ground_truth)]
             if metric == 'ser':
                 ground_truth = np.array(ground_truth)
-                mask = ground_truth != self.tag_to_idx['<punc>']
-                predicted = np.array(predicted)[mask]
-                ground_truth = ground_truth[mask]
+                if '<punc>' in self.tag_to_idx:
+                    mask = ground_truth != self.tag_to_idx['<punc>']
+                    predicted = np.array(predicted)[mask]
+                    ground_truth = ground_truth[mask]
 
                 correct, count = ser(predicted, ground_truth, [self.tag_to_idx['<w>']])
                 correct_total += correct

@@ -14,13 +14,17 @@ from .utils.utils import init_dirs
 from .evaluate import evaluate
 
 
+DEBUG_NUM_ITERATIONS = 5
+DEBUG_BATCH_SIZE = 4
+
+
 def train(params, args, model, dataset_train, dataset_test):
     data_train = DataLoader(
         dataset_train,
         batch_size=params.batch_size,
         shuffle=params.shuffle,
         collate_fn=dataset_train.collate_fn,
-        pin_memory=params.cuda)
+        pin_memory=params.cpu)
 
     epoch = int(model.global_step / len(dataset_train))
     for current_epoch in range(epoch + 1, epoch + params.num_epochs + 1):
@@ -30,15 +34,16 @@ def train(params, args, model, dataset_train, dataset_test):
 def train_epoch(current_epoch, params, args, model, data_train, dataset_test):
     """Train."""
     logger.info("--- Epoch %d ---", current_epoch)
-    loss_sum = 0
+    loss_sum, loss_count = 0, 0
 
     with tqdm(data_train, desc="Epoch %d" % current_epoch) as t:
         for epoch_step, batch in enumerate(t):
             loss = model.training_step(batch)
             loss_sum += loss.item()
-            t.set_postfix(loss=loss.item())
+            loss_count += 1
+            t.set_postfix(loss=loss_sum / loss_count)
 
-            if args.debug and epoch_step > 10:
+            if args.debug and epoch_step > DEBUG_NUM_ITERATIONS:
                 break
 
             model.global_step = (current_epoch - 1) * len(data_train.dataset) + \
@@ -62,6 +67,10 @@ def main(argv=None):
     configs = Configs(mode="train", argv=argv)
     params, args = configs.params, configs.args
 
+    if args.debug:
+        params.batch_size = DEBUG_BATCH_SIZE
+        params.eval_batch_size = DEBUG_BATCH_SIZE
+
     torch.manual_seed(params.seed)
 
     # Init dataset
@@ -82,7 +91,8 @@ def main(argv=None):
 
     logger.info("Dataset: %s. Model: %s", str(dataset_cls), str(model_cls))
 
-    if torch.cuda.is_available():
+    use_cuda = torch.cuda.is_available()
+    if use_cuda:
         logger.info("CUDA available: %s", torch.cuda.get_device_name(0))
         model.cuda()
 
@@ -98,7 +108,6 @@ def main(argv=None):
     logger.info("Train size: %d", len(dataset_train))
 
     logger.info("Training model...")
-    use_cuda = args.cuda and torch.cuda.is_available()
     device = torch.device("cuda" if use_cuda else "cpu")
 
     if args.num_processes == 1:

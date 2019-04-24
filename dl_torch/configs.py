@@ -111,8 +111,8 @@ class Configs():
         parser.add_argument('-l, --load', dest="load", default=None,
             required=self.mode in ["eval", "infer"],
             help="tag of the checkpoint to load")
-        parser.add_argument('--cuda', action='store_true', default=False,
-            help='enables CUDA training')
+        parser.add_argument('--cpu', action='store_true', default=False,
+            help='disables CUDA training')
         if self.mode == "train":
             parser.add_argument('--num_processes', type=int, default=1, metavar='N',
                 help="how many training process to use")
