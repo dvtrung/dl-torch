@@ -3,10 +3,10 @@ from tqdm import tqdm
 import torch
 from torch.utils.data import DataLoader
 
-from configs import Configs
-from utils.model_utils import get_dataset, get_model, load_checkpoint
-from utils.logging import logger
-from utils.utils import init_dirs
+from .configs import Configs
+from .utils.model_utils import get_dataset, get_model, load_checkpoint
+from .utils.logging import logger
+from .utils.utils import init_dirs
 
 
 def infer(model, dataset, params):
@@ -18,15 +18,13 @@ def infer(model, dataset, params):
         collate_fn=dataset.collate_fn)
 
     count = 0
-    for batch in tqdm(data_loader, desc="Infer"):
+    for batch in data_loader:
         y_pred = model.infer(batch)
         for i, _y in enumerate(y_pred):
             count += 1
             logger.info(dataset.format_output(
                 _y,
-                dataset.get_input_from_batch(batch, i),
-                display=params.output_format,
-                tag="%06d" % count))
+                dataset.get_item_from_batch(batch, i)))
         # logger.info('\n'.join([str(r) for r in ret]))
 
 
@@ -41,7 +39,7 @@ def main():
     model_cls = get_model(params)
 
     # Init dataset
-    dataset_infer = dataset_cls("infer", params, args)
+    dataset_infer = dataset_cls("infer", params)
 
     # Init model
     model = model_cls(params, dataset_infer)
@@ -49,7 +47,7 @@ def main():
         logger.info("Cuda available: %s", torch.cuda.get_device_name(0))
         model.cuda()
 
-    load_checkpoint(args.load, params, model, None)
+    load_checkpoint(args.load, params, model)
     init_dirs(params)
 
     if args.input:

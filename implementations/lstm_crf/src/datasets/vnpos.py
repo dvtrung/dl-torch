@@ -16,7 +16,7 @@ from dl_torch.utils.utils import maybe_download, maybe_unzip
 from dl_torch.utils.metrics import ser
 from dl_torch.utils.ops_utils import LongTensor
 from dl_torch.datasets.base.nlp import NLPDataset, load_idx_to_tkn, load_tkn_to_idx, \
-    prepare_vocab_words, token_to_idx, normalize_string as normalize_word
+    prepare_vocab_words, token_to_idx, normalize_string, normalize_word
 
 DOWNLOAD_URL = "http://vnlp.net/wp-content/uploads/2009/06/du-lieu-vnpos1.zip"
 
@@ -38,7 +38,7 @@ def tokenize(sent, unit):
         sent = normalize_char(sent)
         return re.sub(" ", "", sent)
     if unit == "word":
-        sent = normalize_word(sent)
+        sent = normalize_string(sent)
         return re.split(" |_", sent)
 
 
@@ -176,10 +176,11 @@ class Dataset(NLPDataset):
             self.data = []
 
     def load_from_input(self, inp):
+        sent = inp
         self.data = [dict(
-            X=[token_to_idx(self.word_to_idx, w) for w in tokenize(sent[0], "word")],
-            Y=[1] * len(tokenize(sent[0], "word"))
-        ) for sent in inp]
+            X=[token_to_idx(self.word_to_idx, w) for w in normalize_string(sent).split(' ')],
+            Y=[1] * len(normalize_string(sent).split(' '))
+        )]
 
     @classmethod
     def maybe_download_and_extract(cls, force=False):

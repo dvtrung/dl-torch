@@ -4,29 +4,31 @@ import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
 
-from utils.ops_utils import maybe_cuda
-from utils.model_utils import rnn_cell
-from models.base import BaseModel
+from dl_torch.utils.ops_utils import maybe_cuda
+from dl_torch.utils.model_utils import rnn_cell
+from dl_torch.models.base import BaseModel
+
 
 class EncoderRNN(nn.Module):
     def __init__(self, params, input_size):
         super(EncoderRNN, self).__init__()
-        self.hidden_size = params.encoder.hidden_size
+        cfg = params.model.encoder
+        self.hidden_size = cfg.hidden_size
 
         self.embedding = nn.Embedding(
             num_embeddings=input_size,
             embedding_dim=self.hidden_size)
-        if params.encoder.embedding is not None:
+        if cfg.embedding is not None:
             # TODO: implement custom embedding
             pass
-        self.embedding.requires_grad = params.encoder.update_embedding
+        self.embedding.requires_grad = cfg.update_embedding
         self.rnn = nn.GRU(
             input_size=self.hidden_size,
             hidden_size=self.hidden_size,
-            num_layers=params.encoder.num_layers,
+            num_layers=cfg.num_layers,
             batch_first=True,
-            bidirectional=params.encoder.rnn_type == "bilstm",
-            dropout=params.dropout_p)
+            bidirectional=cfg.rnn_type == "bilstm",
+            dropout=params.model.dropout_p)
 
     def forward(self, input_var, input_lengths):
         embedded = self.embedding(input_var)
@@ -63,7 +65,7 @@ class Attention(nn.Module):
     """
     def __init__(self, params):
         super(Attention, self).__init__()
-        hidden_size = params.decoder.hidden_size
+        hidden_size = params.model.decoder.hidden_size
         self.linear_out = nn.Linear(hidden_size * 2, hidden_size)
         self.mask = None
 
@@ -103,16 +105,16 @@ class DecoderRNN(nn.Module):
     def __init__(self, params, output_size, sos_id, eos_id):
         super(DecoderRNN, self).__init__()
         self.params = params
-        self.hidden_size = params.decoder.hidden_size
+        cfg = params.model.decoder
+        self.hidden_size = cfg.hidden_size
 
-        cfg = params.decoder
-        self.bidirectional_encoder = params.encoder.bidirectional
-        self.rnn = rnn_cell(params.decoder.rnn_type)(
+        self.bidirectional_encoder = cfg.bidirectional
+        self.rnn = rnn_cell(cfg.rnn_type)(
             self.hidden_size,
             self.hidden_size,
-            params.decoder.num_layers,
+            cfg.num_layers,
             batch_first=True,
-            dropout=params.dropout_p)
+            dropout=params.model.dropout_p)
 
         self.output_size = output_size
         self.max_length = cfg.max_length
@@ -267,7 +269,6 @@ class NMT(BaseModel):
         input_variable = batch['X']
         input_lengths = batch['X_len']
         target_variable = batch['Y']
-
         encoder_outputs, encoder_hidden = self.encoder(input_variable, input_lengths)
         result = self.decoder(
             inputs=target_variable,
@@ -275,8 +276,17 @@ class NMT(BaseModel):
             encoder_outputs=encoder_outputs)
         return result
 
-    def loss(self, batch):
-        decoder_outputs = self.forward()
+    @staticmethod
+    def get_loss(batch, output):
+        y = batch['Y']
+        decoder_outputs, _, other = output
+        seqlist = other['sequence']
+        loss = 0
+        for step, step_output in enumerate(decoder_outputs):
+            target = y[:, step + 1]
+            loss += F.nll_loss(step_output.view(y.size(0), -1), target)
+
+        return loss / len(decoder_outputs)
 
     def infer(self, batch):
         _, _, other = self.forward(batch)

@@ -1,6 +1,7 @@
 """Datasets for neural machine translation"""
 
 import os
+import tempfile
 
 import nltk
 import torch
@@ -41,13 +42,12 @@ def filter_pairs(pairs):
 
 
 class Tatoeba(NLPDataset):
-    working_dir = os.path.join("datasets", "tatoeba", "fra-eng")
+    working_dir = os.path.join(tempfile.gettempdir(), "datasets", "tatoeba", "fra-eng")
     raw_data_dir = os.path.join(working_dir, "raw")
     processed_data_dir = os.path.join(working_dir, "data")
 
-    def __init__(self, mode, params, args=None):
-        super().__init__(mode, params, args=args)
-        self.working_dir = os.path.join("datasets", "tatoeba", "fra-eng", "data")
+    def __init__(self, mode, params):
+        super().__init__(mode, params)
         self.lang = ('eng', 'fra')
 
         # Load vocab
@@ -55,9 +55,9 @@ class Tatoeba(NLPDataset):
         self.idx_to_word = {}
         for lang in self.lang:
             self.word_to_idx[lang] = load_tkn_to_idx(
-                os.path.join(self.working_dir, "vocab", lang + ".txt"))
+                os.path.join(self.processed_data_dir, "vocab", lang + ".txt"))
             self.idx_to_word[lang] = load_idx_to_tkn(
-                os.path.join(self.working_dir, "vocab", lang + ".txt"))
+                os.path.join(self.processed_data_dir, "vocab", lang + ".txt"))
 
         self.sos_id = self.word_to_idx[self.lang[0]]['<sos>']
         self.eos_id = self.word_to_idx[self.lang[0]]['<eos>']
@@ -90,8 +90,6 @@ class Tatoeba(NLPDataset):
 
     @classmethod
     def maybe_preprocess(cls, force=False):
-        super().prepare(force)
-
         if os.path.exists(cls.processed_data_dir):
             return
         pairs = readLangs(
@@ -145,11 +143,11 @@ class Tatoeba(NLPDataset):
             padding_value=self.word_to_idx[self.lang[1]]["<eos>"])
 
         return dict(
-            X=inp, X_len=[LongTensor(len(item['X'])) for item in batch],
-            Y=tgt, Y_len=[LongTensor(len(item['Y'])) for item in batch])
+            X=inp, X_len=LongTensor([len(item['X']) for item in batch]),
+            Y=tgt, Y_len=LongTensor([len(item['Y']) for item in batch]))
 
     def _trim_result(self, ls):
-        start = 0 if ls[0] != self.sos_id else 1
+        start = 0 if len(ls) > 0 and ls[0] != self.sos_id else 1
         end = 0
         while end < len(ls) and ls[end] != self.eos_id:
             end += 1

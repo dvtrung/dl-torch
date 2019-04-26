@@ -32,7 +32,7 @@ def evaluate(model, dataset, params, save_result=False, output=False):
                 logger.info("---")
 
     result = {
-        "epoch": "%.2f" % model.epoch,
+        "epoch": "%.1f" % model.epoch,
         "result": {key: acc[key] / total[key] for key in acc}
     }
     best_result = add_result(params, result) if save_result else None
