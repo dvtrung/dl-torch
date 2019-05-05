@@ -5,7 +5,7 @@ model:
   decoder:
     hidden_sizes: [12, 64, 128]
 dataset:
-  name: dl_torch.datasets.vision.MNIST
+  name: dlex.datasets.vision.MNIST
 batch_size: 128
 num_epochs: 100
 optimizer:

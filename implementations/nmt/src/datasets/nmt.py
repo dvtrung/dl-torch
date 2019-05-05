@@ -5,12 +5,12 @@ import tempfile
 
 import nltk
 import torch
-from dl_torch.datasets.base.nlp import NLPDataset, load_tkn_to_idx, load_idx_to_tkn, \
+from dlex.datasets.base.nlp import NLPDataset, load_tkn_to_idx, load_idx_to_tkn, \
     prepare_vocab_words, normalize_string, token_to_idx
 from tqdm import tqdm
-from dl_torch.utils.logging import logger
-from dl_torch.utils.ops_utils import LongTensor
-from dl_torch.utils.utils import maybe_download, maybe_unzip
+from dlex.utils.logging import logger
+from dlex.utils.ops_utils import LongTensor
+from dlex.utils.utils import maybe_download, maybe_unzip
 
 DOWNLOAD_URL_FRA_ENG = "https://www.manythings.org/anki/fra-eng.zip"
 
@@ -48,7 +48,9 @@ class Tatoeba(NLPDataset):
 
     def __init__(self, mode, params):
         super().__init__(mode, params)
-        self.lang = ('eng', 'fra')
+        self.lang_src = 'eng'
+        self.lang_tgt = 'fra'
+        self.lang = (self.lang_src, self.lang_tgt)
 
         # Load vocab
         self.word_to_idx = {}
@@ -58,11 +60,12 @@ class Tatoeba(NLPDataset):
                 os.path.join(self.processed_data_dir, "vocab", lang + ".txt"))
             self.idx_to_word[lang] = load_idx_to_tkn(
                 os.path.join(self.processed_data_dir, "vocab", lang + ".txt"))
+            logger.info("%s vocab size: %d", lang, len(self.word_to_idx[lang]))
 
-        self.sos_id = self.word_to_idx[self.lang[0]]['<sos>']
-        self.eos_id = self.word_to_idx[self.lang[0]]['<eos>']
-        self.input_size = len(self.word_to_idx[self.lang[0]])
-        self.output_size = len(self.word_to_idx[self.lang[1]])
+        self.sos_id = self.word_to_idx[self.lang_src]['<sos>']
+        self.eos_id = self.word_to_idx[self.lang_src]['<eos>']
+        self.input_size = len(self.word_to_idx[self.lang_src])
+        self.output_size = len(self.word_to_idx[self.lang_tgt])
 
         # Load data
         if self.mode in ["test", "train"]:
@@ -82,6 +85,7 @@ class Tatoeba(NLPDataset):
 
     @classmethod
     def maybe_download_and_extract(cls, force=False):
+        super().maybe_download_and_extract(force)
         maybe_download(
             "data.zip",
             cls.working_dir,
@@ -90,6 +94,7 @@ class Tatoeba(NLPDataset):
 
     @classmethod
     def maybe_preprocess(cls, force=False):
+        super().maybe_preprocess(force)
         if os.path.exists(cls.processed_data_dir):
             return
         pairs = readLangs(
@@ -101,28 +106,29 @@ class Tatoeba(NLPDataset):
 
         os.makedirs(cls.processed_data_dir, exist_ok=True)
         lang = ('eng', 'fra')
-        default_tags = ['<pad>', '<sos>', '<eos>', '<oov>']
+        default_words = ['<pad>', '<sos>', '<eos>', '<oov>']
+        sos_token = '1'
 
         word_token_to_idx = {}
         for i in [0, 1]:
             prepare_vocab_words(
                 cls.processed_data_dir,
                 [_p[i] for _p in pairs],
-                lang[i], 0, default_tags)
+                lang[i], 0, default_words)
             word_token_to_idx[lang[i]] = load_tkn_to_idx(
                 os.path.join(cls.processed_data_dir, "vocab", lang[i] + ".txt"))
 
         data = {
-            'train': pairs[:10000],
-            'test': pairs[10000:]
+            'train': pairs[10000:],
+            'test': pairs[:10000]
         }
         for mode in ['train', 'test']:
             with open(os.path.join(cls.processed_data_dir, "%s.csv" % mode), 'w') as fo:
                 fo.write('lang1,lang2\n')
                 for item in data[mode]:
                     fo.write(','.join([
-                        ' '.join([str(token_to_idx(word_token_to_idx[lang[0]], w)) for w in item[0]]),
-                        ' '.join([str(token_to_idx(word_token_to_idx[lang[1]], w)) for w in item[1]])
+                        ' '.join([sos_token] + [str(token_to_idx(word_token_to_idx[lang[0]], w)) for w in item[0]]),
+                        ' '.join([sos_token] + [str(token_to_idx(word_token_to_idx[lang[1]], w)) for w in item[1]])
                     ]) + "\n")
 
     def __len__(self):
@@ -163,3 +169,16 @@ class Tatoeba(NLPDataset):
                 score += nltk.translate.bleu_score.sentence_bleu([target], predicted)
                 total += 1
             return score, total
+
+    def format_output(self, y_pred, batch_item):
+        src = self._trim_result(batch_item['X'].cpu().numpy())
+        tgt = self._trim_result(batch_item['Y'].cpu().numpy())
+        y_pred = self._trim_result(y_pred)
+        if self.cfg.output_format == "text":
+            return ' '.join([self.idx_to_word[self.lang_src][word_id] for word_id in src]), \
+                ' '.join([self.idx_to_word[self.lang_tgt][word_id] for word_id in tgt]), \
+                ' '.join([self.idx_to_word[self.lang_tgt][word_id] for word_id in y_pred])
+        else:
+            return super().format_output(y_pred, batch_item)
+
+

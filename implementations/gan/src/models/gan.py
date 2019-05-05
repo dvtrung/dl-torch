@@ -3,10 +3,10 @@ import torch
 import torch.nn as nn
 from torch.autograd import Variable
 
-from dl_torch.models.base import BaseModel, default_params
-from dl_torch.utils.ops_utils import FloatTensor, Tensor
-from dl_torch.utils.model_utils import get_optimizer
-from dl_torch.utils.debug import PrintLayer
+from dlex.models.base import BaseModel, default_params
+from dlex.utils.model_utils import get_optimizer
+from dlex.utils.ops_utils import FloatTensor
+
 
 class Generator(nn.Module):
     def __init__(self, params, dataset):

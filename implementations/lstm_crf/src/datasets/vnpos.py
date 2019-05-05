@@ -11,11 +11,11 @@ import shutil
 from tqdm import tqdm
 import numpy as np
 
-from dl_torch.utils.logging import logger
-from dl_torch.utils.utils import maybe_download, maybe_unzip
-from dl_torch.utils.metrics import ser
-from dl_torch.utils.ops_utils import LongTensor
-from dl_torch.datasets.base.nlp import NLPDataset, load_idx_to_tkn, load_tkn_to_idx, \
+from dlex.utils.logging import logger
+from dlex.utils.utils import maybe_download, maybe_unzip
+from dlex.utils.metrics import ser
+from dlex.utils.ops_utils import LongTensor
+from dlex.datasets.base.nlp import NLPDataset, load_idx_to_tkn, load_tkn_to_idx, \
     prepare_vocab_words, token_to_idx, normalize_string, normalize_word
 
 DOWNLOAD_URL = "http://vnlp.net/wp-content/uploads/2009/06/du-lieu-vnpos1.zip"

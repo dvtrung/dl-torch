@@ -2,8 +2,8 @@ import torch
 import torch.nn.functional as F
 import torch.nn as nn
 
-from dl_torch.models.base import BaseModel, default_params
-from dl_torch.utils.losses import nll_loss
+from dlex.models.base import BaseModel, default_params
+from dlex.utils.losses import nll_loss
 
 
 class ImageClassificationBaseModel(BaseModel):

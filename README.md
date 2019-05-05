@@ -28,7 +28,7 @@ Experiment/
 ## Define dataset
 
 ```python
-from dl_torch.datasets.base import BaseDataset
+from dlex.datasets.base import BaseDataset
 
 class Dataset(BaseDataset):
     def __init__(self, mode, params):
@@ -38,7 +38,7 @@ class Dataset(BaseDataset):
 ## Construct model
 
 ```python
-from dl_torch.models.base import BaseModel
+from dlex.models.base import BaseModel
 
 class Model(BaseModel):
      def __init__(self, params, dataset):
@@ -73,6 +73,9 @@ optimizer:
 
 ## Train
 
+```bash
+dlex train <config_path>
+dlex evaluate <config_path>
+dlex infer <config_path>
 ```
-python -m dl_torch.train -c <config_path>
-```
+

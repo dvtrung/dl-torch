@@ -1,7 +1,7 @@
 model:
   name: src.models.cnn.BasicModel
 dataset:
-  name: dl_torch.datasets.vision.MNIST
+  name: dlex.datasets.vision.MNIST
 loss: nll_loss.NLLLoss
 batch_size: 256
 num_epochs: 30
