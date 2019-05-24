@@ -16,7 +16,7 @@ from dlex.utils.utils import maybe_download, maybe_unzip
 from dlex.utils.metrics import ser
 from dlex.utils.ops_utils import LongTensor
 from dlex.datasets.base.nlp import NLPDataset, load_idx_to_tkn, load_tkn_to_idx, \
-    prepare_vocab_words, token_to_idx, normalize_string, normalize_word
+    prepare_vocab_words, get_token_id, normalize_string, normalize_word
 
 DOWNLOAD_URL = "http://vnlp.net/wp-content/uploads/2009/06/du-lieu-vnpos1.zip"
 
@@ -124,34 +124,29 @@ def maybe_preprocess(path, working_dir):
             data.sort(key=lambda d: len(d[0]), reverse=True)
             for words, seg_tags, pos_tags, chars in data:
                 fo.write(','.join([
-                    ' '.join([str(token_to_idx(word_token_to_idx, w)) for w in words]),
+                    ' '.join([str(get_token_id(word_token_to_idx, w)) for w in words]),
                     ' '.join([str(t) for t in seg_tags]),
-                    ' '.join([str(token_to_idx(pos_tag_to_idx, t)) for t in pos_tags]),
-                    ' '.join([str(token_to_idx(char_token_to_idx, c)) for c in chars]),
+                    ' '.join([str(get_token_id(pos_tag_to_idx, t)) for t in pos_tags]),
+                    ' '.join([str(get_token_id(char_token_to_idx, c)) for c in chars]),
                 ]) + '\n')
 
 
-class Dataset(NLPDataset):
-    working_dir = os.path.join(tempfile.gettempdir(), "datasets", "vnpos")
-    raw_data_dir = os.path.join(working_dir, "raw")
-    processed_data_dir = os.path.join(working_dir, "data")
-
+class VNPos(NLPDataset):
     def __init__(self, mode, params):
         super().__init__(mode, params)
 
         # Load vocab and tag list
-        self.char_to_idx = load_tkn_to_idx(os.path.join(self.processed_data_dir, "vocab", "chars.txt"))
-        self.word_to_idx = load_tkn_to_idx(os.path.join(self.processed_data_dir, "vocab", "words.txt"))
-        self.idx_to_word = load_idx_to_tkn(os.path.join(self.processed_data_dir, "vocab", "words.txt"))
+        self.char_to_idx = load_tkn_to_idx(os.path.join(self.get_processed_data_dir(), "vocab", "chars.txt"))
+        self.word_to_idx = load_tkn_to_idx(os.path.join(self.get_processed_data_dir(), "vocab", "words.txt"))
+        self.idx_to_word = load_idx_to_tkn(os.path.join(self.get_processed_data_dir(), "vocab", "words.txt"))
         self.tag_to_idx = load_tkn_to_idx(os.path.join(
-            self.processed_data_dir,
+            self.get_processed_data_dir(),
             "vocab",
             "seg_tags.txt" if self.params.dataset.tag_type == "seg" else "pos_tags.txt"))
         self.idx_to_tag = load_idx_to_tkn(os.path.join(
-            self.processed_data_dir,
+            self.get_processed_data_dir(),
             "vocab",
             "seg_tags.txt" if self.params.dataset.tag_type == "seg" else "pos_tags.txt"))
-
 
         def _add_tag(tag):
             self.tag_to_idx[tag] = len(self.tag_to_idx)
@@ -171,34 +166,32 @@ class Dataset(NLPDataset):
         # Load data
         self.data = []
         if self.mode in ["test", "train"]:
-            self.data = self.load_data_from_file(os.path.join(self.processed_data_dir, self.mode + ".csv"))
+            self.data = self.load_data_from_file(os.path.join(self.get_processed_data_dir(), self.mode + ".csv"))
         elif self.mode == "infer":
             self.data = []
 
     def load_from_input(self, inp):
         sent = inp
         self.data = [dict(
-            X=[token_to_idx(self.word_to_idx, w) for w in normalize_string(sent).split(' ')],
+            X=[get_token_id(self.word_to_idx, w) for w in normalize_string(sent).split(' ')],
             Y=[1] * len(normalize_string(sent).split(' '))
         )]
 
     @classmethod
     def maybe_download_and_extract(cls, force=False):
-        maybe_download(
-            "data.zip",
-            cls.working_dir,
-            DOWNLOAD_URL)
-        maybe_unzip("data.zip", cls.working_dir, "raw")
+        super().maybe_download_and_extract(force)
+        if not os.path.exists(cls.get_raw_data_dir()):
+            cls.download_and_extract(
+                DOWNLOAD_URL, cls.get_raw_data_dir())
 
     @classmethod
     def maybe_preprocess(cls, force=False):
-        if force:
-            shutil.rmtree(cls.processed_data_dir)
-            while os.path.exists(cls.processed_data_dir):
-                pass
+        super().maybe_preprocess(force)
+        if os.path.exists(cls.get_processed_data_dir()):
+            return
         maybe_preprocess(
-            os.path.join(cls.raw_data_dir, "Du lieu vnPOS", "vnPOS"),
-            cls.processed_data_dir
+            os.path.join(cls.get_raw_data_dir(), "Du lieu vnPOS", "vnPOS"),
+            cls.get_processed_data_dir()
         )
 
     def load_data_from_file(self, path):

@@ -7,6 +7,7 @@ import tarfile
 import shutil
 from six.moves import urllib
 import requests
+from tqdm import tqdm
 
 from .logging import set_log_dir, logger
 
@@ -26,7 +27,7 @@ def reporthook(count, block_size, total_size):
     sys.stdout.flush()
 
 
-def maybe_download(filename, work_directory, source_url):
+def maybe_download(work_directory, source_url, filename=None):
     """Download the data from source url, unless it's already here.
     Args:
         filename: string, name of the file in the directory.
@@ -37,41 +38,47 @@ def maybe_download(filename, work_directory, source_url):
     """
     if not os.path.exists(work_directory):
         os.makedirs(work_directory)
-    filepath = os.path.join(work_directory, filename)
+    filepath = os.path.join(work_directory, filename or source_url[source_url.rfind("/")+1:])
     if not os.path.exists(filepath):
-        r = requests.get(source_url, stream=True)
-        if r.status_code == 200:
-            with open(filepath, 'wb') as f:
-                r.raw.decode_content = True
-                shutil.copyfileobj(r.raw, f)
+        with open(filepath, 'wb') as f:
+            logger.info("Downloading file at %s to %s", source_url, filepath)
+            r = requests.get(source_url, stream=True, allow_redirects=True)
+
+            total_length = r.headers.get('content-length')
+            if total_length is None:  # no content length header
+                for data in r.iter_content(chunk_size=128):
+                    f.write(data)
+                    print(len(data))
+            elif r.status_code == 200:
+                total_length = int(total_length)
+                logger.info("File size: %.1fMB", total_length / 1024 / 1024)
+
+                with tqdm(desc="Downloading", total=int(total_length), unit="B", unit_scale=True, unit_divisor=1024) as pbar:
+                    for data in r.iter_content(chunk_size=4096):
+                        f.write(data)
+                        pbar.update(len(data))
     return filepath
 
-    global urllib_start_time
-    if not os.path.exists(filepath):
-        logger.info("Download file at %s to %s", source_url, filename)
-        urllib_start_time = time.time()
-        urllib.request.urlretrieve(source_url, filepath, reporthook)
-    return filepath
 
-
-def maybe_unzip(filename, work_directory, folder):
-    _dir = os.path.join(work_directory, folder)
+def maybe_unzip(file_path, folder_path):
+    _dir = folder_path
     if os.path.exists(_dir):
         return
 
-    _, ext = os.path.splitext(filename)
+    _, ext = os.path.splitext(file_path)
     if ext == '.zip':
-        logger.info("Unzip %s", os.path.join(work_directory, filename))
-        zip_ref = zipfile.ZipFile(os.path.join(work_directory, filename), 'r')
+        logger.info("Extract %s to %s", file_path, folder_path)
+        zip_ref = zipfile.ZipFile(file_path, 'r')
         zip_ref.extractall(_dir)
         zip_ref.close()
-    elif ext == '.lzma':
-        logger.info("Unzip %s", os.path.join(work_directory, filename))
-        tar = tarfile.open(filename)
+    elif ext in ['.lzma', '.gz', '.tgz']:
+        logger.info("Extract %s to %s", file_path, folder_path)
+        tar = tarfile.open(file_path)
         tar.extractall(path=_dir)
         tar.close()
     else:
         raise Exception("File type is not supported (%s)" % ext)
+
 
 def init_dirs(params):
     os.makedirs(params.log_dir, exist_ok=True)

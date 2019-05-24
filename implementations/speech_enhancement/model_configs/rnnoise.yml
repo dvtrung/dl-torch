@@ -1,0 +1,13 @@
+model:
+  name: src.models.rnnoise.RNNoise
+dataset:
+  name: src.datasets.rnnoise.RNNoise
+batch_size: 128
+num_epochs: 50
+optimizer:
+  name: adam
+  lr: 0.1
+max_length: 10
+teacher_forcing_ratio: 0.0
+metrics:
+  - bleu

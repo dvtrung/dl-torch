@@ -1,16 +1,18 @@
 import os
+import tempfile
 
-from datasets.base.nlp import NLPDataset
-from utils.utils import maybe_download, maybe_unzip
+from .base.nlp import NLPDataset
+from ..utils.utils import maybe_download
 
 
-class Dataset(NLPDataset):
-    working_dir = os.path.join("datasets", "squad")
+class SquadV2(NLPDataset):
+    working_dir = os.path.join(tempfile.gettempdir(), "dlex", "datasets", "squad")
     raw_data_dir = os.path.join(working_dir, "raw")
 
-    def __init__(self, mode, params, args=None):
-        super(NLPDataset).__init__(mode, params, args)
+    def __init__(self, mode, params):
+        super().__init__(mode, params)
 
+    @classmethod
     def maybe_download_and_extract(cls, force=False):
         training_set_url = "https://rajpurkar.github.io/SQuAD-explorer/dataset/train-v2.0.json"
         dev_set_url = "https://rajpurkar.github.io/SQuAD-explorer/dataset/dev-v2.0.json"
@@ -28,4 +30,7 @@ class Dataset(NLPDataset):
         pass
 
     def evaluate(self, y_pred, batch, metric):
+        pass
+
+    def format_output(self, y_pred, inp):
         pass

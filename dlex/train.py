@@ -1,6 +1,7 @@
 """Train a model."""
 
 from datetime import datetime
+import random
 
 import torch
 import torch.multiprocessing as mp
@@ -43,17 +44,20 @@ def train_epoch(current_epoch, params, args, model, data_train, dataset_test):
             loss_count += 1
             t.set_postfix(loss=loss_sum / loss_count)
 
-            if epoch_step % (len(t) // 4) == 0:
-                logger.info("%d% - loss: %.2f", epoch_step * 100 // (len(t) // 4), loss_sum / loss_count)
-
-            if args.debug and epoch_step > DEBUG_NUM_ITERATIONS:
-                break
+            #if args.debug and epoch_step > DEBUG_NUM_ITERATIONS:
+            #    break
 
             model.global_step = (current_epoch - 1) * len(data_train.dataset) + \
                 epoch_step * params.batch_size
     end_time = datetime.now()
+    save_checkpoint("epoch-%02d" % current_epoch, params, model)
+    res, best_res, outputs = evaluate(model, dataset_test, params, save_result=True, output=True)
 
-    res, best_res = evaluate(model, dataset_test, params, save_result=True)
+    logger.info("Random samples")
+    for output in random.choices(outputs, k=5):
+        logger.info(output)
+        logger.info('')
+
     for metric in best_res:
         if best_res[metric] == res:
             save_checkpoint(
@@ -61,10 +65,9 @@ def train_epoch(current_epoch, params, args, model, data_train, dataset_test):
                 params, model)
             logger.info("Best checkpoint for %s saved", metric)
 
-    logger.info("Epoch time: %ds", str(start_time - end_time))
+    logger.info("Epoch time: %s", str(end_time - start_time))
     logger.info("Eval: %s", str(res['result']))
     logger.info("-------")
-    save_checkpoint("epoch-%02d" % current_epoch, params, model)
 
 
 def main(argv=None):
@@ -93,6 +96,8 @@ def main(argv=None):
     model_cls = get_model(params)
     assert model_cls
     model = model_cls(params, dataset_train)
+    for parameter in model.parameters():
+        print(parameter.shape)
 
     use_cuda = torch.cuda.is_available()
     if use_cuda:

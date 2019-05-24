@@ -3,28 +3,28 @@ model:
   encoder:
     rnn_type: lstm
     bidirectional: false
-    num_layers: 1
-    hidden_size: 64
+    num_layers: 2
+    hidden_size: 256
     embedding: none
     update_embedding: true
   decoder:
     rnn_type: lstm
     use_attention: true
     num_layers: 1
-    hidden_size: 64
+    hidden_size: 256
     max_length: 10
   dropout_p: 0.1
-  teacher_forcing_ratio: 0.0
+  teacher_forcing_ratio: 1.0
 dataset:
-  name: src.datasets.nmt.Tatoeba
-  source: fra
+  name: src.datasets.europarl.Europarl
+  source: spa
   target: eng
   output_format: text
 batch_size: 128
 num_epochs: 50
 optimizer:
   name: adam
-  lr: 0.1
+  lr: 0.001
 max_length: 10
 metrics:
   - bleu

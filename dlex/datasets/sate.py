@@ -9,7 +9,7 @@ class SATE_IV(BaseDataset):
     raw_data_dir = os.path.join(working_dir, "raw")
 
     def __init__(self, mode, params):
-        super(BaseDataset).__init__()
+        super().__init__(mode, params)
 
     @classmethod
     def maybe_download_and_extract(cls, force=False):

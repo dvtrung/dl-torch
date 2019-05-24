@@ -4,13 +4,24 @@ import shutil
 
 from torch.utils.data import Dataset
 from torch.utils.data.dataloader import default_collate
-from ...utils.logging import logger
+
+from dlex.utils.logging import logger
+from dlex.utils.utils import maybe_download, maybe_unzip
+from dlex.configs import ModuleConfigs
 
 
 class BaseDataset(Dataset):
-    working_dir = None
-    raw_data_dir = None
-    processed_data_dir = None
+    @classmethod
+    def get_working_dir(cls):
+        return os.path.join(ModuleConfigs.DATA_TMP_PATH, cls.__name__.lower())
+
+    @classmethod
+    def get_raw_data_dir(cls):
+        return os.path.join(cls.get_working_dir(), "raw")
+
+    @classmethod
+    def get_processed_data_dir(cls):
+        return os.path.join(cls.get_working_dir(), "processed")
 
     def __init__(self, mode, params):
         super(Dataset).__init__()
@@ -19,6 +30,7 @@ class BaseDataset(Dataset):
             mode = "train"
         self.mode = mode
         self.params = params
+        self.data = []
 
         logger.info("Load '%s' dataset" % mode)
 
@@ -32,22 +44,36 @@ class BaseDataset(Dataset):
         cls.maybe_preprocess(download or preprocess)
 
     @classmethod
+    def download_and_extract(cls, url, folder_path):
+        file_path = maybe_download(cls.get_working_dir(), url)
+        maybe_unzip(file_path, folder_path)
+
+    @classmethod
     @abc.abstractmethod
     def maybe_download_and_extract(cls, force=False):
         """Download and extract data"""
         if force:
-            shutil.rmtree(cls.processed_data_dir, ignore_errors=True)
-            while os.path.exists(cls.processed_data_dir):
-                pass
+            if os.path.exists(cls.get_working_dir()):
+                logger.info("Removing downloaded data...")
+                shutil.rmtree(cls.get_working_dir(), ignore_errors=True)
+                while os.path.exists(cls.get_working_dir()):
+                    pass
 
     @classmethod
     @abc.abstractmethod
     def maybe_preprocess(cls, force=False):
         """Preprocess data"""
         if force:
-            shutil.rmtree(cls.working_dir, ignore_errors=True)
-            while os.path.exists(cls.working_dir):
+            logger.info("Removing preprocessed data...")
+            shutil.rmtree(cls.get_processed_data_dir(), ignore_errors=True)
+            while os.path.exists(cls.get_processed_data_dir()):
                 pass
+
+    def __len__(self):
+        return len(self.data)
+
+    def __getitem__(self, idx):
+        return self.data[idx]
 
     def collate_fn(self, batch):
         return default_collate(batch)

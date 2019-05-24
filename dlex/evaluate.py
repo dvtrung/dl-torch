@@ -18,8 +18,9 @@ def evaluate(model, dataset, params, save_result=False, output=False):
 
     total = {key: 0 for key in params.metrics}
     acc = {key: 0. for key in params.metrics}
+    outputs = []
     for batch in tqdm(data_loader, desc="Eval"):
-        y_pred = model.infer(batch)
+        y_pred, y_pred_len = model.infer(batch)
         for key in params.metrics:
             _acc, _total = dataset.evaluate(y_pred, batch, metric=key)
             acc[key] += _acc
@@ -27,12 +28,8 @@ def evaluate(model, dataset, params, save_result=False, output=False):
         if output:
             for i, predicted in enumerate(y_pred):
                 str_input, str_ground_truth, str_predicted = dataset.format_output(
-                    predicted,
-                    dataset.get_item_from_batch(batch, i))
-                logger.info(str_input)
-                logger.info(str_ground_truth)
-                logger.info(str_predicted)
-                logger.info("---")
+                    predicted, dataset.get_item_from_batch(batch, i))
+                outputs.append('\n'.join([str_input, str_ground_truth, str_predicted]))
 
     result = {
         "epoch": "%.1f" % model.epoch,
@@ -40,7 +37,7 @@ def evaluate(model, dataset, params, save_result=False, output=False):
     }
     best_result = add_result(params, result) if save_result else None
 
-    return result, best_result
+    return result, best_result, outputs
 
 
 def main():
@@ -75,9 +72,13 @@ def main():
 
     logger.info("Saved model loaded: %s", args.load)
 
-    res = evaluate(model, dataset_test, params, output=True)
+    result, best_result, outputs = evaluate(model, dataset_test, params, output=True)
 
-    logger.info(str(res))
+    #for output in outputs:
+        #logger.info(output)
+        #logger.info("---")
+
+    logger.info(str(result))
 
 
 if __name__ == "__main__":

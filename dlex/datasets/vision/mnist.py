@@ -65,10 +65,10 @@ class MNIST(BaseDataset):
         ret = super().collate_fn(batch)
         return dict(X=maybe_cuda(ret[0]), Y=maybe_cuda(ret[1]))
 
-    def format_output(self, y_pred, inp, display=None, tag=None):
+    def format_output(self, y_pred, batch_item, display=None, tag=None):
         y_pred = y_pred.cpu().detach().numpy()
         if display is None:
-            return str(y_pred)
+            return "", str(batch_item['Y']), str(y_pred)
         elif display == "img":
             plt.subplot(1, 2, 1)
             plt.imshow(self.to_img(inp[0].cpu().detach().numpy()))

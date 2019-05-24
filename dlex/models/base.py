@@ -1,3 +1,4 @@
+import itertools
 import os
 import abc
 import torch
@@ -57,6 +58,9 @@ class BaseModel(torch.nn.Module):
         loss = self.get_loss(batch, output)
         loss.backward()
         for optimizer in self.optimizers:
+            if self.params.max_grad_norm > 0:
+                params = itertools.chain.from_iterable([group['params'] for group in optimizer.param_groups])
+            torch.nn.utils.clip_grad_norm_(params, self.params.max_grad_norm)
             optimizer.step()
         return loss
 

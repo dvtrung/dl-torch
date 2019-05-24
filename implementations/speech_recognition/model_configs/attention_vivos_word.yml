@@ -1,0 +1,33 @@
+model:
+  name: src.models.attention.Attention
+  encoder:
+    rnn_type: lstm
+    bidirectional: true
+    num_layers: 3
+    hidden_size: 8
+    output_size: 8
+  decoder:
+    rnn_type: lstm
+    use_attention: true
+    num_layers: 1
+    hidden_size: 8
+    output_size: 8
+    max_length: 20
+  beam_search:
+    beam_size: 16
+    penalty:
+  decoding_method: greedy
+  dropout: 0.0
+  teacher_forcing_ratio: 1.0
+dataset:
+  name: src.datasets.vivos.VIVOS
+  unit: word
+  output_format: "text"
+batch_size: 8
+num_epochs: 300
+optimizer:
+  name: adam
+  lr: 0.001
+max_grad_norm: 5.0
+metrics:
+  - wer

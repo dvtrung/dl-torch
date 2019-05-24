@@ -1,6 +1,13 @@
 import logging
 import os
 
+BLACK, RED, GREEN, YELLOW, BLUE, MAGENTA, CYAN, WHITE = range(8)
+
+RESET_SEQ = "\033[0m"
+COLOR_SEQ = "\033[1;%dm"
+BOLD_SEQ = "\033[1m"
+
+
 logger = logging.getLogger('dlex')
 logger.setLevel(logging.INFO)
 logging.basicConfig()

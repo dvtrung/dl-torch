@@ -1,34 +1,21 @@
-"""Datasets for neural machine translation"""
-
 import os
 
-import nltk
-import torch
 from tqdm import tqdm
 
-from dlex.datasets.base.nlp import NLPDataset, load_tkn_to_idx, load_idx_to_tkn, \
-    prepare_vocab_words, normalize_string, get_token_id
+from dlex.datasets.base.nlp import NLPDataset, load_tkn_to_idx, load_idx_to_tkn, normalize_string
 from dlex.utils.logging import logger
-from dlex.utils.ops_utils import LongTensor
 
 DOWNLOAD_URLS = {
-    ('fra', 'eng'): "https://www.manythings.org/anki/fra-eng.zip",
-    ('spa', 'eng'): "http://storage.googleapis.com/download.tensorflow.org/data/spa-eng.zip"
+    ('cs', 'en'): 'https://www.statmt.org/europarl/v7/cs-en.tgz'
 }
 
 
-def readLangs(filepath):
+def read_lang(filepath):
     logger.info("Reading data from %s" % filepath)
-
     # Read the file and split into lines
     lines = open(filepath, encoding='utf-8'). \
         read().strip().split('\n')
-
-    # Split every line into pairs and normalize
-    pairs = [[normalize_string(s).split(' ') for s in l.split('\t')] for l in lines]
-    pairs = [list(reversed(p)) for p in pairs]
-
-    return pairs
+    return lines
 
 
 def filter_pair(p, max_length=10):
@@ -40,7 +27,7 @@ def filter_pairs(pairs):
     return [pair for pair in pairs if filter_pair(pair)]
 
 
-class Tatoeba(NLPDataset):
+class Europarl(NLPDataset):
     def __init__(self, mode, params):
         super().__init__(mode, params)
         cfg = params.dataset
@@ -81,11 +68,11 @@ class Tatoeba(NLPDataset):
             self.data = []
 
     @property
-    def sos_token_id(self):
+    def sos_id(self):
         return self.word2index[self.lang_src]['<sos>']
 
     @property
-    def eos_token_id(self):
+    def eos_id(self):
         return self.word2index[self.lang_src]['<eos>']
 
     @classmethod
@@ -94,7 +81,9 @@ class Tatoeba(NLPDataset):
         if not os.path.exists(cls.get_raw_data_dir()):
             for lang_pairs in DOWNLOAD_URLS:
                 try:
-                    cls.download_and_extract(DOWNLOAD_URLS[lang_pairs], cls.get_raw_data_dir())
+                    cls.download_and_extract(
+                        DOWNLOAD_URLS[lang_pairs],
+                        os.path.join(cls.get_raw_data_dir(), '-'.join(lang_pairs)))
                 except:
                     logger.error("Failed to download %s" % '-'.join(lang_pairs))
 
@@ -107,8 +96,9 @@ class Tatoeba(NLPDataset):
         for lang_pairs in DOWNLOAD_URLS:
             try:
                 dataset_name = "-".join(lang_pairs)
-                pairs = readLangs(
-                    os.path.join(cls.get_working_dir(), "raw", dataset_name, "%s.txt" % lang_pairs[0]))
+                pairs = zip(
+                    read_lang(os.path.join(cls.get_working_dir(), dataset_name, "europarl-v7.%s.%s" % (dataset_name, lang_pairs[0]))),
+                    read_lang(os.path.join(cls.get_raw_data_dir(), dataset_name, "europarl-v7.%s.%s" % (dataset_name, lang_pairs[1]))))
                 logger.info("Read %s sentence pairs", len(pairs))
                 pairs = filter_pairs(pairs)
                 logger.info("Trimmed to %s sentence pairs", len(pairs))
@@ -158,9 +148,9 @@ class Tatoeba(NLPDataset):
             Y=tgt, Y_len=LongTensor([len(item['Y']) for item in batch]))
 
     def _trim_result(self, ls):
-        start = 0 if len(ls) > 0 and ls[0] != self.sos_token_id else 1
+        start = 0 if len(ls) > 0 and ls[0] != self.sos_id else 1
         end = 0
-        while end < len(ls) and ls[end] != self.eos_token_id:
+        while end < len(ls) and ls[end] != self.eos_id:
             end += 1
         return ls[start:end]
 

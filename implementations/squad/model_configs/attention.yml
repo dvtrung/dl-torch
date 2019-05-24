@@ -14,11 +14,8 @@ model:
     hidden_size: 64
     max_length: 10
   dropout_p: 0.1
-  teacher_forcing_ratio: 0.0
 dataset:
-  name: src.datasets.nmt.Tatoeba
-  source: fra
-  target: eng
+  name: dlex.datasets.squad.SquadV2
   output_format: text
 batch_size: 128
 num_epochs: 50
@@ -26,5 +23,6 @@ optimizer:
   name: adam
   lr: 0.1
 max_length: 10
+teacher_forcing_ratio: 0.0
 metrics:
   - bleu

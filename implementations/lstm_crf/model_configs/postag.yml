@@ -7,7 +7,7 @@ model:
   dropout: 0.5
   num_layers: 2
 dataset:
-  name: src.datasets.vnpos.Dataset
+  name: src.datasets.vnpos.VNPos
   embed_unit: 'word'
   tag_type: pos
   output_format: word+tag

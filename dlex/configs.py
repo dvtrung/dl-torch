@@ -4,6 +4,12 @@ import os
 import re
 import argparse
 import yaml
+import tempfile
+
+
+class ModuleConfigs:
+    # DATA_TMP_PATH = os.path.join(tempfile.gettempdir(), "dlex", "datasets")
+    DATA_TMP_PATH = os.path.expanduser(os.path.join("~", "tmp", "dlex", "datasets"))
 
 
 class AttrDict(dict):
@@ -61,20 +67,28 @@ class AttrDict(dict):
         return result_dir
 
 
-def get_yaml_loader():
-    """Get custom yaml loader that allows loading floating-point number"""
-    yaml_loader = yaml.SafeLoader
-    yaml_loader.add_implicit_resolver(
-        u'tag:yaml.org,2002:float',
-        re.compile(u'''^(?:
+class Loader(yaml.SafeLoader):
+    def __init__(self, stream):
+        self._root = os.path.split(stream.name)[0]
+        super(Loader, self).__init__(stream)
+
+    def include(self, node):
+        filename = os.path.join(self._root, self.construct_scalar(node))
+        with open(filename, 'r') as f:
+            return yaml.load(f, Loader)
+
+
+Loader.add_implicit_resolver(
+    u'tag:yaml.org,2002:float',
+    re.compile(u'''^(?:
         [-+]?(?:[0-9][0-9_]*)\\.[0-9_]*(?:[eE][-+]?[0-9]+)?
         |[-+]?(?:[0-9][0-9_]*)(?:[eE][-+]?[0-9]+)
         |\\.[0-9_]+(?:[eE][-+][0-9]+)?
         |[-+]?[0-9][0-9_]*(?::[0-5]?[0-9])+\\.[0-9_]*
         |[-+]?\\.(?:inf|Inf|INF)
         |\\.(?:nan|NaN|NAN))$''', re.X),
-        list(u'-+0123456789.'))
-    return yaml_loader
+    list(u'-+0123456789.')
+)
 
 
 def str2bool(val):
@@ -108,20 +122,20 @@ class Configs():
             help="path to model's configuration file")
         if self.mode == "train":
             parser.add_argument('--debug', action="store_true",
-                help="train and eval on the same small data to check if the model works")
+                                help="train and eval on the same small data to check if the model works")
         parser.add_argument('--download', action="store_true",
-            help="force to download, unzip and preprocess the data")
+                            help="force to download, unzip and preprocess the data")
         parser.add_argument('--preprocess', action="store_true",
-            help="force to preprocess the data")
+                            help="force to preprocess the data")
         parser.add_argument('--verbose', action="store_true")
         parser.add_argument('-l, --load', dest="load", default=None,
-            required=self.mode in ["eval", "infer"],
-            help="tag of the checkpoint to load")
+                            required=self.mode in ["eval", "infer"],
+                            help="tag of the checkpoint to load")
         parser.add_argument('--cpu', action='store_true', default=False,
-            help='disables CUDA training')
+                            help='disables CUDA training')
         if self.mode == "train":
             parser.add_argument('--num_processes', type=int, default=1, metavar='N',
-                help="how many training process to use")
+                                help="how many training process to use")
         elif self.mode == "infer":
             parser.add_argument(
                 '-i --input',
@@ -138,7 +152,7 @@ class Configs():
         path = os.path.join("model_configs", self.args.config_path + ".yml")
         try:
             with open(path, 'r') as stream:
-                params = yaml.load(stream, Loader=get_yaml_loader())
+                params = yaml.load(stream, Loader=Loader)
                 params = AttrDict(params)
                 params.set("mode", self.mode)
                 params.set('path', self.args.config_path)

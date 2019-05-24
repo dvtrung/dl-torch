@@ -1,0 +1,26 @@
+model:
+  name: dlex.models.attention.Attention
+  encoder:
+    rnn_type: lstm
+    bidirectional: true
+    num_layers: 3
+    hidden_size: 512
+  decoder:
+    rnn_type: lstm
+    use_attention: true
+    num_layers: 1
+    hidden_size: 512
+    max_length: 50
+  dropout_p: 0.2
+  teacher_forcing_ratio: 0.5
+dataset:
+  name: src.datasets.vivos.VIVOS
+  unit: char
+  output_format: "text"
+batch_size: 30
+num_epochs: 100
+optimizer:
+  name: adam
+  lr: 0.001
+metrics:
+  - wer

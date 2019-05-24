@@ -1,0 +1,27 @@
+model:
+  name: dlex.models.attention.Attention
+  encoder:
+    rnn_type: lstm
+    bidirectional: true
+    num_layers: 3
+    hidden_size: 256
+  decoder:
+    rnn_type: lstm
+    use_attention: true
+    num_layers: 1
+    hidden_size: 256
+    max_length: 50
+  dropout_p: 0.2
+  teacher_forcing_ratio: 0.0
+dataset:
+  name: src.datasets.librispeech.LibriSpeech
+  unit: word
+  output_format: "text"
+batch_size: 20
+num_epochs: 100
+optimizer:
+  name: adam
+  lr: 0.001
+metrics:
+  - wer
+

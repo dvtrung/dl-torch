@@ -1,8 +1,8 @@
 """Download and preprocess dataset with configs."""
 
-from configs import Configs
-from utils.model_utils import get_dataset
-from utils.logging import logger
+from .configs import Configs
+from .utils.model_utils import get_dataset
+from .utils.logging import logger
 
 
 def main():
@@ -12,7 +12,7 @@ def main():
     logger.info("Dataset: %s (%s)", configs.params.dataset.name, str(dataset_cls))
 
     # Init dataset
-    dataset_cls.prepare(force=True)
+    dataset_cls.prepare(download=False, preprocess=True)
 
 
 if __name__ == "__main__":
