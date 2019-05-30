@@ -16,7 +16,7 @@ from dlex.utils.utils import maybe_download, maybe_unzip
 from dlex.utils.metrics import ser
 from dlex.utils.ops_utils import LongTensor
 from dlex.datasets.base.nlp import NLPDataset, load_idx_to_tkn, load_tkn_to_idx, \
-    prepare_vocab_words, get_token_id, normalize_string, normalize_word
+    write_vocab, get_token_id, normalize_string, normalize_word
 
 DOWNLOAD_URL = "http://vnlp.net/wp-content/uploads/2009/06/du-lieu-vnpos1.zip"
 
@@ -90,8 +90,8 @@ def maybe_preprocess(path, working_dir):
                 postags[mode].append(tags)
 
     prepare_vocab_chars(working_dir, sentences['train'])
-    prepare_vocab_words(working_dir, sentences['train'], min_freq=0)
-    prepare_vocab_words(working_dir, postags['train'], name="pos_tags", min_freq=0, default_tags=['<w>', '<oov>'])
+    write_vocab(working_dir, sentences['train'], min_freq=0)
+    write_vocab(working_dir, postags['train'], name="pos_tags", min_freq=0, default_tags=['<w>', '<oov>'])
     prepare_tag_list(working_dir)
 
     word_token_to_idx = load_tkn_to_idx(os.path.join(working_dir, "vocab", "words.txt"))

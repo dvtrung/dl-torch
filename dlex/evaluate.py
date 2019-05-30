@@ -9,8 +9,22 @@ from .utils.logging import logger
 from .utils.utils import init_dirs
 
 
-def evaluate(model, dataset, params, save_result=False, output=False):
-    """Evaluate model and save result."""
+def evaluate(model, dataset, params, save_result=False, output=False, summary_writer=None):
+    """
+    Evaluate model and save result.
+    :type model: dlex.models.base.BaseModel
+    :type dataset: dlex.datasets.base.BaseDataset
+    :type params: dlex.configs.AttrDict
+    :type save_result: bool
+    :type output: bool
+    :type summary_writer: torch.utils.tensorboard.SummaryWriter | None
+    :return: result
+    :rtype:
+    :return: best_result
+    :rtype:
+    :return: outputs
+    :rtype: list[str]
+    """
     data_loader = DataLoader(
         dataset,
         batch_size=params.test_batch_size or params.batch_size,
@@ -20,7 +34,7 @@ def evaluate(model, dataset, params, save_result=False, output=False):
     acc = {key: 0. for key in params.metrics}
     outputs = []
     for batch in tqdm(data_loader, desc="Eval"):
-        y_pred, y_pred_len = model.infer(batch)
+        y_pred, others = model.infer(batch)
         for key in params.metrics:
             _acc, _total = dataset.evaluate(y_pred, batch, metric=key)
             acc[key] += _acc
@@ -30,6 +44,8 @@ def evaluate(model, dataset, params, save_result=False, output=False):
                 str_input, str_ground_truth, str_predicted = dataset.format_output(
                     predicted, dataset.get_item_from_batch(batch, i))
                 outputs.append('\n'.join([str_input, str_ground_truth, str_predicted]))
+        if summary_writer is not None:
+            model.write_summary(summary_writer, batch, (y_pred, others))
 
     result = {
         "epoch": "%.1f" % model.epoch,
@@ -55,11 +71,10 @@ def main():
 
     # Init dataset
     dataset_cls.prepare()
-    dataset_train = dataset_cls("train", params)
     dataset_test = dataset_cls("test", params)
 
     # Init model
-    model = model_cls(params, dataset_train)
+    model = model_cls(params, dataset_test)
     use_cuda = torch.cuda.is_available()
     if use_cuda:
         logger.info("CUDA available: %s", torch.cuda.get_device_name(0))
@@ -74,9 +89,9 @@ def main():
 
     result, best_result, outputs = evaluate(model, dataset_test, params, output=True)
 
-    #for output in outputs:
-        #logger.info(output)
-        #logger.info("---")
+    for output in outputs:
+        logger.info(output)
+        logger.info("---")
 
     logger.info(str(result))
 

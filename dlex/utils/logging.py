@@ -1,19 +1,31 @@
 import logging
 import os
 
-BLACK, RED, GREEN, YELLOW, BLUE, MAGENTA, CYAN, WHITE = range(8)
-
-RESET_SEQ = "\033[0m"
-COLOR_SEQ = "\033[1;%dm"
-BOLD_SEQ = "\033[1m"
-
+import numpy as np
+from colorama import Fore, Style
 
 logger = logging.getLogger('dlex')
-logger.setLevel(logging.INFO)
-logging.basicConfig()
+# logger.setLevel(logging.INFO)
+logger.setLevel(logging.DEBUG)
+logging.basicConfig(
+    level=logging.INFO,
+    format=Fore.GREEN + '%(levelname)s - %(message)s' + Style.RESET_ALL
+)
+logging.basicConfig(
+    level=logging.DEBUG,
+    format=Fore.MAGENTA + '%(levelname)s - %(message)s' + Style.RESET_ALL
+)
+logging.basicConfig(
+    level=logging.ERROR,
+    format=Fore.RED + '%(levelname)s - %(message)s' + Style.RESET_ALL
+)
+logging.basicConfig(
+    level=logging.WARNING,
+    format=Fore.RED + '%(levelname)s - %(message)s' + Style.RESET_ALL
+)
 
 # Here we define our formatter
-formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+formatter = logging.Formatter(Fore.BLUE + '%(asctime)s - %(levelname)s - %(message)s' + Style.RESET_ALL)
 
 
 def set_log_dir(params):
@@ -31,3 +43,8 @@ def set_log_dir(params):
 
     logger.addHandler(log_info_handler)
     logger.addHandler(log_debug_handler)
+
+
+def beautify(obj):
+    if type(obj) is np.ndarray:
+        return "[%s]" % ('\t'.join(["%.4f" % x for x in obj]))

@@ -4,7 +4,9 @@ model:
     rnn_type: lstm
     bidirectional: false
     num_layers: 2
+    input_size: 256
     hidden_size: 256
+    output_size: 256
     embedding: none
     update_embedding: true
   decoder:
@@ -12,15 +14,23 @@ model:
     use_attention: true
     num_layers: 1
     hidden_size: 256
-    max_length: 10
-  dropout_p: 0.1
-  teacher_forcing_ratio: 1.0
+    output_size: 256
+    max_length: 20
+  beam_search:
+    beam_size: 8
+    max_len_ratio: 0
+  attention:
+    type: bahdanau
+    size: 256
+  dropout: 0.1
+  teacher_forcing_ratio: 0.5
+  decoding_method: beam_search
 dataset:
-  name: src.datasets.nmt.Tatoeba
+  name: src.datasets.tatoeba.Tatoeba
   source: spa
   target: eng
   output_format: text
-batch_size: 128
+batch_size: 16
 num_epochs: 50
 optimizer:
   name: adam
@@ -28,3 +38,4 @@ optimizer:
 max_length: 10
 metrics:
   - bleu
+max_grad_norm: 5.0

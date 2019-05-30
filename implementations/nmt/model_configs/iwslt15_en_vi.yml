@@ -1,0 +1,39 @@
+model:
+  name: dlex.models.attention.NMT
+  encoder:
+    rnn_type: lstm
+    bidirectional: false
+    num_layers: 2
+    input_size: 256
+    hidden_size: 256
+    output_size: 256
+    embedding: none
+    update_embedding: true
+  decoder:
+    rnn_type: lstm
+    use_attention: true
+    num_layers: 1
+    hidden_size: 256
+    max_length: 50
+  attention:
+    type: bahdanau
+    size: 256
+  beam_search:
+    beam_size: 16
+  dropout: 0.1
+  teacher_forcing_ratio: 1.0
+  decoding_method: beam_search
+dataset:
+  name: src.datasets.iwslt.IWSLT15EnglishVietnamese
+  source: en
+  target: vi
+  output_format: text
+batch_size: 16
+num_epochs: 100
+optimizer:
+  name: sgd
+  lr: 1.0
+max_length: 10
+metrics:
+  - bleu
+max_grad_norm: 5.0

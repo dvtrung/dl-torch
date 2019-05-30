@@ -14,6 +14,7 @@ class BaseModel(torch.nn.Module):
         self.dataset = dataset
 
         self.global_step = 0
+        self.current_epoch = 0
 
         if torch.cuda.is_available():
             # logger.info("Cuda available: %s", torch.cuda.get_device_name(0))

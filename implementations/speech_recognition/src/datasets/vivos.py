@@ -178,9 +178,11 @@ class VIVOS(VoiceDataset):
                 'Y': [int(w) for w in l[1].split(' ')],
                 'Y_len': len(l[1].split(' '))
             } for l in lines]
+            if cfg.sort:
+                self.data.sort(key=lambda it: it['Y_len'])
 
             if is_debug:
-                self.data = self.data[:24]
+                self.data = self.data[:cfg.debug_size]
 
         self._use_sos_eos = False
         self.insert_sos_eos_tokens()
@@ -245,7 +247,7 @@ class VIVOS(VoiceDataset):
             inp, batch_first=True)
         tgt = nn.utils.rnn.pad_sequence(
             tgt, batch_first=True,
-            padding_value=self.eos_token_id)
+            padding_value=-1)
 
         return dict(
             X_path=item['X_path'],

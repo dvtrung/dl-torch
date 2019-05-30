@@ -6,10 +6,13 @@ import argparse
 import yaml
 import tempfile
 
+from dlex.utils.logging import logger
+
+DEFAULT_DATA_TMP_PATH = os.path.expanduser(os.path.join("~", "tmp"))
+
 
 class ModuleConfigs:
-    # DATA_TMP_PATH = os.path.join(tempfile.gettempdir(), "dlex", "datasets")
-    DATA_TMP_PATH = os.path.expanduser(os.path.join("~", "tmp", "dlex", "datasets"))
+    DATA_TMP_PATH = os.path.join(os.getenv("DATA_TMP_PATH", DEFAULT_DATA_TMP_PATH), "dlex", "datasets")
 
 
 class AttrDict(dict):
@@ -32,6 +35,11 @@ class AttrDict(dict):
                 self[key] = AttrDict(self[key])
 
     def __getattr__(self, item):
+        """
+        :param str item:
+        :rtype: AttrDict
+        """
+        logger.warning("Access to unset param %s", item)
         return None
 
     def set(self, field, value):
@@ -136,6 +144,8 @@ class Configs():
         if self.mode == "train":
             parser.add_argument('--num_processes', type=int, default=1, metavar='N',
                                 help="how many training process to use")
+            parser.add_argument('--save_all', action='store_true', default=False,
+                                help='save every epoch')
         elif self.mode == "infer":
             parser.add_argument(
                 '-i --input',

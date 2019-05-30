@@ -108,7 +108,7 @@ class Europarl(NLPDataset):
 
                 word_token_to_idx = {}
                 for i in [0, 1]:
-                    prepare_vocab_words(
+                    write_vocab(
                         os.path.join(cls.get_processed_data_dir(), dataset_name),
                         [_p[i] for _p in pairs],
                         lang_pairs[i], 0, default_words)

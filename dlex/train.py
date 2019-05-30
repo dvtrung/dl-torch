@@ -6,11 +6,12 @@ import random
 import torch
 import torch.multiprocessing as mp
 from torch.utils.data import DataLoader
+from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
 
 from .configs import Configs
 from .evaluate import evaluate
-from .utils.logging import logger
+from .utils.logging import logger, logging
 from .utils.model_utils import get_model, get_dataset, \
     load_checkpoint, save_checkpoint
 from .utils.utils import init_dirs
@@ -19,7 +20,7 @@ DEBUG_NUM_ITERATIONS = 5
 DEBUG_BATCH_SIZE = 4
 
 
-def train(params, args, model, dataset_train, dataset_test):
+def train(params, args, model, dataset_train, dataset_test, summary_writer):
     data_train = DataLoader(
         dataset_train,
         batch_size=params.batch_size,
@@ -29,10 +30,10 @@ def train(params, args, model, dataset_train, dataset_test):
 
     epoch = int(model.global_step / len(dataset_train))
     for current_epoch in range(epoch + 1, epoch + params.num_epochs + 1):
-        train_epoch(current_epoch, params, args, model, data_train, dataset_test)
+        train_epoch(current_epoch, params, args, model, data_train, dataset_test, summary_writer)
 
 
-def train_epoch(current_epoch, params, args, model, data_train, dataset_test):
+def train_epoch(current_epoch, params, args, model, data_train, dataset_test, summary_writer):
     """Train."""
     logger.info("EPOCH %d", current_epoch)
     loss_sum, loss_count = 0, 0
@@ -47,11 +48,17 @@ def train_epoch(current_epoch, params, args, model, data_train, dataset_test):
             #if args.debug and epoch_step > DEBUG_NUM_ITERATIONS:
             #    break
 
+            model.current_epoch = current_epoch
             model.global_step = (current_epoch - 1) * len(data_train.dataset) + \
                 epoch_step * params.batch_size
+            summary_writer.add_scalar("loss", loss, model.global_step)
     end_time = datetime.now()
-    save_checkpoint("epoch-%02d" % current_epoch, params, model)
-    res, best_res, outputs = evaluate(model, dataset_test, params, save_result=True, output=True)
+    if args.save_all:
+        save_checkpoint("epoch-%02d" % current_epoch, params, model)
+    res, best_res, outputs = evaluate(model, dataset_test, params, save_result=True, output=True, summary_writer=summary_writer)
+
+    for metric in res['result']:
+        summary_writer.add_scalar("eval_%s" % metric, res['result'][metric], current_epoch)
 
     logger.info("Random samples")
     for output in random.choices(outputs, k=5):
@@ -112,6 +119,9 @@ def main(argv=None):
         params.set('training_id', datetime.now().strftime('%Y%m%d-%H%M%S'))
         init_dirs(params)
 
+    if args.debug:
+        logger.setLevel(logging.DEBUG)
+
     logger.info("Dataset: %s. Model: %s", str(dataset_cls), str(model_cls))
     if use_cuda:
         logger.info("CUDA available: %s", torch.cuda.get_device_name(0))
@@ -120,7 +130,7 @@ def main(argv=None):
     device = torch.device("cuda" if use_cuda else "cpu")
 
     if args.num_processes == 1:
-        train(configs.params, configs.args, model, dataset_train, dataset_test)
+        train(configs.params, configs.args, model, dataset_train, dataset_test, summary_writer=SummaryWriter())
     else:
         model.share_memory()
         # TODO: Implement multiprocessing
