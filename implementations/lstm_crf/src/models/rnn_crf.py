@@ -7,7 +7,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from dlex.models.base import BaseModel
+from torch.models.base import BaseModel
 from dlex.utils.ops_utils import Tensor, LongTensor, maybe_cuda
 
 CUDA = torch.cuda.is_available()
@@ -33,10 +33,10 @@ class Model(BaseModel):
         self = self.cuda() if CUDA else self
 
     def forward(self, batch):  # for training
-        mask = batch['X'].data.gt(0).float()
-        h = self.rnn(None, batch['X'], mask)
+        mask = batch.X.data.gt(0).float()
+        h = self.rnn(None, batch.X, mask)
         Z = self.crf.forward(h, mask)
-        score = self.crf.score(h, batch['Y'], mask)
+        score = self.crf.score(h, batch.Y, mask)
         return Z - score  # NLL loss
 
     def decode(self, cx, wx): # for prediction
@@ -45,7 +45,7 @@ class Model(BaseModel):
         return self.crf.decode(h, mask)
 
     def infer(self, batch):
-        return self.decode(None, batch['X'])
+        return self.decode(None, batch.X)
 
     @staticmethod
     def get_loss(batch, output):

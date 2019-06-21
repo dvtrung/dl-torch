@@ -1,11 +1,12 @@
 """Datasets for neural machine translation"""
 import abc
+from typing import Dict, List, Any
 
 import nltk
 import torch
-import torch.nn as nn
 
-from dlex.datasets.base.nlp import NLPDataset, Vocab
+from dlex.configs import AttrDict
+from dlex.torch.datasets import NLPDataset, Vocab
 from dlex.utils.logging import logger
 from dlex.utils.ops_utils import LongTensor
 
@@ -20,12 +21,7 @@ class NMTBaseDataset(NLPDataset):
     :type output_size: int
     :type data: list
     """
-    def __init__(self, mode, params, vocab_paths=None):
-        """
-        :rtype mode: src
-        :rtype params: dlex.configs.AttrDict
-        :param vocab_paths: dict[str, str]
-        """
+    def __init__(self, mode: str, params: AttrDict, vocab_paths: str = None):
         super().__init__(mode, params)
         cfg = params.dataset
 
@@ -58,7 +54,7 @@ class NMTBaseDataset(NLPDataset):
         """
         pass
 
-    def collate_fn(self, batch):
+    def collate_fn(self, batch: List[Dict[str, Any]]):
         batch.sort(key=lambda item: len(item['X']), reverse=True)
         inp = [LongTensor(item['X']).view(-1) for item in batch]
         tgt = [LongTensor(item['Y']).view(-1) for item in batch]
@@ -82,12 +78,12 @@ class NMTBaseDataset(NLPDataset):
 
     def evaluate(self, y_pred, batch, metric):
         if metric == "bleu":
-            target_variables = batch['Y']
+            target_variables = batch.Y
             score, total = 0, 0
             for k, _y_pred in enumerate(y_pred):
                 target = self._trim_result(target_variables[k].cpu().detach().numpy().tolist())
                 predicted = self._trim_result(_y_pred)
-                score += nltk.translate.bleu_score.sentence_bleu([target], predicted, weights=(1,))
+                score += nltk.translate.bleu_score.sentence_bleu([target], predicted, weights=(0.5, 0.5))
                 total += 1
             return score, total
 

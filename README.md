@@ -3,6 +3,7 @@
 This project provides a codebase for deep learning experiments with Pytorch.
 
 - [ ] Writing minimal code to set up an experiment
+- [ ] Pytorch or Tensorflow 2.0 as backend with same training flow
 - [ ] Efficient way of logging and analyzing training models
 - [ ] Terminal GUI for tracking experiments
 - [ ] Integration with Google Colab or remote SSH server
@@ -78,4 +79,3 @@ dlex train <config_path>
 dlex evaluate <config_path>
 dlex infer <config_path>
 ```
-

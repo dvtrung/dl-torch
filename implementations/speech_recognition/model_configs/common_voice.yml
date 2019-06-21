@@ -1,9 +1,11 @@
+backend: pytorch
 model:
-  name: dlex.models.attention.Attention
+  name: dlex.torch.models.attention.Attention
+  alias: attention
   encoder:
     rnn_type: lstm
     bidirectional: false
-    num_layers: 3
+    num_layers: 5
     embedding_size: 256
     hidden_size: 512
     output_size: 256
@@ -16,7 +18,7 @@ model:
     max_length: 20
   beam_search:
     beam_size: 16
-    penalty:
+    penalty: 0.5
   attention:
     type: bahdanau
     size: 256
@@ -24,12 +26,16 @@ model:
   dropout: 0.2
   teacher_forcing_ratio: 0.5
 dataset:
-  name: src.datasets.common_voice.CommonVoice
+  name: dlex.datasets.voice.common_voice.common_voice.CommonVoiceBuilder
+  alias: common_voice
   unit: word
   output_format: "text"
   debug_size: 100
   sort: true
-batch_size: 16
+  vocab:
+    sos_eos: true
+    blank: false
+batch_size: 8
 num_epochs: 300
 optimizer:
   name: adam

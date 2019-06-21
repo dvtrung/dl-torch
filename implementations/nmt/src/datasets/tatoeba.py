@@ -3,7 +3,7 @@ import os
 import pandas
 from tqdm import tqdm
 
-from dlex.datasets.base.nlp import normalize_string, write_vocab, Vocab
+from torch.datasets import normalize_string, write_vocab, Vocab
 from dlex.utils.logging import logger
 from .nmt import NMTBaseDataset
 

@@ -5,17 +5,14 @@ Available at http://vnlp.net/wp-content/uploads/2009/06/du-lieu-vnpos1.zip
 import os
 import glob
 import re
-import tempfile
 import torch
-import shutil
 from tqdm import tqdm
 import numpy as np
 
 from dlex.utils.logging import logger
-from dlex.utils.utils import maybe_download, maybe_unzip
 from dlex.utils.metrics import ser
 from dlex.utils.ops_utils import LongTensor
-from dlex.datasets.base.nlp import NLPDataset, load_idx_to_tkn, load_tkn_to_idx, \
+from torch.datasets import NLPDataset, load_idx_to_tkn, load_tkn_to_idx, \
     write_vocab, get_token_id, normalize_string, normalize_word
 
 DOWNLOAD_URL = "http://vnlp.net/wp-content/uploads/2009/06/du-lieu-vnpos1.zip"
@@ -271,7 +268,7 @@ class VNPos(NLPDataset):
         correct_total = 0
         count_total = 0
         for k, predicted in enumerate(y_pred):
-            ground_truth = batch['Y'][k].cpu()[1:]
+            ground_truth = batch.Y[k].cpu()[1:]
             ground_truth = [i for i in ground_truth if i != self.tag_to_idx['<pad>']]
             predicted = predicted[:len(ground_truth)]
             if metric == 'ser':

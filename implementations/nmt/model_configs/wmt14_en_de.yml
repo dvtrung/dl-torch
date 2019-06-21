@@ -15,6 +15,9 @@ model:
     num_layers: 1
     hidden_size: 256
     max_length: 20
+  beam_search:
+    beam_size: 16
+    penalty: 0
   attention:
     type: bahdanau
     size: 256

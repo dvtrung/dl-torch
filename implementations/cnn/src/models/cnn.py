@@ -1,22 +1,7 @@
-import torch
 import torch.nn.functional as F
 import torch.nn as nn
 
-from dlex.models.base import BaseModel, default_params
-from dlex.utils.losses import nll_loss
-
-
-class ImageClassificationBaseModel(BaseModel):
-    def __init__(self, params, dataset):
-        super().__init__(params, dataset)
-
-    def infer(self, batch):
-        logits = self.forward(batch)
-        return torch.max(logits, 1)[1]
-
-    @staticmethod
-    def get_loss(batch, output):
-        return nll_loss(batch, output)
+from torch.models.base import default_params, ImageClassificationBaseModel, Batch
 
 
 class BasicModel(ImageClassificationBaseModel):
@@ -27,8 +12,8 @@ class BasicModel(ImageClassificationBaseModel):
         self.fc1 = nn.Linear(4*4*50, 500)
         self.fc2 = nn.Linear(500, dataset.num_classes)
 
-    def forward(self, batch):
-        x = batch['X']
+    def forward(self, batch: Batch):
+        x = batch.X
         x = F.relu(self.conv1(x))
         x = F.max_pool2d(x, 2, 2)
         x = F.relu(self.conv2(x))
@@ -71,7 +56,7 @@ class VGG(ImageClassificationBaseModel):
         self.softmax = nn.LogSoftmax(dim=0)
 
     def forward(self, batch):
-        out = self.features(batch['X'])
+        out = self.features(batch.X)
         out = out.view(out.size(0), -1)
         out = self.classifier(out)
         out = self.softmax(out)

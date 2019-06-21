@@ -1,9 +1,6 @@
-"""Datasets for neural machine translation"""
-
 import os
 import random
 
-from dlex.datasets.base.nlp import get_token_id
 from dlex.utils.logging import logger
 from .nmt import NMTBaseDataset
 
@@ -19,7 +16,7 @@ class WMT14EnglishGerman(NMTBaseDataset):
             }
         )
 
-    def load_data(self):
+    def _load_data(self):
         data_file_names = {
             "train": {"en": "train.en", "de": "train.de"},
             "test": {"en": "newstest2012.en", "de": "newstest2012.de"}
@@ -34,10 +31,12 @@ class WMT14EnglishGerman(NMTBaseDataset):
                     encoding='utf-8').read().split("\n")
             for src, tgt in zip(pairs[self.lang_src], pairs[self.lang_tgt]):
                 data.append(dict(
-                    X=[self.sos_token_id] + [get_token_id(self.word2index[self.lang_src], tkn) for tkn in
-                                             src.split(' ')] + [self.eos_token_id],
-                    Y=[self.sos_token_id] + [get_token_id(self.word2index[self.lang_tgt], tkn) for tkn in
-                                             tgt.split(' ')] + [self.eos_token_id]
+                    X=[self.sos_token_idx] +
+                      [self.vocab[self.lang_src][tkn] for tkn in src.split(' ')] +
+                      [self.eos_token_idx],
+                    Y=[self.sos_token_idx] +
+                      [self.vocab[self.lang_tgt][tkn] for tkn in tgt.split(' ')] +
+                      [self.eos_token_idx]
                 ))
             data = list(filter(lambda it: len(it['X']) < 50, data))
             logger.debug("Data sample: %s", str(random.choice(data)))

@@ -1,10 +1,9 @@
 """Infer result"""
-from tqdm import tqdm
 import torch
 from torch.utils.data import DataLoader
 
 from .configs import Configs
-from .utils.model_utils import get_dataset, get_model, load_checkpoint
+from torch.utils.model_utils import get_dataset, get_model, load_checkpoint
 from .utils.logging import logger
 from .utils.utils import init_dirs
 
@@ -24,7 +23,7 @@ def infer(model, dataset, params):
             count += 1
             logger.info(dataset.format_output(
                 _y,
-                dataset.get_item_from_batch(batch, i)))
+                batch[i]))
         # logger.info('\n'.join([str(r) for r in ret]))
 
 

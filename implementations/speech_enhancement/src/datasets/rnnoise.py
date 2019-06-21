@@ -10,10 +10,9 @@ import nltk
 import torch
 
 from dlex.utils.ops_utils import LongTensor
-from dlex.datasets.base import BaseDataset
+from torch.datasets import BaseDataset
 from dlex.utils.utils import maybe_download, maybe_unzip
 from dlex.configs import ModuleConfigs
-from dlex.utils.logging import logger
 
 DOWNLOAD_URL = "https://people.xiph.org/~jm/demo/rnnoise/rnnoise_contributions.tar.gz"
 
@@ -74,7 +73,7 @@ class RNNoise(BaseDataset):
 
     def evaluate(self, y_pred, batch, metric):
         if metric == "bleu":
-            target_variables = batch['Y']
+            target_variables = batch.Y
             score, total = 0, 0
             for k, _y_pred in enumerate(y_pred):
                 target = self._trim_result(target_variables[k].cpu().detach().numpy().tolist())

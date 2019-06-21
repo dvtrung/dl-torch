@@ -5,6 +5,8 @@ import time
 import zipfile
 import tarfile
 import shutil
+import re
+
 from six.moves import urllib
 import requests
 from tqdm import tqdm
@@ -12,6 +14,7 @@ from tqdm import tqdm
 from .logging import set_log_dir, logger
 
 urllib_start_time = 0
+
 
 def reporthook(count, block_size, total_size):
     global urllib_start_time
@@ -86,3 +89,8 @@ def init_dirs(params):
     os.makedirs(params.output_dir)
     if params.mode == "train":
         set_log_dir(params)
+
+
+def camel2snake(name: str) -> str:
+    s1 = re.sub('(.)([A-Z][a-z]+)', r'\1_\2', name)
+    return re.sub('([a-z0-9])([A-Z])', r'\1_\2', s1).lower()

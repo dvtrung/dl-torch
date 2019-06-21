@@ -1,5 +1,5 @@
 model:
-  name: src.models.ctc.CTC
+  name: dlex.torch.models.ctc.CTC
   input_size: 120
   hidden_size: 512
   num_layers: 3
@@ -9,6 +9,9 @@ model:
 dataset:
   name: src.datasets.vivos.VIVOS
   unit: char
+  vocab:
+    sos_eos: false
+    blank: true
   output_format: text
 batch_size: 20
 num_epochs: 100

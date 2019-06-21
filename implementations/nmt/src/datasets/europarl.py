@@ -2,7 +2,7 @@ import os
 
 from tqdm import tqdm
 
-from dlex.datasets.base.nlp import NLPDataset, load_tkn_to_idx, load_idx_to_tkn, normalize_string
+from torch.datasets import NLPDataset, load_tkn_to_idx, load_idx_to_tkn
 from dlex.utils.logging import logger
 
 DOWNLOAD_URLS = {
@@ -156,7 +156,7 @@ class Europarl(NLPDataset):
 
     def evaluate(self, y_pred, batch, metric):
         if metric == "bleu":
-            target_variables = batch['Y']
+            target_variables = batch.Y
             score, total = 0, 0
             for k, _y_pred in enumerate(y_pred):
                 target = self._trim_result(target_variables[k].cpu().detach().numpy().tolist())

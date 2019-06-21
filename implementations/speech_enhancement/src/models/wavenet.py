@@ -1,10 +1,8 @@
 import numpy as np
-import torch
 import torch.nn as nn
 from torch.autograd import Variable
 
-from dlex.models.base import BaseModel, default_params
-from dlex.utils.model_utils import get_optimizer
+from torch.models.base import BaseModel, default_params
 from dlex.utils.ops_utils import FloatTensor
 
 
@@ -112,7 +110,7 @@ class WaveNet(BaseModel):
         new_dilation *= 2
 
     def forward(self, batch):
-        imgs = batch['X']
+        imgs = batch.X
         z = Variable(FloatTensor(np.random.normal(0, 1, (imgs.shape[0], self.cfg.latent_dim))))
         return self.generator(z)
 
@@ -120,7 +118,7 @@ class WaveNet(BaseModel):
         return self.forward(batch)
 
     def training_step(self, batch):
-        imgs = batch['X']
+        imgs = batch.X
         optimizer_g, optimizer_d = self.optimizers
         valid = Variable(FloatTensor(imgs.size(0), 1).fill_(1.0), requires_grad=False)
         fake = Variable(FloatTensor(imgs.size(0), 1).fill_(0.0), requires_grad=False)

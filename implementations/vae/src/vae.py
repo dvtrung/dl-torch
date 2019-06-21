@@ -5,10 +5,8 @@ References:
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch.autograd import Variable
 
-from utils.ops_utils import FloatTensor
-from models.base import BaseModel, default_params
+from torch.models.base import BaseModel
 
 
 class Autoencoder(BaseModel):
@@ -27,7 +25,7 @@ class Autoencoder(BaseModel):
             nn.Linear(128, 28 * 28), nn.Tanh())
 
     def forward(self, batch):
-        img = batch['X']
+        img = batch.X
         img = img.view(img.size(0), -1)
         hidden = self.encoder(img)
         output = self.decoder(hidden)
@@ -62,7 +60,7 @@ class VariationalAutoencoder(BaseModel):
         return torch.sigmoid(self.fc4(h3))
 
     def forward(self, batch):
-        img = batch['X']
+        img = batch.X
         img = img.view(img.size(0), -1)
         mu, logvar = self.encode(img)
         z = self.reparametrize(mu, logvar)
@@ -73,7 +71,7 @@ class VariationalAutoencoder(BaseModel):
 
     @staticmethod
     def get_loss(batch, output):
-        img = batch['X']
+        img = batch.X
         img = img.view(img.size(0), -1)
         output, mu, logvar = output
 
