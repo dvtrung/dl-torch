@@ -1,7 +1,8 @@
 import torch.nn.functional as F
 import torch.nn as nn
 
-from torch.models.base import default_params, ImageClassificationBaseModel, Batch
+from dlex.torch.models.base import default_params, ImageClassificationBaseModel
+from dlex.torch import Batch
 
 
 class BasicModel(ImageClassificationBaseModel):
@@ -39,9 +40,10 @@ class VGG(ImageClassificationBaseModel):
     def __init__(self, params, dataset):
         super().__init__(params, dataset)
 
+        cfg = params.model
         layers = []
         in_channels = dataset.num_channels
-        for x in self.LAYERS[self.cfg.vgg_type]:
+        for x in self.LAYERS[cfg.vgg_type]:
             if x == 'M':
                 layers.append(nn.MaxPool2d(kernel_size=2, stride=2))
             else:

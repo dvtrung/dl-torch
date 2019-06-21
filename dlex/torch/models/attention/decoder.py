@@ -7,7 +7,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from dlex.utils.logging import logger
-from dlex.utils.ops_utils import maybe_cuda, LongTensor
+from dlex.torch.utils.ops_utils import maybe_cuda, LongTensor
 
 
 @dataclass

@@ -5,13 +5,8 @@ from tensorflow.keras.preprocessing.image import ImageDataGenerator
 from tensorflow.keras.datasets import cifar10
 from tensorflow.keras.utils import to_categorical
 
-from dlex.datasets import KerasDataset
-from .base import BaseDataset
-
-
-class CIFAR10(BaseDataset):
-    def get_keras_wrapper(self, mode: str) -> KerasDataset:
-        return KerasCIFAR10(self, mode, self._params)
+from dlex.datasets.keras import KerasDataset
+from dlex.datasets.tf import TensorflowDataset
 
 
 class KerasCIFAR10(KerasDataset):
@@ -39,7 +34,7 @@ class KerasCIFAR10(KerasDataset):
         return self._iterator
 
 
-class CIFAR10_tf(BaseDataset):
+class CIFAR10_tf(TensorflowDataset):
     def __init__(self, params, mode):
         super().__init__(params, mode)
         data, info = tfds.load("cifar10", split=mode, with_info=True)

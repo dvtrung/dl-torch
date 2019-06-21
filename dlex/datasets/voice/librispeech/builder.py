@@ -8,9 +8,8 @@ import torch.nn as nn
 import nltk
 
 from dlex.utils.logging import logger
-from datasets.voice.voice import VoiceDataset
 from torch.datasets import get_token_id, load_tkn_to_idx, normalize_word, normalize_char, load_idx_to_tkn
-from dlex.utils.ops_utils import LongTensor, FloatTensor
+from dlex.torch.utils.ops_utils import LongTensor, FloatTensor
 
 FILES = ["raw-metadata.tar.gz", "train-clean-100.tar.gz", "dev-clean.tar.gz"]
 BASE_URL = "http://www.openslr.org/resources/12/"

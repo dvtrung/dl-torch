@@ -1,5 +1,7 @@
 import abc
 
+from torch.utils.data.dataloader import default_collate
+
 from dlex.torch import Batch
 
 
@@ -18,16 +20,15 @@ class PytorchDataset:
 
     @abc.abstractmethod
     def evaluate_batch(self, y_pred, batch: Batch, metric: str):
-        if metric == "bleu":
-            score, total = 0, 0
-            for _target, _y_pred in zip(batch.Y, y_pred):
-                s, t = self._builder.evaluate(_target.cpu().detach().numpy().tolist(), _y_pred, metric)
-                score += s
-                total += t
-            return score, total
-        else:
-            raise Exception("Unsupported metric.")
+        score, total = 0, 0
+        for _target, _y_pred in zip(batch.Y, y_pred):
+            s, t = self._builder.evaluate(_target.cpu().detach().numpy().tolist(), _y_pred, metric)
+            score += s
+            total += t
+        return score, total
 
-    @abc.abstractmethod
-    def format_output(self, y_pred, inp) -> (str, str, str):
-        raise Exception("Dataset method 'format_output' must be implemented")
+    def format_output(self, y_pred, batch_input) -> (str, str, str):
+        return self._builder.format_output(y_pred, batch_input)
+
+    def collate_fn(self, batch):
+        return default_collate(batch)

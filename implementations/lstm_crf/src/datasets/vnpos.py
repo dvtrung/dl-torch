@@ -11,7 +11,7 @@ import numpy as np
 
 from dlex.utils.logging import logger
 from dlex.utils.metrics import ser
-from dlex.utils.ops_utils import LongTensor
+from dlex.torch.utils.ops_utils import LongTensor
 from torch.datasets import NLPDataset, load_idx_to_tkn, load_tkn_to_idx, \
     write_vocab, get_token_id, normalize_string, normalize_word
 

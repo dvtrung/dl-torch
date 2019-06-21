@@ -5,7 +5,7 @@ from torch.autograd import Variable
 
 from torch.models.base import BaseModel, default_params
 from torch.utils.model_utils import get_optimizer
-from dlex.utils.ops_utils import FloatTensor
+from dlex.torch.utils.ops_utils import FloatTensor
 
 
 class Generator(nn.Module):

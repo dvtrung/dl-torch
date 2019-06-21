@@ -8,7 +8,7 @@ from torchvision import transforms
 from dlex.configs import AttrDict
 from torch.models.base import Batch, BatchItem
 from ..base import BaseDataset
-from utils.ops_utils import maybe_cuda
+from dlex.torch.utils.ops_utils import maybe_cuda
 
 
 class ImageNet(BaseDataset):

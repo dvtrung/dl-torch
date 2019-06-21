@@ -8,7 +8,7 @@ import torch
 from dlex.configs import AttrDict
 from dlex.torch.datasets import NLPDataset, Vocab
 from dlex.utils.logging import logger
-from dlex.utils.ops_utils import LongTensor
+from dlex.torch.utils.ops_utils import LongTensor
 
 
 class NMTBaseDataset(NLPDataset):

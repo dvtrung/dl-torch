@@ -1,7 +1,6 @@
 from typing import List
 
 import math
-from collections import namedtuple
 
 import torch
 import torch.nn.functional as F
@@ -12,7 +11,7 @@ from dlex.datasets.voice.torch import PytorchSeq2SeqDataset
 from dlex.torch import Batch
 from dlex.torch.models.base import BaseModel
 from dlex.utils.logging import logger
-from dlex.utils.ops_utils import maybe_cuda
+from dlex.torch.utils.ops_utils import maybe_cuda
 from .encoder import EncoderRNN
 from .decoder import DecoderRNN, DecodingStates, BeamSearchConfigs
 

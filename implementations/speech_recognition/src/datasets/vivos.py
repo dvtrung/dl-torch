@@ -1,16 +1,9 @@
 import os
 
 import numpy as np
-from tqdm import tqdm as tqdm
-from subprocess import call
-from struct import unpack
-import torch.nn as nn
-import nltk
 
 from dlex.datasets.nlp.utils import write_vocab, char_tokenize, space_tokenize, normalize_none, Vocab
 from dlex.datasets.voice.torch import PytorchSeq2SeqDataset
-from dlex.utils.logging import logger
-from dlex.utils.ops_utils import LongTensor, FloatTensor
 from dlex.datasets.voice.builder import VoiceDatasetBuilder
 from dlex.torch import BatchItem
 

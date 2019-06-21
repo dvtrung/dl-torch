@@ -9,7 +9,7 @@ from tqdm import tqdm
 import nltk
 import torch
 
-from dlex.utils.ops_utils import LongTensor
+from dlex.torch.utils.ops_utils import LongTensor
 from torch.datasets import BaseDataset
 from dlex.utils.utils import maybe_download, maybe_unzip
 from dlex.configs import ModuleConfigs

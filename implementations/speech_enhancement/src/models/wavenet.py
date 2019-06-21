@@ -3,7 +3,7 @@ import torch.nn as nn
 from torch.autograd import Variable
 
 from torch.models.base import BaseModel, default_params
-from dlex.utils.ops_utils import FloatTensor
+from dlex.torch.utils.ops_utils import FloatTensor
 
 
 class Generator(nn.Module):

@@ -11,7 +11,7 @@ from tqdm import tqdm
 
 from dlex.configs import ModuleConfigs
 from torch.datasets import BaseDataset
-from dlex.utils.ops_utils import LongTensor
+from dlex.torch.utils.ops_utils import LongTensor
 from dlex.utils.utils import maybe_download, maybe_unzip
 
 DOWNLOAD_URL = "http://datashare.is.ed.ac.uk/download/DS_10283_2791.zip"

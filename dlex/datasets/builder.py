@@ -7,17 +7,6 @@ from dlex.utils.utils import maybe_download, maybe_unzip, camel2snake
 from dlex.configs import ModuleConfigs, AttrDict
 
 
-class KerasDataset:
-    def __init__(self, dataset, mode, params):
-        self._params = params
-        self._mode = mode
-        self._dataset = dataset
-
-    @property
-    def generator(self):
-        return self._dataset.__iter__()
-
-
 class DatasetBuilder:
     def __init__(self, params: AttrDict):
         self._params = params
@@ -78,3 +67,7 @@ class DatasetBuilder:
     @abc.abstractmethod
     def evaluate(self, pred, ref, metric: str):
         raise Exception("Not implemented.")
+
+    @abc.abstractmethod
+    def format_output(self, y_pred, batch_input) -> (str, str, str):
+        raise Exception("Dataset method 'format_output' must be implemented")

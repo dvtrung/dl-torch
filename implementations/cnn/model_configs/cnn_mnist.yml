@@ -1,7 +1,7 @@
 model:
   name: src.models.cnn.BasicModel
 dataset:
-  name: dlex.datasets.vision.MNIST
+  alias: mnist
   output_format: default
 loss: nll_loss.NLLLoss
 batch_size: 256

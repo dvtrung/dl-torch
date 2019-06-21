@@ -6,7 +6,7 @@ import random
 import torch
 import torch.multiprocessing as mp
 from torch.utils.data import DataLoader
-from torch.utils.tensorboard import SummaryWriter
+# from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
 
 from dlex.configs import Configs
@@ -51,14 +51,16 @@ def train_epoch(current_epoch, params, args, model, data_train, dataset_test, su
             model.current_epoch = current_epoch
             model.global_step = (current_epoch - 1) * len(data_train.dataset) + \
                 epoch_step * params.batch_size
-            summary_writer.add_scalar("loss", loss, model.global_step)
+            if summary_writer is not None:
+                summary_writer.add_scalar("loss", loss, model.global_step)
     end_time = datetime.now()
     if args.save_all:
         save_checkpoint("epoch-%02d" % current_epoch, params, model)
     res, best_res, outputs = evaluate(model, dataset_test, params, save_result=True, output=True, summary_writer=summary_writer)
 
     for metric in res['result']:
-        summary_writer.add_scalar("eval_%s" % metric, res['result'][metric], current_epoch)
+        if summary_writer is not None:
+            summary_writer.add_scalar("eval_%s" % metric, res['result'][metric], current_epoch)
 
     logger.info("Random samples")
     for output in random.choices(outputs, k=5):
@@ -129,8 +131,11 @@ def main(argv=None):
     logger.info("Training started.")
     device = torch.device("cuda" if use_cuda else "cpu")
 
+    # summary_writer = SummaryWriter()
+    summary_writer = None
+
     if args.num_processes == 1:
-        train(configs.params, configs.args, model, dataset_train, dataset_test, summary_writer=SummaryWriter())
+        train(configs.params, configs.args, model, dataset_train, dataset_test, summary_writer=summary_writer)
     else:
         model.share_memory()
         # TODO: Implement multiprocessing

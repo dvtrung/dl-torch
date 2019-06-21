@@ -17,7 +17,11 @@ def get_model(params):
 
 def get_dataset(params) -> DatasetBuilder:
     """Return the dataset class by its name."""
-    module_name, class_name = params.dataset.name.rsplit('.', 1)
+    if params.dataset.name:
+        module_name, class_name = params.dataset.name.rsplit('.', 1)
+    elif params.dataset.alias:
+        from dlex.datasets.aliases import dataset_aliases
+        module_name, class_name = dataset_aliases[params.dataset.alias].rsplit('.', 1)
     i = importlib.import_module(module_name)
     return getattr(i, class_name)(params)
 
