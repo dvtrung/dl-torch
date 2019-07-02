@@ -3,7 +3,7 @@ import json
 import base64
 
 with open('bin/launch.sh') as f:
-    user_data = base64.b64encode(f.read())
+    user_data = base64.b64encode(f.read().encode('utf-8')).decode('utf-8')
 
 config = {
   "TargetCapacity": 1,

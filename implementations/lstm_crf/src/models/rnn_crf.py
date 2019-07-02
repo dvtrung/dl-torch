@@ -76,7 +76,7 @@ class embed(nn.Module):
             self.kernel_sizes = [3]
 
             # architecture
-            self.embed = nn.Embedding(dim_in, self.embed_size, padding_idx = self.pad_idx)
+            self.embed = nn.Embedding(dim_in, self.embed_size, padding_idx=self.pad_idx)
             self.conv = nn.ModuleList([nn.Conv2d(
                 in_channels=1, # Ci
                 out_channels=self.num_featmaps, # Co
@@ -95,7 +95,7 @@ class embed(nn.Module):
             h = torch.cat(h, 1) # [B * L, Co * K]
             h = self.dropout(h)
             h = self.fc(h) # [B * L, dim_out]
-            h = h.view(self.params.batch_size, -1, h.size(1)) # [B, L, dim_out]
+            h = h.view(self.params.train.batch_size, -1, h.size(1)) # [B, L, dim_out]
             return h
 
     def forward(self, cx, wx):

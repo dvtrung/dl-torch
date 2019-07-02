@@ -67,8 +67,8 @@ class GAN(BaseModel):
         self.discriminator = Discriminator(params, dataset)
 
         self._optimizers = [
-            get_optimizer(self.params.optimizer, self.generator.parameters()),
-            get_optimizer(self.params.optimizer, self.discriminator.parameters())
+            get_optimizer(self.params.train.optimizer, self.generator.parameters()),
+            get_optimizer(self.params.train.optimizer, self.discriminator.parameters())
         ]
 
         self._criterion = torch.nn.BCELoss()

@@ -21,7 +21,7 @@ def add_result(params, new_result):
     """Add a checkpoint for evaluation result."""
     ret = load_results(params)
     ret["evaluations"].append(new_result)
-    for m in params.metrics:
+    for m in params.test.metrics:
         if m not in ret["best_results"] or \
                 new_result['result'][m] > ret['best_results'][m]['result'][m]:
             ret["best_results"][m] = new_result

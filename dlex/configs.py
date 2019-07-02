@@ -34,16 +34,11 @@ class AttrDict(dict):
             if isinstance(self[key], dict):
                 self[key] = AttrDict(self[key])
 
-    def __getattr__(self, item):
-        """
-        :param str item:
-        :rtype: AttrDict
-        """
+    def __getattr__(self, item: str):
         logger.warning("Access to unset param %s", item)
         return None
 
     def set(self, field, value):
-        """Set key value."""
         setattr(self, field, value)
 
     def extend_default_keys(self, d):
@@ -109,13 +104,13 @@ def str2bool(val):
         raise argparse.ArgumentTypeError('Boolean value expected.')
 
 
-class Configs():
+class Configs:
     """All configurations"""
     params = None
     args = None
 
     def __init__(self, mode, argv=None):
-        self.mode = mode
+        self._mode = mode
         self.parse_args(argv)
         self.get_params()
 
@@ -128,7 +123,7 @@ class Configs():
             required=True,
             dest="config_path",
             help="path to model's configuration file")
-        if self.mode == "train":
+        if self._mode == "train":
             parser.add_argument('--debug', action="store_true",
                                 help="train and eval on the same small data to check if the model works")
         parser.add_argument('--download', action="store_true",
@@ -137,16 +132,16 @@ class Configs():
                             help="force to preprocess the data")
         parser.add_argument('--verbose', action="store_true")
         parser.add_argument('-l, --load', dest="load", default=None,
-                            required=self.mode in ["eval", "infer"],
+                            required=self._mode in ["eval", "infer"],
                             help="tag of the checkpoint to load")
         parser.add_argument('--cpu', action='store_true', default=False,
                             help='disables CUDA training')
-        if self.mode == "train":
+        if self._mode == "train":
             parser.add_argument('--num_processes', type=int, default=1, metavar='N',
                                 help="how many training process to use")
             parser.add_argument('--save_all', action='store_true', default=False,
                                 help='save every epoch')
-        elif self.mode == "infer":
+        elif self._mode == "infer":
             parser.add_argument(
                 '-i --input',
                 nargs="*", action="append",
@@ -164,7 +159,7 @@ class Configs():
             with open(path, 'r') as stream:
                 params = yaml.load(stream, Loader=Loader)
                 params = AttrDict(params)
-                params.set("mode", self.mode)
+                params.set("mode", self._mode)
                 params.set('path', self.args.config_path)
                 self.params = params
         except yaml.YAMLError as exc:

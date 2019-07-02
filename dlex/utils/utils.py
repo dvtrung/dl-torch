@@ -6,6 +6,7 @@ import zipfile
 import tarfile
 import shutil
 import re
+from subprocess import call
 
 from six.moves import urllib
 import requests
@@ -30,18 +31,14 @@ def reporthook(count, block_size, total_size):
     sys.stdout.flush()
 
 
-def maybe_download(work_directory, source_url, filename=None):
+def maybe_download(download_dir: str, source_url: str, filename: str = None) -> str:
     """Download the data from source url, unless it's already here.
-    Args:
-        filename: string, name of the file in the directory.
-        work_directory: string, path to working directory.
-        source_url: url to download from if file doesn't exist.
     Returns:
         Path to resulting file.
     """
-    if not os.path.exists(work_directory):
-        os.makedirs(work_directory)
-    filepath = os.path.join(work_directory, filename or source_url[source_url.rfind("/")+1:])
+    if not os.path.exists(download_dir):
+        os.makedirs(download_dir)
+    filepath = os.path.join(download_dir, filename or source_url[source_url.rfind("/")+1:])
     if not os.path.exists(filepath):
         with open(filepath, 'wb') as f:
             logger.info("Downloading file at %s to %s", source_url, filepath)
@@ -94,3 +91,10 @@ def init_dirs(params):
 def camel2snake(name: str) -> str:
     s1 = re.sub('(.)([A-Z][a-z]+)', r'\1_\2', name)
     return re.sub('([a-z0-9])([A-Z])', r'\1_\2', s1).lower()
+
+
+def run_script(name: str, args):
+    import inspect
+    import dlex
+    root = os.path.dirname(inspect.getfile(dlex))
+    call(["python", os.path.join(root, "scripts", name), *args])
