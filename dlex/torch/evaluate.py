@@ -27,22 +27,22 @@ def evaluate(model, dataset, params, save_result=False, output=False, summary_wr
     """
     data_loader = DataLoader(
         dataset,
-        batch_size=params.test_batch_size or params.batch_size,
+        batch_size=params.test.batch_size or params.train.batch_size,
         collate_fn=dataset.collate_fn)
 
-    total = {key: 0 for key in params.metrics}
-    acc = {key: 0. for key in params.metrics}
+    total = {key: 0 for key in params.test.metrics}
+    acc = {key: 0. for key in params.test.metrics}
     outputs = []
     for batch in tqdm(data_loader, desc="Eval"):
         y_pred, others = model.infer(batch)
-        for key in params.metrics:
+        for key in params.test.metrics:
             _acc, _total = dataset.evaluate_batch(y_pred, batch, metric=key)
             acc[key] += _acc
             total[key] += _total
         if output:
             for i, predicted in enumerate(y_pred):
                 str_input, str_ground_truth, str_predicted = dataset.format_output(
-                    predicted, batch[i])
+                    predicted, batch.item(i))
                 outputs.append('\n'.join([str_input, str_ground_truth, str_predicted]))
         if summary_writer is not None:
             model.write_summary(summary_writer, batch, (y_pred, others))

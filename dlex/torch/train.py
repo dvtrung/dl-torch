@@ -15,6 +15,7 @@ from dlex.utils.logging import logger, logging
 from dlex.torch.utils.model_utils import get_model, get_dataset, \
     load_checkpoint, save_checkpoint
 from dlex.utils.utils import init_dirs
+from dlex.torch.models.base import DataParellelModel
 
 DEBUG_NUM_ITERATIONS = 5
 DEBUG_BATCH_SIZE = 4
@@ -23,13 +24,13 @@ DEBUG_BATCH_SIZE = 4
 def train(params, args, model, dataset_train, dataset_test, summary_writer):
     data_train = DataLoader(
         dataset_train,
-        batch_size=params.batch_size,
+        batch_size=params.train.batch_size,
         shuffle=params.shuffle,
         collate_fn=dataset_train.collate_fn,
         pin_memory=params.cpu)
 
     epoch = int(model.global_step / len(dataset_train))
-    for current_epoch in range(epoch + 1, epoch + params.num_epochs + 1):
+    for current_epoch in range(epoch + 1, epoch + params.train.num_epochs + 1):
         train_epoch(current_epoch, params, args, model, data_train, dataset_test, summary_writer)
 
 
@@ -50,12 +51,14 @@ def train_epoch(current_epoch, params, args, model, data_train, dataset_test, su
 
             model.current_epoch = current_epoch
             model.global_step = (current_epoch - 1) * len(data_train.dataset) + \
-                epoch_step * params.batch_size
+                epoch_step * params.train.batch_size
             if summary_writer is not None:
                 summary_writer.add_scalar("loss", loss, model.global_step)
     end_time = datetime.now()
     if args.save_all:
         save_checkpoint("epoch-%02d" % current_epoch, params, model)
+    else:
+        save_checkpoint("latest", params, model)
     res, best_res, outputs = evaluate(model, dataset_test, params, save_result=True, output=True, summary_writer=summary_writer)
 
     for metric in res['result']:
@@ -70,7 +73,7 @@ def train_epoch(current_epoch, params, args, model, data_train, dataset_test, su
     for metric in best_res:
         if best_res[metric] == res:
             save_checkpoint(
-                "best" if len(params.metrics) == 1 else "best-%s" % metric,
+                "best" if len(params.test.metrics) == 1 else "best-%s" % metric,
                 params, model)
             logger.info("Best checkpoint for %s saved", metric)
 
@@ -85,7 +88,7 @@ def main(argv=None):
     params, args = configs.params, configs.args
 
     if args.debug:
-        params.batch_size = DEBUG_BATCH_SIZE
+        params.train.batch_size = DEBUG_BATCH_SIZE
         params.eval_batch_size = DEBUG_BATCH_SIZE
 
     torch.manual_seed(params.seed)
@@ -108,9 +111,13 @@ def main(argv=None):
     for parameter in model.parameters():
         logger.debug(parameter.shape)
 
+    device_ids = [i for i in range(torch.cuda.device_count())]
+    logger.info("Training on %s" % str(device_ids))
+    model = DataParellelModel(model, device_ids)
+
     use_cuda = torch.cuda.is_available()
-    if use_cuda:
-        model.cuda()
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    model.to(device)
 
     if args.load:
         load_checkpoint(args.load, params, model)
@@ -129,7 +136,6 @@ def main(argv=None):
         logger.info("CUDA available: %s", torch.cuda.get_device_name(0))
 
     logger.info("Training started.")
-    device = torch.device("cuda" if use_cuda else "cpu")
 
     # summary_writer = SummaryWriter()
     summary_writer = None

@@ -1,19 +1,17 @@
 from typing import List
-
 import math
 
 import torch
-import torch.nn.functional as F
-import torch.nn as nn
 import numpy as np
+import torch.nn as nn
+import torch.nn.functional as F
 
 from dlex.datasets.voice.torch import PytorchSeq2SeqDataset
 from dlex.torch import Batch
 from dlex.torch.models.base import BaseModel
 from dlex.utils.logging import logger
-from dlex.torch.utils.ops_utils import maybe_cuda
-from .encoder import EncoderRNN
 from .decoder import DecoderRNN, DecodingStates, BeamSearchConfigs
+from .encoder import EncoderRNN
 
 
 class Attention(BaseModel):
@@ -55,15 +53,14 @@ class Attention(BaseModel):
 
         #    self.recog_args = argparse.Namespace(**recog_args)
         self.rnn_language_model = None
-        self._criterion = nn.CrossEntropyLoss(ignore_index=-1)
 
     def _build_encoder(self) -> EncoderRNN:
         """
         :rtype: EncoderRNN
         """
-        cfg = self._params.model
+        cfg = self.params.model
         return EncoderRNN(
-            input_size=self._dataset.input_size,
+            input_size=self.dataset.input_size,
             rnn_type=cfg.encoder.rnn_type,
             bidirectional=cfg.encoder.bidirectional,
             num_layers=cfg.encoder.num_layers,
@@ -75,17 +72,17 @@ class Attention(BaseModel):
         """
         :rtype: DecoderRNN
         """
-        cfg = self._params.model
+        cfg = self.params.model
         return DecoderRNN(
             input_size=cfg.encoder.output_size,
             rnn_type=cfg.decoder.rnn_type,
             num_layers=cfg.decoder.num_layers,
             hidden_size=cfg.decoder.hidden_size,
             output_size=cfg.decoder.output_size,
-            vocab_size=self._dataset.output_size,
+            vocab_size=self.dataset.output_size,
             attention=self._attention,
-            sos_idx=self._dataset.sos_token_idx,
-            eos_idx=self._dataset.eos_token_idx,
+            sos_idx=self.dataset.sos_token_idx,
+            eos_idx=self.dataset.eos_token_idx,
             max_length=cfg.decoder.max_length,
             beam_search_configs=BeamSearchConfigs(
                 beam_size=cfg.beam_search.beam_size,
@@ -94,7 +91,7 @@ class Attention(BaseModel):
             dropout=cfg.dropout)
 
     def _build_attention(self) -> List[torch.nn.Module]:
-        cfg = self._params.model
+        cfg = self.params.model
         logger.info("Attention type: %s", cfg.attention.type)
         if cfg.attention.type is None:
             attention = [NoAttention()]
@@ -104,7 +101,7 @@ class Attention(BaseModel):
                 decoder_hidden_size=cfg.decoder.hidden_size,
                 attention_dim=cfg.attention.size,
             )
-            attention = [self._test]
+            attention = torch.nn.ModuleList([self._test])
         elif cfg.attention.type == "location":
             self._test = LocationAwareAttention(
                 encoder_output_size=cfg.encoder.output_size,
@@ -113,7 +110,7 @@ class Attention(BaseModel):
                 num_channels=cfg.attention.num_channels,
                 filter_size=cfg.attention.filter_size
             )
-            attention = [self._test]
+            attention = torch.nn.ModuleList([self._test])
         return attention
 
     def init_like_chainer(self):
@@ -162,33 +159,34 @@ class Attention(BaseModel):
         for l in range(len(self._decoder._decoder)):
             set_forget_bias_to_one(self._decoder._decoder[l].bias_ih)
 
-    def forward(self, batch: Batch) -> DecodingStates:
+    def forward(self, batch: Batch):
         states = self._encoder(batch.X, batch.X_len)
         states.decoder_inputs = batch.Y
         states = self._decoder(states)
-        return states
+        return dict(
+            decoder_outputs=states.decoder_outputs,
+        )
 
-    def get_loss(self, batch: Batch, states: DecodingStates) -> torch.Tensor:
-        y = batch.Y[:, 1:]
+    def get_loss(self, batch: Batch, states) -> torch.Tensor:
+        y = batch.Y[:, 1:].contiguous()
         batch_size = y.shape[0]
         max_length = y.shape[1]
-        decoder_outputs = states.decoder_outputs.view(batch_size, -1, self._dataset.output_size)
-        loss = sum([
-            self._criterion(decoder_outputs[:, i, :], y[:, i])
-            for i in range(max_length)
-            ])
-        loss /= max_length
-        # -1: eos, which is removed in the loss computation
-        # loss *= (np.mean(batch.Y_len) - 1)
+        decoder_outputs = states['decoder_outputs'].view(batch_size, -1, self.dataset.output_size)
+        loss = F.cross_entropy(
+            decoder_outputs.view(-1, self.dataset.output_size),
+            y.view(-1),
+            ignore_index=self.dataset.pad_token_idx,
+            reduction='mean')
+        loss *= (np.mean(np.array(batch.Y_len.cpu())))
         return loss
 
     def infer(self, batch: Batch):
         states = self._encoder(batch.X, batch.X_len)
-        if self._params.model.decoding_method == 'greedy':
-            states = self._decoder(states, use_teacher_forcing=False)
-        elif self._params.model.decoding_method == 'beam_search':
+        if self.params.model.decoding_method == 'greedy':
+            states = self._decoder.greedy_search(states)
+        elif self.params.model.decoding_method == 'beam_search':
             states = self._decoder.beam_search(states)
-        return states.decoded_sequences, states
+        return states['decoded_sequences'], states
 
     def recognize(self, x, recog_args, char_list, rnn_language_model=None):
         """E2E beam search
@@ -275,7 +273,7 @@ class Attention(BaseModel):
 
     def write_summary(self, summary_writer, batch, output):
         y_pred, others = output
-        str_input, str_ground_truth, str_predicted = self._dataset.format_output(y_pred[0], batch[0])
+        str_input, str_ground_truth, str_predicted = self.dataset.format_output(y_pred[0], batch.item(i))
         summary_writer.add_text(
             "inference_result",
             str_predicted,
@@ -292,10 +290,10 @@ class NMT(Attention):
         """
         :rtype: EncoderRNN
         """
-        cfg = self._params.model
+        cfg = self.params.model
 
         self.embedding = nn.Embedding(
-            num_embeddings=self._dataset.input_size,
+            num_embeddings=self.dataset.input_size,
             embedding_dim=cfg.encoder.input_size)
         if cfg.encoder.embedding is not None:
             # TODO: implement custom embedding
@@ -312,20 +310,20 @@ class NMT(Attention):
             dropout=cfg.dropout
         )
 
-    def forward(self, batch):
+    def forward(self, batch: Batch):
         """
         :param dict[str, torch.Tensor] batch:
         :rtype:
         """
-        return super().forward(dict(
-            X=self.embedding(batch.X),
-            X_len=batch.X_len,
-            Y=batch.Y,
-            Y_len=batch.Y_len
+        return super().forward(Batch(
+            X=self.embedding(batch.X.to(self.embedding.weight.device)),
+            X_len=batch.X_len.to(self.embedding.weight.device),
+            Y=batch.Y.to(self.embedding.weight.device),
+            Y_len=batch.Y_len.to(self.embedding.weight.device)
         ))
 
-    def infer(self, batch):
-        return super().infer(dict(
+    def infer(self, batch: Batch):
+        return super().infer(Batch(
             X=self.embedding(batch.X),
             X_len=batch.X_len,
             Y=batch.Y,
@@ -360,29 +358,33 @@ class TeacherForcingDecoder(nn.Module):
         return sequence_symbols, lengths, decoder_outputs
 
 
-def make_pad_mask(lengths):
-    """Function to make mask tensor containing indices of padded part
+class BaseAttention(torch.nn.Module):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
-    e.g.: lengths = [5, 3, 2]
-          mask = [[0, 0, 0, 0 ,0],
-                  [0, 0, 0, 1, 1],
-                  [0, 0, 1, 1, 1]]
+    def make_pad_mask(self, lengths):
+        """Function to make mask tensor containing indices of padded part
 
-    :param list lengths: list of lengths (B)
-    :return: mask tensor containing indices of padded part (B, Tmax)
-    :rtype: torch.Tensor
-    """
-    if not isinstance(lengths, list):
-        lengths = lengths.tolist()
-    bs = int(len(lengths))
-    maxlen = int(max(lengths))
-    seq_range = torch.arange(0, maxlen, dtype=torch.int64)
-    seq_range_expand = seq_range.unsqueeze(0).expand(bs, maxlen)
-    seq_length_expand = seq_range_expand.new(lengths).unsqueeze(-1)
-    return maybe_cuda(seq_range_expand >= seq_length_expand)
+        e.g.: lengths = [5, 3, 2]
+              mask = [[0, 0, 0, 0 ,0],
+                      [0, 0, 0, 1, 1],
+                      [0, 0, 1, 1, 1]]
+
+        :param list lengths: list of lengths (B)
+        :return: mask tensor containing indices of padded part (B, Tmax)
+        :rtype: torch.Tensor
+        """
+        if not isinstance(lengths, list):
+            lengths = lengths.tolist()
+        bs = int(len(lengths))
+        maxlen = int(max(lengths))
+        seq_range = torch.arange(0, maxlen, dtype=torch.int64)
+        seq_range_expand = seq_range.unsqueeze(0).expand(bs, maxlen)
+        seq_length_expand = seq_range_expand.new(lengths).unsqueeze(-1)
+        return seq_range_expand >= seq_length_expand
 
 
-class NoAttention(torch.nn.Module):
+class NoAttention(BaseAttention):
     def __init__(self):
         super(NoAttention, self).__init__()
         self.h_length = None
@@ -418,7 +420,7 @@ class NoAttention(torch.nn.Module):
         # initialize attention weight with uniform dist.
         if att_prev is None:
             # if no bias, 0 0-pad goes 0
-            mask = 1. - make_pad_mask(enc_hs_len).float()
+            mask = 1. - self.make_pad_mask(enc_hs_len).float()
             att_prev = mask / mask.new(enc_hs_len.float()).unsqueeze(-1)
             att_prev = att_prev.to(self.enc_h)
             self.c = torch.sum(self.enc_h * att_prev.view(batch, self.h_length, 1), dim=1)
@@ -426,7 +428,7 @@ class NoAttention(torch.nn.Module):
         return self.c, att_prev
 
 
-class AttDot(torch.nn.Module):
+class AttDot(BaseAttention):
     """Dot product attention
 
     :param int eprojs: # projection-units of encoder
@@ -486,7 +488,7 @@ class AttDot(torch.nn.Module):
 
         # NOTE consider zero padding when compute w.
         if self.mask is None:
-            self.mask = maybe_cuda(make_pad_mask(enc_hs_len))
+            self.mask = self.make_pad_mask(enc_hs_len).to(e.device)
         e.masked_fill_(self.mask, -float('inf'))
         w = F.softmax(scaling * e, dim=1)
 
@@ -497,7 +499,7 @@ class AttDot(torch.nn.Module):
         return c, w
 
 
-class BahdanauAttention(nn.Module):
+class BahdanauAttention(BaseAttention):
     """Additive attention
 
     :param int eprojs: # projection-units of encoder
@@ -539,7 +541,7 @@ class BahdanauAttention(nn.Module):
         :rtype: torch.Tensor
         """
 
-        batch = len(encoder_outputs)
+        batch_size = len(encoder_outputs)
         # pre-compute all h outside the decoder loop
         if self.pre_compute_enc_h is None:
             self.enc_h = encoder_outputs  # utt x frame x hdim
@@ -548,12 +550,12 @@ class BahdanauAttention(nn.Module):
             self.pre_compute_enc_h = self.mlp_enc(self.enc_h)
 
         if decoder_hidden_state is None:
-            decoder_hidden_state = encoder_outputs.new_zeros(batch, self._decoder_hidden_size)
+            decoder_hidden_state = encoder_outputs.new_zeros(batch_size, self._decoder_hidden_size)
         else:
-            decoder_hidden_state = decoder_hidden_state.view(batch, self._decoder_hidden_size)
+            decoder_hidden_state = decoder_hidden_state.view(batch_size, self._decoder_hidden_size)
 
         # dec_z_tiled: utt x frame x att_dim
-        dec_z_tiled = self.mlp_dec(decoder_hidden_state).view(batch, 1, self._attention_dim)
+        dec_z_tiled = self.mlp_dec(decoder_hidden_state).view(batch_size, 1, self._attention_dim)
 
         # dot with gvec
         # utt x frame x att_dim -> utt x frame
@@ -561,14 +563,14 @@ class BahdanauAttention(nn.Module):
 
         # NOTE consider zero padding when compute w.
         if self.mask is None:
-            self.mask = maybe_cuda(make_pad_mask(encoder_output_lens))
+            self.mask = self.make_pad_mask(encoder_output_lens).to(e.device)
         e.masked_fill_(self.mask, -float('inf'))
         w = F.softmax(scaling * e, dim=1)
 
         # weighted sum over flames
         # utt x hdim
         # NOTE use bmm instead of sum(*)
-        c = torch.sum(self.enc_h * w.view(batch, self.h_length, 1), dim=1)
+        c = torch.sum(self.enc_h * w.view(batch_size, -1, 1), dim=1)
 
         return c, w
 
@@ -639,7 +641,7 @@ class LocationAwareAttention(torch.nn.Module):
         # initialize attention weight with uniform dist.
         if att_prev is None:
             # if no bias, 0 0-pad goes 0
-            att_prev = maybe_cuda(1. - make_pad_mask(encoder_output_lens).float())
+            att_prev = 1. - self.make_pad_mask(encoder_output_lens).float()
             att_prev = att_prev / att_prev.new(encoder_output_lens.float()).unsqueeze(-1)
 
         # att_prev: utt x frame -> utt x 1 x 1 x frame -> utt x att_conv_chans x 1 x frame
@@ -658,7 +660,7 @@ class LocationAwareAttention(torch.nn.Module):
 
         # NOTE consider zero padding when compute w.
         if self.mask is None:
-            self.mask = maybe_cuda(make_pad_mask(encoder_output_lens))
+            self.mask = self.make_pad_mask(encoder_output_lens)
         e.masked_fill_(self.mask, -float('inf'))
         w = F.softmax(scaling * e, dim=1)
 
@@ -732,7 +734,7 @@ class AttCov(torch.nn.Module):
         # initialize attention weight with uniform dist.
         if att_prev_list is None:
             # if no bias, 0 0-pad goes 0
-            att_prev_list = to_device(self, (1. - make_pad_mask(enc_hs_len).float()))
+            att_prev_list = to_device(self, (1. - self.make_pad_mask(enc_hs_len).float()))
             att_prev_list = [att_prev_list / att_prev_list.new(enc_hs_len).unsqueeze(-1)]
 
         # att_prev_list: L' * [B x T] => cov_vec B x T

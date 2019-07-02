@@ -10,8 +10,7 @@ from dlex.utils.logging import logger
 from dlex.torch.utils.ops_utils import maybe_cuda, LongTensor
 
 
-@dataclass
-class DecodingStates:
+class DecodingStates(dict):
     encoder_outputs: torch.Tensor
     encoder_output_lens: torch.Tensor
     encoder_states: torch.Tensor
@@ -20,6 +19,10 @@ class DecodingStates:
     attentions: List[torch.Tensor] = None
     decoded_sequences: torch.Tensor = None
     decoded_lengths: List[int] = None
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.__dict__ = self
 
 
 @dataclass
@@ -148,13 +151,17 @@ class DecoderRNN(nn.Module):
                 z_list[l] = self._decoder[l](self._dropout_decoder[l - 1](z_list[l - 1]), z_prev[l])
         return z_list, c_list
 
+    @property
+    def attention(self):
+        return self._attention
+
     def forward(self, states: DecodingStates, strm_idx=0, use_teacher_forcing=True) -> DecodingStates:
         batch_size = states.encoder_outputs.size(0)
         max_length = states.decoder_inputs.size(1) if states.decoder_inputs is not None else self._max_length
         # ys = [y[y != self.ignore_id] for y in decoder_inputs]  # parse padded ys
         # attention index for the attention module
         # in SPA (speaker parallel attention), att_idx is used to select attention module. In other cases, it is 0.
-        att_idx = min(strm_idx, len(self._attention) - 1)
+        att_idx = min(strm_idx, len(self.attention) - 1)
 
         # initialization
         c_list = [self.zero_state(states.encoder_outputs)]
@@ -164,14 +171,14 @@ class DecoderRNN(nn.Module):
             z_list.append(self.zero_state(states.encoder_outputs))
         att_w = None
         z_all = []
-        self._attention[att_idx].reset()  # reset pre-computation of h
+        self.attention[att_idx].reset()  # reset pre-computation of h
 
         if use_teacher_forcing:
             decoder_embedded_inputs = self.dropout_emb(self.embed(states.decoder_inputs[:, :-1]))  # utt x olen x zdim
 
             # loop for an output sequence
             for i in range(states.decoder_inputs.size(1) - 1):
-                att_c, att_w = self._attention[att_idx](
+                att_c, att_w = self.attention[att_idx](
                     states.encoder_outputs,
                     states.encoder_output_lens,
                     self._dropout_decoder[0](z_list[0]),
@@ -181,7 +188,7 @@ class DecoderRNN(nn.Module):
                 z_all.append(self._dropout_decoder[-1](z_list[-1]))
         else:
             for step in range(max_length):
-                att_c, att_w = self._attention[att_idx](
+                att_c, att_w = self.attention[att_idx](
                     states.encoder_outputs,
                     states.encoder_output_lens,
                     self._dropout_decoder[0](z_list[0]),
@@ -201,8 +208,15 @@ class DecoderRNN(nn.Module):
 
         z_all = torch.stack(z_all, dim=1).view(batch_size, -1, self._hidden_size)
         decoder_outputs = self._output(z_all)
-        _, sequences = decoder_outputs.max(-1)
+        states.decoder_outputs = decoder_outputs
+        states.attentions = None
+        return states
 
+    def greedy_search(self, states: DecodingStates):
+        states = self.forward(states, use_teacher_forcing=False)
+        batch_size = states.encoder_outputs.size(0)
+        max_length = states.decoder_inputs.size(1) if states.decoder_inputs is not None else self._max_length
+        _, sequences = states.decoder_outputs.max(-1)
         lengths = np.array([max_length] * batch_size)
         for step in range(max_length - 1):
             eos_batches = sequences[:, step].eq(self._eos_idx)
@@ -218,10 +232,9 @@ class DecoderRNN(nn.Module):
         # print(att_ws[0].shape)
         # attentions.append(att_c)
         # print(len(attentions))
-        states.decoder_outputs = decoder_outputs
-        states.attentions = None
+
         states.decoded_sequences = [seq[:length].cpu().detach().numpy()
-                    for seq, length in zip(sequences, lengths)]
+                                    for seq, length in zip(sequences, lengths)]
         states.decoded_lengths = lengths
         return states
 
@@ -239,7 +252,7 @@ class DecoderRNN(nn.Module):
             configs: BeamSearchConfigs,
             rnn_language_model=None,
             normalize_score=True, strm_idx=0):
-        att_idx = min(strm_idx, len(self._attention) - 1)
+        att_idx = min(strm_idx, len(self.attention) - 1)
         encoder_outputs = mask_by_length(states.encoder_outputs, states.encoder_output_lens, 0.0)
         # search params
         batch_size = len(states.encoder_output_lens)
@@ -264,7 +277,7 @@ class DecoderRNN(nn.Module):
         a_prev = None
         rnn_language_model_prev = None
 
-        self._attention[att_idx].reset()  # reset pre-computation of h
+        self.attention[att_idx].reset()  # reset pre-computation of h
 
         y_seq = [[self._sos_idx] for _ in range(n_bb)]
         stop_search = [False for _ in range(batch_size)]
@@ -277,7 +290,7 @@ class DecoderRNN(nn.Module):
         for i in range(max_len):
             last_predicted_labels = LongTensor([y[-1] for y in y_seq])
             last_predicted_label_embeddings = self.dropout_emb(self.embed(last_predicted_labels))
-            att_c, att_w = self._attention[att_idx](exp_h, exp_encoder_output_lens, self._dropout_decoder[0](z_prev[0]), a_prev)
+            att_c, att_w = self.attention[att_idx](exp_h, exp_encoder_output_lens, self._dropout_decoder[0](z_prev[0]), a_prev)
             decoder_rnn_inputs = torch.cat((last_predicted_label_embeddings, att_c), dim=1)
 
             # attention decoder
@@ -399,14 +412,14 @@ class DecoderRNN(nn.Module):
         :return: N-best decoding results
         :rtype: list of dicts
         """
-        att_idx = min(strm_idx, len(self._attention) - 1)
+        att_idx = min(strm_idx, len(self.attention) - 1)
         # initialization
         c_list = [self.zero_state(encoder_outputs.unsqueeze(0))]
         z_list = [self.zero_state(encoder_outputs.unsqueeze(0))]
         for _ in range(1, self._num_layers):
             c_list.append(self.zero_state(encoder_outputs.unsqueeze(0)))
             z_list.append(self.zero_state(encoder_outputs.unsqueeze(0)))
-        self._attention[att_idx].reset()  # reset pre-computation of h
+        self.attention[att_idx].reset()  # reset pre-computation of h
         a = None
 
         # search parms
@@ -444,7 +457,7 @@ class DecoderRNN(nn.Module):
                 vy[0] = hyp['y_seq'][i]
                 ey = self.dropout_emb(self.embed(vy))  # utt list (1) x zdim
                 ey.unsqueeze(0)
-                att_c, att_w = self._attention[att_idx](encoder_outputs.unsqueeze(0), [encoder_outputs.size(0)],
+                att_c, att_w = self.attention[att_idx](encoder_outputs.unsqueeze(0), [encoder_outputs.size(0)],
                                                         self._dropout_decoder[0](hyp['z_prev'][0]), hyp['a_prev'])
                 ey = torch.cat((ey, att_c), dim=1)  # utt(1) x (zdim + hdim)
                 z_list, c_list = self.rnn_forward(ey, z_list, c_list, hyp['z_prev'], hyp['c_prev'])
@@ -547,7 +560,7 @@ class DecoderRNN(nn.Module):
         """
         # TODO(kan-bayashi): need to make more smart way
         ys = [y[y != self.ignore_id] for y in decoder_inputs]  # parse padded ys
-        att_idx = min(strm_idx, len(self._attention) - 1)
+        att_idx = min(strm_idx, len(self.attention) - 1)
 
         encoder_output_lens = list(map(int, encoder_output_lens))
 
@@ -565,14 +578,14 @@ class DecoderRNN(nn.Module):
             z_list.append(self.zero_state(encoder_outputs))
         att_w = None
         att_ws = []
-        self._attention[att_idx].reset()  # reset pre-computation of h
+        self.attention[att_idx].reset()  # reset pre-computation of h
 
         # pre-computation of embedding
         eys = self.dropout_emb(self.embed(ys_in_pad))  # utt x olen x zdim
 
         # loop for an output sequence
         for i in range(max_length):
-            att_c, att_w = self._attention[att_idx](encoder_outputs, encoder_output_lens, self._dropout_decoder[0](z_list[0]), att_w)
+            att_c, att_w = self.attention[att_idx](encoder_outputs, encoder_output_lens, self._dropout_decoder[0](z_list[0]), att_w)
             ey = torch.cat((eys[:, i, :], att_c), dim=1)  # utt x (zdim + hdim)
             z_list, c_list = self.rnn_forward(ey, z_list, c_list, z_list, c_list)
             att_ws.append(att_w)

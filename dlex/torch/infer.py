@@ -13,7 +13,7 @@ def infer(model, dataset, params):
 
     data_loader = DataLoader(
         dataset,
-        batch_size=params.test_batch_size or params.batch_size,
+        batch_size=params.test.batch_size or params.train.batch_size,
         collate_fn=dataset.collate_fn)
 
     count = 0
@@ -23,7 +23,7 @@ def infer(model, dataset, params):
             count += 1
             logger.info(dataset.format_output(
                 _y,
-                batch[i]))
+                batch.item(i)))
         # logger.info('\n'.join([str(r) for r in ret]))
 
 

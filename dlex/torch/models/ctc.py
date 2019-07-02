@@ -27,7 +27,6 @@ class CTC(BaseModel):
         return logits
 
     def get_loss(self, batch, output):
-        batch_size = batch.X.shape[0]
         return self.ctc_loss(
             log_probs=output.permute(1, 0, 2),
             targets=batch.Y,
@@ -43,7 +42,7 @@ class CTC(BaseModel):
             seq = []
             for t in range(batch.X_len[i]):
                 token = output_item[t].item()
-                if token != self._dataset.blank_token_idx:
+                if token != self.dataset.blank_token_idx:
                     seq.append(token)
             sequences.append(seq)
             lengths.append(len(seq))

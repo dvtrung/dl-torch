@@ -13,23 +13,41 @@ from dlex.torch.utils.model_utils import get_optimizer
 class BaseModel(nn.Module):
     def __init__(self, params, dataset):
         super().__init__()
-        self._params = params
-        self._dataset = dataset
+        self.params = params
+        self.dataset = dataset
 
+    @abc.abstractmethod
+    def infer(self, batch: Batch):
+        """Infer"""
+        return None
+
+
+class DataParellelModel(nn.DataParallel):
+    def __init__(self, *args, **kargs):
+        super().__init__(*args, **kargs)
         self.global_step = 0
         self.current_epoch = 0
-
-        if torch.cuda.is_available():
-            # logger.info("Cuda available: %s", torch.cuda.get_device_name(0))
-            self.cuda()
-
+        self.params = self.module.params
+        self.dataset = self.module.dataset
         self._optimizers = None
         self._loss_fn = None
+
+    def training_step(self, batch: Batch):
+        self.zero_grad()
+        output = self.forward(batch)
+        loss = self.get_loss(batch, output)
+        loss.backward()
+        for optimizer in self.optimizers:
+            if self.params.train.max_grad_norm is not None and self.params.train.max_grad_norm > 0:
+                params = itertools.chain.from_iterable([group['params'] for group in optimizer.param_groups])
+                nn.utils.clip_grad_norm_(params, self.params.train.max_grad_norm)
+            optimizer.step()
+        return loss
 
     @property
     def optimizers(self):
         if self._optimizers is None:
-            self._optimizers = [get_optimizer(self._params.optimizer, self.parameters())]
+            self._optimizers = [get_optimizer(self.params.train.optimizer, self.parameters())]
         return self._optimizers
 
     @property
@@ -54,22 +72,13 @@ class BaseModel(nn.Module):
     @abc.abstractmethod
     def infer(self, batch: Batch):
         """Infer"""
-        return None
-
-    def training_step(self, batch: Batch):
-        self.zero_grad()
-        output = self.forward(batch)
-        loss = self.get_loss(batch, output)
-        loss.backward()
-        for optimizer in self.optimizers:
-            if self._params.max_grad_norm is not None and self._params.max_grad_norm > 0:
-                params = itertools.chain.from_iterable([group['params'] for group in optimizer.param_groups])
-                nn.utils.clip_grad_norm_(params, self._params.max_grad_norm)
-            optimizer.step()
-        return loss
+        return self.module.infer(batch)
 
     def write_summary(self, summary_writer, batch, output):
         pass
+
+    def get_loss(self, batch, output):
+        return self.module.get_loss(batch, output)
 
 
 class ImageClassificationBaseModel(BaseModel):
