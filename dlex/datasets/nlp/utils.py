@@ -41,7 +41,7 @@ def load_idx_to_tkn(filename):
     return idx_to_tkn
 
 
-def normalize_string(sentence):
+def normalize_string_ascii(sentence):
     """
     :param str sentence:
     :return: normalized sentence, separated by space
@@ -57,6 +57,27 @@ def normalize_string(sentence):
     sent = re.sub("^ | $", "", sent)
 
     words = sent.split(' ')
+    ret = []
+    for word in words:
+        ret.append(normalize_word(word))
+    return ' '.join(ret)
+
+
+def normalize_string(sentence):
+    """
+    :param str sentence:
+    :return: normalized sentence, separated by space
+    :rtype str
+    """
+    # x = re.sub("[^ a-zA-Z0-9\uAC00-\uD7A3]+", " ", x)
+    # x = re.sub("[\u3040-\u30FF]+", "\u3042", x) # convert Hiragana and Katakana to あ
+    # x = re.sub("[\u4E00-\u9FFF]+", "\u6F22", x) # convert CJK unified ideographs to 漢
+    # sent = re.sub(r"([.!?,])", r" \1", sentence)
+    # sent = re.sub(r"[^a-zA-Z.!?,]+", r" ", sent)
+    # sent = re.sub(r"\s+", " ", sent)
+    # sent = re.sub("^ | $", "", sent)
+
+    words = sentence.split(' ')
     ret = []
     for word in words:
         ret.append(normalize_word(word))
@@ -195,6 +216,8 @@ class Vocab:
 
     @property
     def oov_token_idx(self) -> int:
-        idx = self['<oov>'] or self['<unk>']
-        assert idx is not None
-        return idx
+        if '<oov>' in self._token2index:
+            return self._token2index['<oov>']
+        elif '<unk>' in self._token2index:
+            return self._token2index['<unk>']
+        raise Exception("<oov> token not found.")

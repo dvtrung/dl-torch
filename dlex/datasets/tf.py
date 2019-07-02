@@ -3,9 +3,9 @@ from dlex.tf import Batch
 
 class TensorflowDataset:
     def __init__(self, dataset, mode, params):
-        self._params = params
+        self.params = params
         self._mode = mode
-        self._dataset = dataset
+        self.dataset = dataset
 
     @abc.abstractmethod
     def evaluate_batch(self, y_pred, batch: Batch, metric: str):
@@ -15,7 +15,7 @@ class TensorflowDataset:
             for k, _y_pred in enumerate(y_pred):
                 target = target_variables[k].cpu().detach().numpy().tolist()
                 predicted = _y_pred
-                s, t = self._dataset.evaluate(target, predicted, metric)
+                s, t = self.dataset.evaluate(target, predicted, metric)
                 score += s
                 total += t
             return score, total

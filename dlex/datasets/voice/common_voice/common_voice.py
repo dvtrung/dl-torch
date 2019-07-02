@@ -6,6 +6,7 @@ from dlex.datasets.voice.torch import PytorchVoiceDataset
 from dlex.datasets.voice.builder import VoiceDatasetBuilder
 from dlex.datasets.nlp.utils import write_vocab, normalize_string, char_tokenize, space_tokenize
 from dlex.utils.logging import logger
+from dlex.utils.utils import run_script
 
 
 def build_vocab(raw_dir, processed_dir):
@@ -26,24 +27,33 @@ class CommonVoiceBuilder(VoiceDatasetBuilder):
 
     def maybe_preprocess(self, force=False):
         super().maybe_preprocess(force)
-        if os.path.exists(self.get_processed_data_dir()):
-            return
+        # if os.path.exists(self.get_processed_data_dir()):
+        #     return
         os.makedirs(self.get_processed_data_dir(), exist_ok=True)
 
         build_vocab(self.get_raw_data_dir(), self.get_processed_data_dir())
 
-        # dfs = {mode: pandas.read_csv(os.path.join(self.get_raw_data_dir(), "%s.tsv" % mode), sep='\t') for mode in ['train', 'test']}
-
         dfs = pandas.read_csv(os.path.join(self.get_raw_data_dir(), "validated.tsv"), sep='\t')
         dfs = {'train': dfs[10000:], 'test': dfs[:10000]}
         file_paths = {mode: [
-            os.path.join(self.get_raw_data_dir(), "clips", r['path'] + ".mp3") for _, r in dfs[mode].iterrows()
+            os.path.join(self.get_processed_data_dir(), "htk", r['path'] + ".htk") for _, r in dfs[mode].iterrows()
         ] for mode in ['train', 'test']}
         transcripts = {mode: [
             r['sentence'] for _, r in dfs[mode].iterrows() if r['sentence'] is not None and isinstance(r['sentence'], str)
         ] for mode in ['train', 'test']}
-        self.extract_features(file_paths)
-        self.regularize(file_paths)
+
+        if False:
+            logger.info("Converting mp3 files to wav...")
+            run_script('convert-to-wav.py', [
+                '-i', os.path.join(self.get_raw_data_dir(), "clips"),
+                '-o', os.path.join(self.get_processed_data_dir(), "wav"),
+                '--num_workers', 4])
+            logger.info("Extracting features...")
+            run_script('extract-htk-features.py', [
+                '-i', os.path.join(self.get_processed_data_dir(), "wav"),
+                '-o', os.path.join(self.get_processed_data_dir(), "htk"),
+                '--num_workers', 4])
+            self.extract_features(file_paths)
         for token_type in ['word', 'char']:
             self.write_dataset(
                 token_type,
@@ -55,7 +65,7 @@ class CommonVoiceBuilder(VoiceDatasetBuilder):
             )
 
     def get_pytorch_wrapper(self, mode: str):
-        return PytorchCommonVoice(self, mode, self._params)
+        return PytorchCommonVoice(self, mode, self.params)
 
 
 class PytorchCommonVoice(PytorchVoiceDataset):
@@ -71,15 +81,6 @@ class PytorchCommonVoice(PytorchVoiceDataset):
         if mode == "debug":
             mode = "train"
 
-        with open(
-                os.path.join(builder.get_processed_data_dir(), "%s_%s" % (cfg.unit, mode) + '.csv'),
-                'r', encoding='utf-8') as f:
-            lines = f.read().split('\n')[1:]
-            lines = [l.split('\t') for l in lines if l != ""]
-            self._data = [{
-                'X_path': l[0],
-                'Y': [int(w) for w in l[1].split(' ')],
-            } for l in lines]
-
-            if is_debug:
-                self._data = self._data[:20]
+        self._data = self.load_data(os.path.join(builder.get_processed_data_dir(), "%s_%s" % (cfg.unit, mode) + '.csv'))
+        if is_debug:
+            self._data = self._data[:20]

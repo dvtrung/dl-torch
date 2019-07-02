@@ -14,7 +14,7 @@ class ImageDatasetBuilder(DatasetBuilder):
 
     def format_output(self, y_pred, batch_item, tag="default") -> (str, str, str):
         y_pred = y_pred.cpu().detach().numpy()
-        format = self._params.dataset.output_format
+        format = self.params.dataset.output_format
         if format is None or format == "default":
             return "", str(batch_item.Y), str(y_pred)
         elif format == "img":

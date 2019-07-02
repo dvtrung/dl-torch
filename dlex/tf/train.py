@@ -6,6 +6,7 @@ import tensorflow as tf
 from tensorflow.python.keras.callbacks import LearningRateScheduler, History, ModelCheckpoint, TensorBoard
 from tensorflow.python.keras.optimizers import SGD
 from tqdm import tqdm
+import numpy as np
 
 from dlex.utils.logging import logger
 from .utils.model_utils import get_model, get_dataset
@@ -45,7 +46,7 @@ def train_tensorflow(params, args):
     model_cls = get_model(params)
     model = model_cls(params, dataset_train)
 
-    for current_epoch in range(1, params.num_epochs + 1):
+    for current_epoch in range(1, params.train.num_epochs + 1):
         total_loss = 0
 
         with tqdm(dataset_train.all(), desc="Epoch %d" % current_epoch) as t:
@@ -59,9 +60,9 @@ def train_tensorflow(params, args):
 
 
 def train_keras(params, args):
-    dataset = get_dataset(params)
-    dataset_train = dataset.get_keras_wrapper("train")
-    dataset_test = dataset.get_keras_wrapper("validation")
+    dataset_builder = get_dataset(params)
+    dataset_train = dataset_builder.get_keras_wrapper("train")
+    dataset_test = dataset_builder.get_keras_wrapper("validation")
     # Init model
     model_cls = get_model(params)
     assert model_cls
@@ -70,7 +71,7 @@ def train_keras(params, args):
     model.compile(
         optimizer=SGD(0.1, momentum=0.9),
         loss="categorical_crossentropy",
-        metrics=["acc"])
+        metrics=model)
     model.summary()
 
     # convert to tpu model
@@ -79,15 +80,19 @@ def train_keras(params, args):
     # strategy = keras_support.TPUDistributionStrategy(tpu_cluster_resolver)
     # model = tf.contrib.tpu.keras_to_tpu_model(model, strategy=strategy)
 
-    scheduler = LearningRateScheduler(
-        lambda epoch: 0.1 / 25 if epoch >= 150 else 0.1 / 5 if epoch >= 100 else 0.1)
+    if params.train.optimizer.epoch_decay:
+        learning_rate_scheduler = LearningRateScheduler(
+            lambda current_epoch:
+            params.train.optimizer.learning_rate /
+            np.prod([decay for epoch, decay in params.train.optimizer.epoch_decay.items() if current_epoch > epoch]))
+
     hist = History()
 
     # checkpoint
     checkpoint_path = os.path.join("saved_models", params.path)
     os.makedirs(checkpoint_path, exist_ok=True)
-    model_checkpoint_latest = ModelCheckpoint(os.path.join(checkpoint_path, "latest.h5"), save_weights_only=True)
-    model_checkpoint_best = ModelCheckpoint(os.path.join(checkpoint_path, "best.h5"), save_best_only=True, save_weights_only=True)
+    model_checkpoint_latest = ModelCheckpoint(os.path.join(checkpoint_path, "latest.h5"))
+    model_checkpoint_best = ModelCheckpoint(os.path.join(checkpoint_path, "best.h5"), save_best_only=True)
 
     # tensorboard
     log_path = os.path.join("logs", params.path)
@@ -98,21 +103,21 @@ def train_keras(params, args):
 
     checkpoint_path = os.path.join("saved_models", params.path, "latest.h5")
     logger.info("Load checkpoint from %s" % checkpoint_path)
-    # model.load_weights(checkpoint_path)
+    model.load_weights(checkpoint_path)
 
     model.fit(
         dataset_train.generator,
-        steps_per_epoch=len(dataset_train) // params.batch_size,
+        steps_per_epoch=len(dataset_train) // params.train.batch_size,
         validation_data=dataset_test.generator,
-        validation_steps=len(dataset_test) // params.batch_size,
+        validation_steps=len(dataset_test) // params.train.batch_size,
         callbacks=[
-            scheduler,
+            learning_rate_scheduler,
             hist,
             model_checkpoint_latest,
             model_checkpoint_best,
             tensorboard_callback],
         max_queue_size=5,
-        epochs=params.num_epochs)
+        epochs=params.train.num_epochs)
     elapsed = time.time() - start_time
 
     history = hist.history

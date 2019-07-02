@@ -20,19 +20,16 @@ class PytorchSeq2SeqDataset(PytorchDataset):
             vocab_path: str = None):
         super().__init__(builder, mode, params)
         self._vocab = Vocab(vocab_path)
-        if params.dataset.vocab.sos_eos:
-            self._vocab.add_token('<sos>')
-            self._vocab.add_token('<eos>')
-        if params.dataset.vocab.blank:
-            self._vocab.add_token('<blank>')
+        for token in params.dataset.special_tokens:
+            self._vocab.add_token("<%s>" % token)
         self._output_size = len(self._vocab)
 
     @property
-    def padding_idx(self):
-        if self._params.dataset.vocab.blank:
+    def pad_token_idx(self):
+        if 'blank' in self.params.dataset.special_tokens:
             return self.blank_token_idx
-        elif self._params.dataset.vocab.sos_eos:
-            return self.eos_token_idx
+        if 'pad' in self.params.dataset.special_tokens:
+            return self._vocab.blank_token_idx
         else:
             raise Exception("No padding idx.")
 
@@ -54,8 +51,12 @@ class PytorchSeq2SeqDataset(PytorchDataset):
 
     def collate_fn(self, batch: List[BatchItem]):
         batch.sort(key=lambda item: len(item.X), reverse=True)
-        inp = [FloatTensor(item.X) for item in batch]
-        if self._params.dataset.vocab.sos_eos:
+        if isinstance(batch[0].X[0], int):
+            inp = [LongTensor(item.X) for item in batch]
+        else:
+            inp = [FloatTensor(item.X) for item in batch]
+
+        if 'sos' in self.params.dataset.special_tokens:
             tgt = [LongTensor([self.sos_token_idx] + item.Y + [self.eos_token_idx]).view(-1) for item in batch]
         else:
             tgt = [LongTensor(item.Y).view(-1) for item in batch]
@@ -64,7 +65,7 @@ class PytorchSeq2SeqDataset(PytorchDataset):
             inp, batch_first=True)
         tgt = nn.utils.rnn.pad_sequence(
             tgt, batch_first=True,
-            padding_value=self.padding_idx)
+            padding_value=self.pad_token_idx)
 
         return Batch(
             X=inp, X_len=LongTensor([len(item.X) for item in batch]),
@@ -72,8 +73,8 @@ class PytorchSeq2SeqDataset(PytorchDataset):
 
     def evaluate_batch(self, y_pred, batch: Batch, metric: str) -> (int, int):
         score, count = 0, 0
-        for pr, batch_item in zip(y_pred, batch):
-            ref = batch_item.Y[1:-1] if self._params.dataset.vocab.sos_eos else batch_item.Y
+        for i, pr in enumerate(y_pred):
+            ref = batch.item(i).Y[1:-1] if 'sos' in self.params.dataset.special_tokens else batch.item(i).Y
             s, c = self._builder.evaluate(np.array(pr), ref, metric)
             score += s
             count += c
@@ -81,11 +82,11 @@ class PytorchSeq2SeqDataset(PytorchDataset):
 
     def format_output(self, y_pred, batch_item: BatchItem):
         pr = np.array(y_pred)
-        gt = batch_item.Y[1:-1] if self._params.dataset.vocab.sos_eos else batch_item.Y
-        if self._params.dataset.output_format is None:
+        gt = batch_item.Y[1:-1] if 'sos' in self.params.dataset.special_tokens else batch_item.Y
+        if self.params.dataset.output_format is None:
             return "", str(gt), str(pr)
-        elif self._params.dataset.output_format == "text":
-            delimiter = ' ' if self._params.dataset.unit == "word" else ''
+        elif self.params.dataset.output_format == "text":
+            delimiter = ' ' if self.params.dataset.unit == "word" else ''
             return \
                 "", \
                 delimiter.join([self._vocab.get_token(wid) for wid in gt]), \
@@ -93,7 +94,19 @@ class PytorchSeq2SeqDataset(PytorchDataset):
 
 
 class PytorchVoiceDataset(PytorchSeq2SeqDataset):
+    def load_data(self, csv_path):
+        with open(csv_path, 'r', encoding='utf-8') as f:
+            lines = f.read().split('\n')[1:]
+        lines = [l.split('\t') for l in lines if l != ""]
+        data = [{
+            'X_path': l[0],
+            'Y': [int(w) for w in l[1].split(' ')],
+        } for l in lines]
+        if self.params.dataset.sort:
+            data.sort(key=lambda it: len(it))
+        return data
+
     def __getitem__(self, i: int):
         item = self._data[i]
-        X = np.load(item['X_path'])
+        X = self._builder.load_feature(item['X_path'])
         return BatchItem(X=X, Y=item['Y'])

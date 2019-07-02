@@ -1,21 +1,20 @@
-from dataclasses import dataclass
-
 import tensorflow as tf
+from tensorflow.python.keras.optimizers import SGD
 
 from dlex.configs import AttrDict
 from dlex.datasets import TensorflowDataset as Dataset
 from dlex.tf import Batch
 
 
-class BaseModel():
+class BaseModel:
     def __init__(self, params: AttrDict, dataset: Dataset):
         super().__init__()
-        self._params = params
-        self._dataset = dataset
+        self.params = params
+        self.dataset = dataset
         self._optimizer = tf.keras.optimizers.Adam()
+        self._model = None
 
     def training_step(self, batch: Batch):
-        loss = 0
         with tf.GradientTape() as tape:
             loss = self(batch)
             batch_loss = (loss / int(batch.Y.shape[1]))
@@ -26,3 +25,16 @@ class BaseModel():
     @property
     def trainable_variables(self):
         return []
+
+    @property
+    def model(self):
+        return self._model
+
+    def compile(self):
+        self.model.compile(
+            optimizer=SGD(self.params.train.optimizer.learning_rate, momentum=0.9),
+            loss="categorical_crossentropy",
+            metrics=self.dataset.get_metrics())
+
+    def summary(self):
+        self.model.summary()

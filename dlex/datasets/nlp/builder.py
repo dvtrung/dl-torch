@@ -8,10 +8,13 @@ class NLPDatasetBuilder(DatasetBuilder):
     def evaluate(self, hypothesis, reference, metric: str) -> (int, int):
         if metric == "bleu":
             import nltk
-            reference = self._trim_result(reference)
-            hypothesis = self._trim_result(hypothesis)
+            # reference = self._trim_result(reference)
+            # hypothesis = self._trim_result(hypothesis)
             score = nltk.translate.bleu_score.sentence_bleu([reference], hypothesis, weights=(0.5, 0.5))
             total = 1
             return score, total
         else:
             raise Exception("Unsupported metric.")
+
+    def format_output(self, y_pred, batch_input) -> (str, str, str):
+        raise Exception("Dataset method 'format_output' must be implemented")

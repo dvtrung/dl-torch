@@ -115,20 +115,20 @@ class Attention(BaseModel):
             from_logits=True, reduction='none')
 
     def _build_encoder(self) -> Encoder:
-        cfg = self._params.model
+        cfg = self.params.model
         return Encoder(
-            self._dataset.input_size,
+            self.dataset.input_size,
             cfg.encoder.input_size,
             cfg.encoder.hidden_size,
-            self._params.batch_size)
+            self.params.train.batch_size)
 
     def _build_decoder(self) -> Decoder:
-        cfg = self._params.model
+        cfg = self.params.model
         return Decoder(
-            self._dataset.output_size,
+            self.dataset.output_size,
             cfg.decoder.input_size,
             cfg.decoder.hidden_size,
-            self._params.batch_size)
+            self.params.train.batch_size)
 
     def get_loss(self):
         optimizer = tf.keras.optimizers.Adam()
@@ -149,7 +149,7 @@ class Attention(BaseModel):
         dec_hidden = enc_hidden
 
         batch_size = batch.X.shape[0]
-        dec_input = tf.expand_dims([self._dataset.sos_token_idx] * batch_size, 1)
+        dec_input = tf.expand_dims([self.dataset.sos_token_idx] * batch_size, 1)
 
         # Teacher forcing - feeding the target as the next input
         loss = 0

@@ -21,10 +21,10 @@ class Anki(NLPDataset):
         )
 
     def get_tensorflow_wrapper(self, mode: str) -> TensorflowDataset:
-        return AnkiTensorflowDataset(self, mode, self._params)
+        return AnkiTensorflowDataset(self, mode, self.params)
 
     def get_pytorch_wrapper(self, mode: str) -> PytorchDataset:
-        return AnkiPytorchDataset(mode, self._params)
+        return AnkiPytorchDataset(mode, self.params)
 
 
 class AnkiTensorflowDataset(TensorflowDataset):
@@ -45,9 +45,9 @@ class AnkiTensorflowDataset(TensorflowDataset):
 
         dataset = tf.data.Dataset.from_tensor_slices((input_tensor_train, target_tensor_train))\
             .shuffle(params.shuffle_buffer_size or 10)
-        dataset = dataset.batch(params.batch_size, drop_remainder=True)
-        self._dataset = dataset
-        self.steps_per_epoch = len(input_tensor_train) // params.batch_size
+        dataset = dataset.batch(params.train.batch_size, drop_remainder=True)
+        self.dataset = dataset
+        self.steps_per_epoch = len(input_tensor_train) // params.train.batch_size
 
     def _tokenize(self, texts):
         lang_tokenizer = tf.keras.preprocessing.text.Tokenizer(filters='')
@@ -73,7 +73,7 @@ class AnkiTensorflowDataset(TensorflowDataset):
         return self._target_lang_tokenizer.word_index['<eos>']
 
     def all(self):
-        return [Batch(X, Y) for X, Y in self._dataset.take(self.steps_per_epoch)]
+        return [Batch(X, Y) for X, Y in self.dataset.take(self.steps_per_epoch)]
 
 
 class AnkiPytorchDataset(PytorchDataset):

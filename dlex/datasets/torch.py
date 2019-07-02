@@ -1,13 +1,14 @@
 import abc
 
+from torch.utils.data import Dataset
 from torch.utils.data.dataloader import default_collate
 
 from dlex.torch import Batch
 
 
-class PytorchDataset:
+class PytorchDataset(Dataset):
     def __init__(self, builder, mode, params):
-        self._params = params
+        self.params = params
         self._mode = mode
         self._builder = builder
         self._data = []

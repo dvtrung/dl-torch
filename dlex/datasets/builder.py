@@ -9,7 +9,7 @@ from dlex.configs import ModuleConfigs, AttrDict
 
 class DatasetBuilder:
     def __init__(self, params: AttrDict):
-        self._params = params
+        self.params = params
 
     def get_working_dir(self) -> str:
         return os.path.join(ModuleConfigs.DATA_TMP_PATH, camel2snake(self.__class__.__name__.replace('Builder', '')))
@@ -22,7 +22,7 @@ class DatasetBuilder:
 
     @property
     def cfg(self) -> AttrDict:
-        return self._params.dataset
+        return self.params.dataset
 
     def prepare(self, download=False, preprocess=False):
         self.maybe_download_and_extract(download)
@@ -46,6 +46,7 @@ class DatasetBuilder:
 
     @abc.abstractmethod
     def maybe_preprocess(self, force=False):
+        return
         if force:
             logger.info("Removing preprocessed data...")
             shutil.rmtree(self.get_processed_data_dir(), ignore_errors=True)

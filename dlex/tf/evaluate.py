@@ -9,7 +9,6 @@ from dlex.datasets.torch import PytorchDataset
 from dlex.tf.models import BaseModel
 from dlex.utils.logging import logger
 from dlex.utils.model_utils import add_result
-from dlex.utils.utils import init_dirs
 from dlex.tf.utils.model_utils import get_model, get_dataset
 
 
@@ -21,19 +20,19 @@ def evaluate(
         output=False,
         summary_writer=None) -> Tuple[dict, dict, list]:
 
-    total = {key: 0 for key in params.metrics}
-    acc = {key: 0. for key in params.metrics}
+    total = {key: 0 for key in params.test.metrics}
+    acc = {key: 0. for key in params.test.metrics}
     outputs = []
     for batch in tqdm(dataset.all(), desc="Eval"):
         y_pred, others = model.infer(batch)
-        for key in params.metrics:
+        for key in params.test.metrics:
             _acc, _total = dataset.evaluate_batch(y_pred, batch, metric=key)
             acc[key] += _acc
             total[key] += _total
         if output:
             for i, predicted in enumerate(y_pred):
                 str_input, str_ground_truth, str_predicted = dataset.format_output(
-                    predicted, batch[i])
+                    predicted, batch.item(i))
                 outputs.append('\n'.join([str_input, str_ground_truth, str_predicted]))
         if summary_writer is not None:
             model.write_summary(summary_writer, batch, (y_pred, others))
@@ -71,7 +70,7 @@ def main(argv=None):
 
     res = model.evaluate_generator(
         dataset_test.generator,
-        steps=len(dataset_test),
+        steps=len(dataset_test) // params.train.batch_size,
         verbose=1
     )
     print(res)

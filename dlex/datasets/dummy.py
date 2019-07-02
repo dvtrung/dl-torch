@@ -15,7 +15,7 @@ class Dummy(VoiceDatasetBuilder):
         super().__init__(params)
 
     def get_pytorch_wrapper(self, mode: str):
-        return PytorchDummy(self, mode, self._params)
+        return PytorchDummy(self, mode, self.params)
 
 
 class PytorchDummy(PytorchSeq2SeqDataset):
@@ -24,7 +24,7 @@ class PytorchDummy(PytorchSeq2SeqDataset):
     def __init__(self, builder, mode, params):
         super().__init__(builder, mode, params)
         self._vocab = Vocab()
-        label_start_from = 1 if params.dataset.vocab.blank else 2
+        label_start_from = 1 if 'blank' in params.dataset.special_tokens else 2
         self._output_size = self.input_size + label_start_from
         for w in range(1, self.input_size + 1):
             self._vocab.add_token(str(w))

@@ -9,7 +9,7 @@ from dlex.configs import ModuleConfigs, AttrDict
 
 class BaseTensorflowWrapper:
     def __init__(self, mode, params):
-        self._params = params
+        self.params = params
         self._mode = mode
 
 
@@ -17,7 +17,7 @@ class BasePytorchWrapper:
     # from dlex.torch.models.base import Batch
 
     def __init__(self, mode, params):
-        self._params = params
+        self.params = params
         self._mode = mode
         self._data = []
 
@@ -38,7 +38,7 @@ class BasePytorchWrapper:
 
 class BaseDataset:
     def __init__(self, params: AttrDict):
-        self._params = params
+        self.params = params
 
     def get_working_dir(self) -> str:
         return os.path.join(ModuleConfigs.DATA_TMP_PATH, camel2snake(self.__class__.__name__))
@@ -51,7 +51,7 @@ class BaseDataset:
 
     @property
     def cfg(self) -> AttrDict:
-        return self._params.dataset
+        return self.params.dataset
 
     def prepare(self, download=False, preprocess=False):
         self.maybe_download_and_extract(download)
