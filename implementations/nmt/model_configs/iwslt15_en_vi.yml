@@ -1,5 +1,5 @@
 model:
-  name: dlex.models.attention.NMT
+  name: dlex.torch.models.attention.NMT
   encoder:
     rnn_type: lstm
     bidirectional: false
@@ -25,16 +25,20 @@ model:
   teacher_forcing_ratio: 1.0
   decoding_method: beam_search
 dataset:
-  name: src.datasets.iwslt.IWSLT15EnglishVietnamese
+  name: src.datasets.iwslt.builder.IWSLT15
   source: en
   target: vi
   output_format: text
-batch_size: 16
-num_epochs: 100
-optimizer:
-  name: sgd
-  lr: 1.0
-max_length: 10
-metrics:
-  - bleu
-max_grad_norm: 5.0
+  unit: word
+  special_tokens: [sos, eos, oov, pad]
+train:
+  batch_size: 64
+  num_epochs: 100
+  optimizer:
+    name: adam
+    lr: 0.01
+  max_grad_norm: 5.0
+test:
+  batch_size: 16
+  metrics:
+    - bleu

@@ -1,0 +1,15 @@
+tb-nightly
+future
+pandas
+dataclasses
+matplotlib
+nltk
+numpy
+Pillow
+PyYAML
+scikit-learn
+scipy
+torch
+torchvision
+tqdm
+dataclasses

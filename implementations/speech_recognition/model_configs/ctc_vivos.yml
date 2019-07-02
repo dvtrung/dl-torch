@@ -1,23 +1,25 @@
 model:
   name: dlex.torch.models.ctc.CTC
-  input_size: 120
-  hidden_size: 512
+  hidden_size: 256
   num_layers: 3
-  max_gradient_norm: 5.0
   bidirectional: false
-  dropout_p: 0.0
+  dropout: 0
 dataset:
-  name: src.datasets.vivos.VIVOS
+  alias: vivos
   unit: char
-  vocab:
-    sos_eos: false
-    blank: true
+  special_tokens: [blank]
   output_format: text
-batch_size: 20
-num_epochs: 100
-max_grad_norm: 5.0
-optimizer:
-  name: adam
-  lr: 0.001
-metrics:
-  - wer
+  feature:
+    tool: python_speech_features
+    num_filters: 40
+  sort: true
+train:
+  batch_size: 64
+  num_epochs: 1000
+  max_grad_norm: 1.0
+  optimizer:
+    name: sgd
+    lr: 0.1
+test:
+  metrics:
+    - wer

@@ -32,14 +32,17 @@ dataset:
   output_format: "text"
   debug_size: 100
   sort: true
-  vocab:
-    sos_eos: true
-    blank: false
-batch_size: 8
-num_epochs: 300
-optimizer:
-  name: adam
-  lr: 0.001
-max_grad_norm: 5.0
-metrics:
-  - wer
+  feature:
+    tool: htk
+    num_filters: 40
+  special_tokens: [sos, eos, oov, pad]
+train:
+  batch_size: 8
+  num_epochs: 300
+  optimizer:
+    name: adam
+    lr: 0.001
+  max_grad_norm: 5.0
+test:
+  metrics:
+    - wer

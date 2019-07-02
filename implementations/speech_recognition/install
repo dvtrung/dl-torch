@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
-#export "HCOPY_PATH=r"C:\Programs\htk\bin.win32\HCopy.exe""
-#echo "export HCOPY_PATH=./bin" > ~/.bashrc
+
+sudo apt-get update
+sudo apt-get install --reinstall build-essential
+sudo apt-get install gcc-multilib g++-multilib
+
 echo "Please get a username and password from HTK website http://htk.eng.cam.ac.uk/download.shtml"
 read -p "Username: " username
 read -p "Password: " password
@@ -8,5 +11,8 @@ wget --user ${username} --password ${password} http://htk.eng.cam.ac.uk/ftp/soft
 tar xzf HTK-3.4.1.tar.gz
 rm HTK-3.5.beta-2.tar.gz
 cd htk
-./configure --prefix=/tmp --disable-hslab
+./configure --prefix=/tmp --disable-hslab --disable-multilib
 make all
+
+#export "HCOPY_PATH=r"C:\Programs\htk\bin.win32\HCopy.exe""
+#echo "export HCOPY_PATH=./bin" > ~/.bashrc
