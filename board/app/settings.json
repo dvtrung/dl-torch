@@ -1,0 +1,22 @@
+{
+  "default_directories": [
+    "C:\\repos\\dvtrung\\dlex\\implementations\\speech_recognition",
+    "C:\\repos\\dvtrung\\dlex\\implementations\\nmt"
+  ],
+  "machines": {
+    "peterchin3": {
+      "title": "peterchin3",
+      "host": "pc3",
+      "root": "~/repos/dlex/implementations/nmt",
+      "tmpPath": "/scratch/trungvd"
+    },
+    "aws": {
+      "title": "aws",
+      "host": "ec2-204-236-209-222.compute-1.amazonaws.com",
+      "username": "ubuntu",
+      "privateKey": "-----BEGIN RSA PRIVATE KEY-----\nMIIEowIBAAKCAQEAq45sk3vVGhLC05DQGe79iDSTgKcZnsGqfJf5wAec1G20WNdX0e2Dllv148zH\n1IwIRX8KbMtjVcBJRn5x4hU2hWwqIeAfs1/tumKC9RQ3cAAcO2Qvd9+LsFfupZ+rRWVyly7G9/fu\n8RoC2JJ+WZ2WhypK/W9dypFCijimJ9QECpOh88QrLnaYupcns49mJWhmH4/DMrgpkhptqQ1CPEEi\nqHsfV8nvo9lmTZ+Y2in07ls24/sbpZCrvwBFwQB87WBv+rOMLgPziW8pRno31bflugWsLSwxQtKc\noM7ZKQopb3WwZSVGRmtyEuBMzxTcG4z7RUiSMkRqBL/YDb2Cr7z6OQIDAQABAoIBAAaLVFD79FEe\nThhL+eRDXaCIgOfzd+K6eIpwMbLFl5Hy7WJGNK9pZA+kSmj6MtVE0jv0cK1dxNhMkX8C6804CfBl\nA+Zu6kapbiQiBeTbdJHtLyaE19q2yFldwVjIEnx/NjPWMPjcmFzSJTGlxPQeMtPNJTctvGIx0Fv9\ndTknuU+96eE8POajfwPsV1AEV1DiCN14ArR6M4fMxemjPxo+KlSLqqgqMBPocBtu9TdJcxSbSC52\nhu1IttW2SeCboVDXYxSd/Yu/xLxQK/nJrOjU8+kfYF/SDch4LXWZyaSNPBciQHJPmdMvBJHK9ZEK\n/lxKMwepZzphXSFz/06HBiT9ZAECgYEA7DCzAHLr4sn49bVNG7psa/n6i5q91UgEasp48i75o03K\n8ityt+eVRzB86Cgp74ra00F8jtma8TSOBKXrS8T2JPC698rYfJ2QU0kKAtVjWyYu2GDHf/74AYyF\ne71tvRi2nVvFrhvPQFUbQRVgH/AM0+0T3Rs838md0AV0MYJMy9kCgYEAufH0RrNPJjrSSvEv7VA4\n1BrX9tOvyABTr3lKGWwtOXHUtmgOSLlYmZjuMeYn61+SvZFsYqCUO1D8vby4bOlDzHjc6jmqZBJH\nqfZOV/hbbbFnQ0q2CePOh6VcsY7zmi0jD0rnkVPkuAHPwtD+7wiglO1BhMeBpp1SSU9RcLcchWEC\ngYEA1NCwiUgDaU6JR4O73a8lQEl2ylF8mO+SI1MalUVkZBOVOI2TiUdeh02WTmzaFF+t+kn4XJKP\n/KRZDrEdiSEIlJJgNSON2wLx50lZfuIc6yVFcmwJdjgb6PFf2PX/KjJZYQIu5UljfdjxfLww57YZ\nKN9mVYTUXeRBkQ1I+88nOUkCgYBeYOCLwhc6YEC8qQ6adU1i2v0i2u8tpHzVY8qofK+3qH8+1jHp\n16mQzH6Z9Sft3+SrM1S/+qFCOikOZOt23C79aZs3h21kvaKCMfIx1G0TkCfJj/I1strxHo2d0eDz\nMFXLPUmsCdjdTI4XY90Blm9rJ8FJk7nKx68sZoX/n/FqAQKBgGUfm+z1OkgQ/kRZ6qA+IG+JTGoI\ns7ZdWc+FDgNrOIVO/Y6RvDLWL6C91Bg9K/srTtZ22jF186wcLOHzXzOlfCZJQS314RTA9CiC/b8R\nn6CULp0zfcKcdmQwwrGVj9qciZ1gSESCMxQ3vt1RTxMdn6QFvsi0JLVlYMml4K8BBl2N\n-----END RSA PRIVATE KEY-----",
+      "root": "/dlex",
+      "tmpPath": "/dlex/tmp"
+    }
+  }
+}
