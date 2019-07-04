@@ -5,13 +5,17 @@ import routes from '../constants/routes';
 import styles from './Home.css';
 import { Statistic, Row, Col, Icon } from 'antd';
 type Props = {
-  epoch: number,
-  totalEpoch: number,
-  trainError: number,
-  testError: number,
+  stats: any,
 };
 
 export default class Stats extends Component<Props> {
+  constructor() {
+    super();
+    this.state = {
+      currentMetric: 0
+    }
+  }
+
   onSelect = (keys, event) => {
     console.log('Trigger Select', keys, event);
   };
@@ -21,18 +25,20 @@ export default class Stats extends Component<Props> {
   };
 
   render() {
+    const { stats } = this.props;
+    const metric = stats.metrics[this.state.currentMetric]
     return (
-        <Row gutter={16}>
-    <Col span={8}>
-      <Statistic title="Epoch" value={this.props.epoch} suffix={"/ " + this.props.totalEpoch} />
-    </Col>
-    <Col span={8}>
-      <Statistic title="Train Error" value={`${this.props.trainError}%`} />
-    </Col>
-    <Col span={8}>
-      <Statistic title="Test Error" value={`${this.props.testError}%`} />
-    </Col>
-  </Row>
+      <Row gutter={16}>
+        <Col span={8}>
+          <Statistic title="Epoch" value={stats.epoch} suffix={"/ " + stats.totalEpoch} />
+        </Col>
+        <Col span={8}>
+          <Statistic title={`Train ${metric}`} value={(stats.bestResult[this.state.currentMetric] * 100).toFixed(4).toString()} />
+        </Col>
+        <Col span={8}>
+          <Statistic title={`Test ${metric}`} value={(stats.bestResult[this.state.currentMetric] * 100).toFixed(4).toString()} />
+        </Col>
+      </Row>
     );
   }
 }

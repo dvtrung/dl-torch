@@ -8,7 +8,7 @@ const { Option, OptGroup } = Select;
 type Props = {
   machines: [Machine],
   value: any,
-  handleChange: (machine: string) => void
+  onChange: (machine: string) => void
 };
 
 class MachineSelect extends Component<Props> {
@@ -20,8 +20,8 @@ class MachineSelect extends Component<Props> {
     console.log('Trigger Expand');
   };
 
-  handleChange = () => {
-    this.props.handleChange()
+  handleChange = (key) => {
+    this.props.onChange(key)
   };
 
   render() {
@@ -40,9 +40,8 @@ class MachineSelect extends Component<Props> {
 }
 
 function mapStateToProps(state) {
-  console.log(state.settings.machines)
   return {
-    machines: state.settings.machines
+    machines: state.home.machines
   }
 }
 

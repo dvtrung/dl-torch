@@ -1,13 +1,16 @@
 // @flow
 import type { GetState, Dispatch } from '../reducers/types';
+import {getLogPath, sshConnect} from "../utils/ssh";
+import {ipcRenderer} from "electron";
 
 const path = require('path');
 const fs = require('fs');
-const ssh2 = require('ssh2');
-const { Client } = ssh2
 
 export const LOAD_DIRECTORY = 'LOAD_DIRECTORY';
 export const SELECT_MODEL = 'SELECT_MODEL';
+export const SSH_CONNECT = 'SSH_CONNECT';
+export const SYNC_TRAINING_STATS_START = 'SYNC_TRAINING_STATS_START';
+export const SYNC_TRAINING_STATS_END = 'SYNC_TRAINING_STATS_END';
 
 export function loadModelsAsync(path) {
   return (dispatch: Dispatch) => {
@@ -42,32 +45,58 @@ export function onModelSelected(root, modelName) {
     dispatch({
       type: SELECT_MODEL,
       model: {
-        modelName, root,
-        config: content
-      }
+        name: modelName, root,
+      },
+      config: content
     });
   }
 }
 
-export function sshConnect(machine) {
-  const conn = new Client();
-  conn.on('ready', () => {
-    console.log('Client :: ready');
-    conn.exec('uptime', function(err, stream) {
+export function fetchModelLog(machine, model) {
+  sshConnect(machine, (client) => {
+
+  })
+}
+
+export function streamModelLog(machine, model) {
+  sshConnect(machine, (client) => {
+    client.exec(`logs/${model.name}/\$(ls logs/${model.name}/ -S | tail -n 1)/results.json`, (err, stream) => {
+      if (err) throw err;
+    });
+    client.exec('tail -f ~/output.log', function(err, stream) {
       if (err) throw err;
       stream.on('close', function(code, signal) {
         console.log('Stream :: close :: code: ' + code + ', signal: ' + signal);
-        conn.end();
+        client.end();
       }).on('data', function(data) {
         console.log('STDOUT: ' + data);
       }).stderr.on('data', function(data) {
         console.log('STDERR: ' + data);
       });
     });
-  }).connect({
-    host: machine.host,
-    port: machine.port || 22,
-    username: machine.username,
-    privateKey: machine.privateKey
   })
+}
+
+export function syncTrainingStats(model, machine) {
+  return (dispatch: Dispatch) => {
+    console.log("start");
+    dispatch({ type: SYNC_TRAINING_STATS_START, model });
+    let ret = "";
+    sshConnect(machine, (client) => {
+      console.log(`tail -n 1 ${getLogPath(model)}/epoch-info.log`)
+      client.exec(`tail -n 1 ${getLogPath(model)}/epoch-info.log`, (err, stream) => {
+        if (err) throw err;
+        stream.on('close', () => {
+          client.end();
+          dispatch({ type: SYNC_TRAINING_STATS_END, model, data: JSON.parse(ret) })
+        }).on('data', (data) => {
+          ret += data
+        });
+      });
+    }, (err) => {
+      ipcRenderer.send("error-box", {
+        message: err.toString()
+      });
+    });
+  }
 }

@@ -2,12 +2,10 @@
 import React, { Component } from 'react';
 import { Layout, Button, Input, Row, Col, Tabs } from 'antd';
 import Stats from './Stats'
-import Tree from './Tree'
-import MachineSelect from './MachineSelect'
-import Terminal from './Terminal'
+import Sider from './Sider'
+import ModelTabs from "./ModelTabs";
 
-const { Sider } = Layout;
-const { TextArea } = Input;
+const { Content } = Layout;
 const { TabPane } = Tabs;
 
 type Props = {
@@ -15,13 +13,15 @@ type Props = {
   loadSettings: () => void,
   currentDir: string,
   selectedModel: any,
+  machines: [any],
   dirs: [string],
   settings: any
 };
 
 export default class Home extends Component<Props> {
   state = {
-    selectedMachine: "peterchin3"
+    selectedMachineKey: "aws",
+    selectedMachine: this.props.machines["aws"]
   };
 
   constructor(props) {
@@ -36,35 +36,23 @@ export default class Home extends Component<Props> {
 
   onTabChange() {
 
-  }
+  };
 
-  onMachineChange(key) {
+  onMachineChange = (key) => {
     this.setState({
-      selectedMachine: key
+      selectedMachineKey: key,
+      selectedMachine: this.props.machines[key]
     })
-  }
+  };
 
   render() {
     return (
       <Layout style={{height:"100vh"}}>
-        <Sider style={{ background: '#fff', height:"100%", overflow: "auto" }}>
-          <Tree dirs={this.props.dirs}/>
-        </Sider>
+        <Sider />
         <Layout>
-          <Tabs defaultActiveKey="1" onChange={this.onTabChange}>
-            <TabPane tab="Overview" key="1">
-              <Stats epoch={14} totalEpoch={100} trainError={5.83} testError={4.27} />
-              <MachineSelect value={this.state.selectedMachine} handleChange={this.onMachineChange}/>
-              <Terminal machine={this.props.settings.machines[this.state.selectedMachine]}/>
-            </TabPane>
-            <TabPane tab="Config" key="2">
-            <Row style={{height:"100vh"}}>
-            <Col span={8}>
-              <TextArea value={this.props.selectedModel != null ? this.props.selectedModel.config : ""}></TextArea>
-            </Col>
-          </Row>
-            </TabPane>
-          </Tabs>
+          <Content style={{padding: 24}}>
+            {this.props.selectedModelKey && <ModelTabs />}
+          </Content>
         </Layout>
       </Layout>
     );
