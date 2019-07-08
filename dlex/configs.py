@@ -1,18 +1,31 @@
 """Reading model configurations"""
-
 import os
 import re
 import argparse
+from dataclasses import dataclass
+from typing import Union, Dict, List
+
 import yaml
 import tempfile
 
 from dlex.utils.logging import logger
 
 DEFAULT_DATA_TMP_PATH = os.path.expanduser(os.path.join("~", "tmp"))
+args = None
 
 
 class ModuleConfigs:
     DATA_TMP_PATH = os.path.join(os.getenv("DATA_TMP_PATH", DEFAULT_DATA_TMP_PATH), "dlex", "datasets")
+
+
+@dataclass
+class TrainConfig:
+    batch_size: int
+    num_epochs: int
+    optimizer: dict
+    max_grad_norm: float = 5.0
+    save_every: str = "1e"
+    log_every: str = "5s"
 
 
 class AttrDict(dict):
@@ -21,11 +34,11 @@ class AttrDict(dict):
     dataset = None
     training_id = None
     seed = 1
-    num_epochs = 30
     shuffle = False
     batch_size = None
     test_batch_size = None
     path = None
+    train: TrainConfig
 
     def __init__(self, *args, **kwargs):
         super(AttrDict, self).__init__(*args, **kwargs)
@@ -33,6 +46,9 @@ class AttrDict(dict):
         for key in self:
             if isinstance(self[key], dict):
                 self[key] = AttrDict(self[key])
+
+        if 'train' in self:
+            self.train = TrainConfig(**self['train'])
 
     def __getattr__(self, item: str):
         logger.warning("Access to unset param %s", item)
@@ -106,13 +122,13 @@ def str2bool(val):
 
 class Configs:
     """All configurations"""
-    params = None
+    params: AttrDict = None
     args = None
 
     def __init__(self, mode, argv=None):
         self._mode = mode
         self.parse_args(argv)
-        self.get_params()
+        self.params = self.get_params()
 
     def parse_args(self, argv=None):
         """Parse arguments."""
@@ -130,6 +146,8 @@ class Configs:
                             help="force to download, unzip and preprocess the data")
         parser.add_argument('--preprocess', action="store_true",
                             help="force to preprocess the data")
+        parser.add_argument('--no-prepare', action="store_true",
+                            help="do not prepare dataset")
         parser.add_argument('--verbose', action="store_true")
         parser.add_argument('-l, --load', dest="load", default=None,
                             required=self._mode in ["eval", "infer"],
@@ -159,9 +177,10 @@ class Configs:
             with open(path, 'r') as stream:
                 params = yaml.load(stream, Loader=Loader)
                 params = AttrDict(params)
-                params.set("mode", self._mode)
-                params.set('path', self.args.config_path)
-                self.params = params
+            params.set("mode", self._mode)
+            params.set("path", self.args.config_path)
+            params.set("verbose", bool(self.args.verbose))
+            return params
         except yaml.YAMLError as exc:
             raise Exception("Invalid config syntax.")
         except FileNotFoundError:

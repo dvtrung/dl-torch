@@ -6,7 +6,7 @@ model:
     rnn_type: lstm
     bidirectional: false
     num_layers: 5
-    embedding_size: 256
+    input_size: 256
     hidden_size: 512
     output_size: 256
   decoder:

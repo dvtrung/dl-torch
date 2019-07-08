@@ -4,18 +4,23 @@ from subprocess import call
 
 import numpy as np
 
+from dlex.utils import logger
+
 
 def read_htk(path):
-    fh = open(path, "rb")
-    spam = fh.read(12)
-    nSamples, sampPeriod, sampSize, parmKind = unpack(">IIHH", spam)
-    veclen = int(sampSize / 4)
-    fh.seek(12, 0)
-    dat = np.fromfile(fh, dtype=np.float32)
-    dat = dat.reshape(len(dat) // veclen, veclen)
-    dat = dat.byteswap()
-    fh.close()
-    return dat
+    try:
+        with open(path, "rb") as fh:
+            spam = fh.read(12)
+            nSamples, sampPeriod, sampSize, parmKind = unpack(">IIHH", spam)
+            veclen = int(sampSize / 4)
+            fh.seek(12, 0)
+            dat = np.fromfile(fh, dtype=np.float32)
+            dat = dat.reshape(len(dat) // veclen, veclen)
+            dat = dat.byteswap()
+        return dat
+    except Exception:
+        logger.error("Error reading '%s'." % path)
+        return None
 
 
 def audio2wav(audio_path, wav_path):

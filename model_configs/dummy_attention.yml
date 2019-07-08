@@ -13,8 +13,8 @@ model:
     hidden_size: 128
     max_length: 50
   attention:
-    hidden_size: 256
-  decoding_method: beam_search
+    type: null
+  decoding_method: greedy
   beam_search:
     beam_size: 4
     penalty: 1.0
@@ -22,15 +22,24 @@ model:
   teacher_forcing_ratio: 1.0
 dataset:
   alias: dummy
+  sort: true
   vocab:
     sos_eos: true
     blank: false
   output_format: null
-batch_size: 10
-num_epochs: 100
-optimizer:
-  name: adam
-  lr: 0.01
-metrics:
-  - wer
-max_grad_norm: 5.0
+  special_tokens: [sos, eos, pad, oov]
+train:
+  batch_size:
+    0: 64
+    50: 32
+    90: 16
+  num_epochs: 100
+  optimizer:
+    name: adam
+    lr: 0.01
+  max_grad_norm: 5.0
+  log_every: 0.1e
+  save_every: 1e
+test:
+  batch_size: 16
+  metrics: [wer]

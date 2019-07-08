@@ -3,7 +3,7 @@ import os
 import pandas
 from tqdm import tqdm
 
-from torch.datasets import normalize_string, write_vocab, Vocab
+from dlex.datasets.nlp.utils import normalize_string, write_vocab, Vocab
 from dlex.utils.logging import logger
 from .nmt import NMTBaseDataset
 
@@ -95,7 +95,9 @@ class Tatoeba(NMTBaseDataset):
                     write_vocab(
                         os.path.join(cls.get_processed_data_dir(), dataset_name),
                         [_p[i] for _p in pairs],
-                        lang_pairs[i], 0, default_words)
+                        output_file_name=lang_pairs[i],
+                        min_freq=0,
+                        default_tags=default_words)
                     vocab[lang_pairs[i]] = Vocab(
                         os.path.join(cls.get_processed_data_dir(), dataset_name, "vocab", lang_pairs[i] + ".txt"))
 

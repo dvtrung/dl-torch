@@ -182,8 +182,8 @@ class KerasImageNet(KerasDataset):
         return image
 
     def maybe_prepare_tfrecord(self):
-        os.makedirs(self._builder.get_processed_data_dir(), exist_ok=True)
-        tfrecord_path = os.path.join(self._builder.get_processed_data_dir(), 'imagenet_%s.tfrecord' % self._mode)
+        os.makedirs(self.builder.get_processed_data_dir(), exist_ok=True)
+        tfrecord_path = os.path.join(self.builder.get_processed_data_dir(), 'imagenet_%s.tfrecord' % self._mode)
         if os.path.exists(tfrecord_path):
             return
         data, info = tfds.load("imagenet2012", split=self._mode, with_info=True)
@@ -192,7 +192,7 @@ class KerasImageNet(KerasDataset):
             item['label']))
         # tf.one_hot(item['label'], self.num_classes)))
 
-        logger.info("Preparing tfrecord files into %s" % self._builder.get_processed_data_dir())
+        logger.info("Preparing tfrecord files into %s" % self.builder.get_processed_data_dir())
 
         with tf.io.TFRecordWriter(tfrecord_path) as writer:
             for image, label in tqdm(iter(data), desc="tfrecord"):

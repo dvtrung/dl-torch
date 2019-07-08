@@ -2,6 +2,7 @@ import os
 
 from tqdm import tqdm
 
+from dlex.datasets.nlp.utils import write_vocab
 from torch.datasets import NLPDataset, load_tkn_to_idx, load_idx_to_tkn
 from dlex.utils.logging import logger
 
@@ -111,7 +112,9 @@ class Europarl(NLPDataset):
                     write_vocab(
                         os.path.join(cls.get_processed_data_dir(), dataset_name),
                         [_p[i] for _p in pairs],
-                        lang_pairs[i], 0, default_words)
+                        output_file_name="%s.txt" % lang_pairs[i],
+                        min_freq=0,
+                        default_tags=default_words)
                     word_token_to_idx[lang_pairs[i]] = load_tkn_to_idx(
                         os.path.join(cls.get_processed_data_dir(), dataset_name, "vocab", lang_pairs[i] + ".txt"))
 

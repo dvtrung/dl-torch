@@ -42,8 +42,8 @@ class VIVOS(VoiceDatasetBuilder):
                     file_paths[mode].append(file_path)
                     transcripts[mode].append(sent)
 
-        write_vocab(self.get_processed_data_dir(), transcripts['train'], name="words", normalize_fn=normalize_string, tokenize_fn=space_tokenize)
-        write_vocab(self.get_processed_data_dir(), transcripts['train'], name="chars", normalize_fn=normalize_char, tokenize_fn=char_tokenize)
+        write_vocab(self.get_processed_data_dir(), transcripts['train'], output_file_name="words.txt", normalize_fn=normalize_string, tokenize_fn=space_tokenize)
+        write_vocab(self.get_processed_data_dir(), transcripts['train'], output_file_name="chars.txt", normalize_fn=normalize_char, tokenize_fn=char_tokenize)
 
         self.extract_features(file_paths)
         for token_type in ['word', 'char']:

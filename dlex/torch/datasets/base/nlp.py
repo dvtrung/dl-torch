@@ -97,38 +97,6 @@ def mecab_tokenize(s):
     return wakati.parse(s).split()
 
 
-def write_vocab(
-        working_dir,
-        sentences,
-        name="words",
-        min_freq=0,
-        default_tags=['<pad>', '<sos>', '<eos>', '<oov>'],
-        normalize_fn=normalize_string,
-        tokenize_fn=space_tokenize):
-    os.makedirs(os.path.join(working_dir, "vocab"), exist_ok=True)
-    word_freqs = {}
-    for sent in sentences:
-        s = normalize_fn(sent.replace('_', ' '))
-        # ls = char_tokenize(s) if token == 'char' else space_tokenize(s)
-        ls = tokenize_fn(s)
-        for word in ls:
-            if word.strip() == '':
-                continue
-            if word in word_freqs:
-                word_freqs[word] += 1
-            else:
-                word_freqs[word] = 1
-
-    words = list([word for word in word_freqs if word_freqs[word] > min_freq])
-    words.sort(key=lambda word: word_freqs[word], reverse=True)
-    file_path = os.path.join(working_dir, "vocab", name + ".txt")
-    with open(file_path, "w", encoding='utf-8') as fo:
-        fo.write('\n'.join(default_tags) + '\n')
-        fo.write("\n".join(words))
-
-    logger.info("Vocab written to %s (%d tokens)", file_path, len(default_tags) + len(words))
-
-
 def get_token_id(vocab, word):
     """
     :type vocab: Vocab

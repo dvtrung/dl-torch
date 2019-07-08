@@ -3,7 +3,8 @@ import torch
 
 CUDA = torch.cuda.is_available()
 gpus = [i for i in range(torch.cuda.device_count())]
-torch.cuda.set_device(gpus[0])
+if len(gpus) > 0:
+    torch.cuda.set_device(gpus[0])
 
 
 LongTensor = torch.cuda.LongTensor if CUDA else torch.LongTensor

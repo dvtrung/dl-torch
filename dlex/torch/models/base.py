@@ -5,13 +5,17 @@ import os
 import torch
 import torch.nn as nn
 
+from dlex.configs import AttrDict
 from dlex.torch import Batch
 from dlex.torch.utils.losses import nll_loss
 from dlex.torch.utils.model_utils import get_optimizer
+from dlex.utils.logging import logger
 
 
 class BaseModel(nn.Module):
-    def __init__(self, params, dataset):
+    config_class = AttrDict
+
+    def __init__(self, params: AttrDict, dataset):
         super().__init__()
         self.params = params
         self.dataset = dataset
@@ -20,6 +24,19 @@ class BaseModel(nn.Module):
     def infer(self, batch: Batch):
         """Infer"""
         return None
+
+    def train_log(self, batch: Batch, output, verbose):
+        d = dict()
+        if verbose:
+            d["loss"] = self.get_loss(batch, output).item()
+        return d
+
+    def infer_log(self, batch: Batch, output, verbose):
+        return dict()
+
+    @abc.abstractmethod
+    def get_loss(self, batch, output):
+        raise Exception("Loss is not implemented")
 
 
 class DataParellelModel(nn.DataParallel):
@@ -42,6 +59,9 @@ class DataParellelModel(nn.DataParallel):
                 params = itertools.chain.from_iterable([group['params'] for group in optimizer.param_groups])
                 nn.utils.clip_grad_norm_(params, self.params.train.max_grad_norm)
             optimizer.step()
+        log_dict = self.module.train_log(batch, output, verbose=self.params.verbose)
+        if len(log_dict) > 0:
+            print(log_dict)
         return loss
 
     @property

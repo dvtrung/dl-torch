@@ -1,12 +1,10 @@
-import os
-import glob
-from struct import unpack
-from subprocess import call
-from multiprocessing import Pool
-
-from tqdm import tqdm
-import numpy as np
 import argparse
+import glob
+import os
+from struct import unpack
+
+import numpy as np
+from tqdm import tqdm
 
 parser = argparse.ArgumentParser(description="Extract features from wav files.")
 parser.add_argument('-i', dest='src', help="Input directory")
@@ -19,7 +17,6 @@ args = parser.parse_args()
 
 os.makedirs(args.tgt, exist_ok=True)
 htk_paths = list(glob.glob(os.path.join(args.src, "*")))
-print(len(htk_paths))
 
 
 def read_htk(path):

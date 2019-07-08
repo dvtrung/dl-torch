@@ -10,7 +10,7 @@ class PytorchDataset(Dataset):
     def __init__(self, builder, mode, params):
         self.params = params
         self._mode = mode
-        self._builder = builder
+        self.builder = builder
         self._data = []
 
     def __len__(self):
@@ -23,13 +23,13 @@ class PytorchDataset(Dataset):
     def evaluate_batch(self, y_pred, batch: Batch, metric: str):
         score, total = 0, 0
         for _target, _y_pred in zip(batch.Y, y_pred):
-            s, t = self._builder.evaluate(_target.cpu().detach().numpy().tolist(), _y_pred, metric)
+            s, t = self.builder.evaluate(_target.cpu().detach().numpy().tolist(), _y_pred, metric)
             score += s
             total += t
         return score, total
 
     def format_output(self, y_pred, batch_input) -> (str, str, str):
-        return self._builder.format_output(y_pred, batch_input)
+        return self.builder.format_output(y_pred, batch_input)
 
     def collate_fn(self, batch):
         return default_collate(batch)

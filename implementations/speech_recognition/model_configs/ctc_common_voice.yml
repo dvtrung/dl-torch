@@ -9,6 +9,8 @@ dataset:
   name: dlex.datasets.voice.common_voice.common_voice.CommonVoiceBuilder
   alias: common_voice
   unit: char
+  max_target_length: 250
+  max_source_length: 2000
   output_format: "text"
   debug_size: 100
   sort: true
@@ -18,12 +20,17 @@ dataset:
     num_filters: 120
   special_tokens: [sos, eos, oov, pad]
 train:
-  batch_size: 8
+  batch_size:
+    0: 64
+    50: 32
+    75: 16
+    90: 8
   num_epochs: 300
   optimizer:
     name: adam
     lr: 0.001
   max_grad_norm: 5.0
 test:
+  batch_size: 16
   metrics:
     - wer

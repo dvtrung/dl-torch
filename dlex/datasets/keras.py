@@ -5,7 +5,7 @@ class KerasDataset:
     def __init__(self, builder, mode, params):
         self.params = params
         self._mode = mode
-        self._builder = builder
+        self.builder = builder
         self.dataset = None
 
     @property

@@ -2,9 +2,8 @@
 
 import importlib
 import os
-import json
 
-from dlex.datasets.builder import DatasetBuilder
+import torch
 from dlex.utils.logging import logger
 
 
@@ -13,23 +12,6 @@ def get_model(params):
     module_name, class_name = params.model.name.rsplit('.', 1)
     i = importlib.import_module(module_name)
     return getattr(i, class_name)
-
-
-def get_dataset(params) -> DatasetBuilder:
-    """Return the dataset class by its name."""
-    if params.dataset.name:
-        module_name, class_name = params.dataset.name.rsplit('.', 1)
-    elif params.dataset.alias:
-        from dlex.datasets.aliases import dataset_aliases
-        module_name, class_name = dataset_aliases[params.dataset.alias].rsplit('.', 1)
-    i = importlib.import_module(module_name)
-    return getattr(i, class_name)(params)
-
-
-def get_loss_fn(params):
-    """Return the loss class by its name."""
-    i = importlib.import_module("dlex.utils.losses")
-    return getattr(i, params.loss)
 
 
 def get_loss_fn(params):
@@ -53,7 +35,6 @@ def get_optimizer(cfg, model_parameters):
 
 def save_checkpoint(tag, params, model):
     """Save current training state"""
-    import torch
     os.makedirs(os.path.join("saved_models", params.path), exist_ok=True)
     state = {
         'training_id': params.training_id,
@@ -67,7 +48,6 @@ def save_checkpoint(tag, params, model):
 
 def load_checkpoint(tag, params, model):
     """Load from saved state"""
-    import torch
     file_name = os.path.join("saved_models", params.path, tag + ".pt")
     logger.info("Load checkpoint from %s" % file_name)
     if os.path.exists(file_name):
@@ -80,32 +60,6 @@ def load_checkpoint(tag, params, model):
             optimizer.load_state_dict(checkpoint['optimizers'][i])
     else:
         raise Exception("Checkpoint not found.")
-
-
-def load_results(params):
-    """Load all saved results at each checkpoint."""
-    path = os.path.join(params.log_dir, "results.json")
-    if os.path.exists(path):
-        with open(os.path.join(params.log_dir, "results.json")) as f:
-            return json.load(f)
-    else:
-        return {
-            "best_results": {},
-            "evaluations": []
-        }
-
-
-def add_result(params, new_result):
-    """Add a checkpoint for evaluation result."""
-    ret = load_results(params)
-    ret["evaluations"].append(new_result)
-    for m in params.test.metrics:
-        if m not in ret["best_results"] or \
-                new_result['result'][m] > ret['best_results'][m]['result'][m]:
-            ret["best_results"][m] = new_result
-    with open(os.path.join(params.log_dir, "results.json"), "w") as f:
-        f.write(json.dumps(ret, indent=4))
-    return ret["best_results"]
 
 
 def rnn_cell(cell):

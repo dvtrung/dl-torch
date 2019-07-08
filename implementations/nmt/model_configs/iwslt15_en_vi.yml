@@ -7,8 +7,6 @@ model:
     input_size: 256
     hidden_size: 256
     output_size: 256
-    embedding: none
-    update_embedding: true
   decoder:
     rnn_type: lstm
     use_attention: true
@@ -32,10 +30,10 @@ dataset:
   unit: word
   special_tokens: [sos, eos, oov, pad]
 train:
-  batch_size: 64
+  batch_size: 32
   num_epochs: 100
   optimizer:
-    name: adam
+    name: sgd
     lr: 0.01
   max_grad_norm: 5.0
 test:

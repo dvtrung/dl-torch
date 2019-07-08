@@ -29,10 +29,10 @@ class IWSLT15EnglishVietnamese(PytorchSeq2SeqDataset):
         if self._mode in ["train", "test"]:
             data = []
             src_data = open(
-                os.path.join(self._builder.get_raw_data_dir(), data_file_names[self._mode]['vi']), "r",
+                os.path.join(self.builder.get_raw_data_dir(), data_file_names[self._mode]['vi']), "r",
                 encoding='utf-8').read().split("\n")
             tgt_data = open(
-                os.path.join(self._builder.get_raw_data_dir(), data_file_names[self._mode]['en']), "r",
+                os.path.join(self.builder.get_raw_data_dir(), data_file_names[self._mode]['en']), "r",
                 encoding='utf-8').read().split("\n")
             for src, tgt in zip(src_data, tgt_data):
                 data.append(BatchItem(

@@ -10,7 +10,7 @@ class PytorchImageDataset(PytorchDataset):
         if metric == "acc":
             score, total = 0, 0
             for _target, _y_pred in zip(batch.Y, y_pred):
-                s, t = self._builder.evaluate(_target.cpu().detach().numpy().tolist(), _y_pred, metric)
+                s, t = self.builder.evaluate(_target.cpu().detach().numpy().tolist(), _y_pred, metric)
                 score += s
                 total += t
             return score, total

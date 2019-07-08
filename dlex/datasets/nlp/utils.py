@@ -72,10 +72,10 @@ def normalize_string(sentence):
     # x = re.sub("[^ a-zA-Z0-9\uAC00-\uD7A3]+", " ", x)
     # x = re.sub("[\u3040-\u30FF]+", "\u3042", x) # convert Hiragana and Katakana to あ
     # x = re.sub("[\u4E00-\u9FFF]+", "\u6F22", x) # convert CJK unified ideographs to 漢
-    # sent = re.sub(r"([.!?,])", r" \1", sentence)
+    sentence = re.sub(r"([.!?,\"])", r" \1", sentence)
     # sent = re.sub(r"[^a-zA-Z.!?,]+", r" ", sent)
-    # sent = re.sub(r"\s+", " ", sent)
-    # sent = re.sub("^ | $", "", sent)
+    sentence = re.sub(r"\s+", " ", sentence)
+    sentence = re.sub("^ | $", "", sentence)
 
     words = sentence.split(' ')
     ret = []
@@ -121,7 +121,7 @@ def mecab_tokenize(s):
 def write_vocab(
         working_dir,
         sentences,
-        name="words",
+        output_file_name="word.txt",
         min_freq=0,
         default_tags=['<pad>', '<sos>', '<eos>', '<oov>'],
         normalize_fn=normalize_string,
@@ -142,7 +142,7 @@ def write_vocab(
 
     words = list([word for word in word_freqs if word_freqs[word] > min_freq])
     words.sort(key=lambda word: word_freqs[word], reverse=True)
-    file_path = os.path.join(working_dir, "vocab", name + ".txt")
+    file_path = os.path.join(working_dir, "vocab", output_file_name)
     with open(file_path, "w", encoding='utf-8') as fo:
         fo.write('\n'.join(default_tags) + '\n')
         fo.write("\n".join(words))

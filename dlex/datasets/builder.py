@@ -69,6 +69,15 @@ class DatasetBuilder:
     def evaluate(self, pred, ref, metric: str):
         raise Exception("Not implemented.")
 
+    @staticmethod
+    def is_better_result(metric: str, best_result: float, new_result: float):
+        if metric in ["wer"]:
+            return new_result < best_result
+        elif metric in ["acc", "bleu"]:
+            return new_result > best_result
+        else:
+            raise Exception("Result comparison is not defined")
+
     @abc.abstractmethod
     def format_output(self, y_pred, batch_input) -> (str, str, str):
         raise Exception("Dataset method 'format_output' must be implemented")

@@ -1,3 +1,4 @@
+import os
 from typing import List
 
 import torch.nn as nn
@@ -51,15 +52,23 @@ class PytorchSeq2SeqDataset(PytorchDataset):
 
     def collate_fn(self, batch: List[BatchItem]):
         batch.sort(key=lambda item: len(item.X), reverse=True)
+
         if isinstance(batch[0].X[0], int):
             inp = [LongTensor(item.X) for item in batch]
         else:
             inp = [FloatTensor(item.X) for item in batch]
+        if self.params.dataset.max_source_length is not None:
+            inp = [x[:min(len(x), self.params.dataset.max_source_length)] for x in inp]
 
         if 'sos' in self.params.dataset.special_tokens:
             tgt = [LongTensor([self.sos_token_idx] + item.Y + [self.eos_token_idx]).view(-1) for item in batch]
+            if self.params.dataset.max_target_length is not None:
+                tgt = [y[:min(len(y), self.params.dataset.max_target_length + 2)] for y in tgt]
         else:
             tgt = [LongTensor(item.Y).view(-1) for item in batch]
+            if self.params.dataset.max_target_length is not None:
+                tgt = [y[:min(len(y), self.params.dataset.max_target_length)] for y in tgt]
+
         tgt_len = [len(t) for t in tgt]
         inp = nn.utils.rnn.pad_sequence(
             inp, batch_first=True)
@@ -75,7 +84,7 @@ class PytorchSeq2SeqDataset(PytorchDataset):
         score, count = 0, 0
         for i, pr in enumerate(y_pred):
             ref = batch.item(i).Y[1:-1] if 'sos' in self.params.dataset.special_tokens else batch.item(i).Y
-            s, c = self._builder.evaluate(np.array(pr), ref, metric)
+            s, c = self.builder.evaluate(np.array(pr), ref, metric)
             score += s
             count += c
         return score, count
@@ -99,14 +108,38 @@ class PytorchVoiceDataset(PytorchSeq2SeqDataset):
             lines = f.read().split('\n')[1:]
         lines = [l.split('\t') for l in lines if l != ""]
         data = [{
-            'X_path': l[0],
+            'X_path': os.path.join(self.builder.get_processed_data_dir(), "htk", os.path.basename(l[0])),
             'Y': [int(w) for w in l[1].split(' ')],
         } for l in lines]
         if self.params.dataset.sort:
-            data.sort(key=lambda it: len(it))
+            data.sort(key=lambda it: len(it['Y']))
         return data
 
+    def collate_fn(self, batch: List[dict]):
+        batch = list(map(lambda item: BatchItem(
+            X=self.builder.load_feature(item['X_path']),
+            Y=item['Y']
+        ), batch))
+        batch.sort(key=lambda item: len(item.X), reverse=True)
+        if isinstance(batch[0].X[0], int):
+            inp = [LongTensor(item.X) for item in batch]
+        else:
+            inp = [FloatTensor(item.X) for item in batch]
+
+        if 'sos' in self.params.dataset.special_tokens:
+            tgt = [LongTensor([self.sos_token_idx] + item.Y + [self.eos_token_idx]).view(-1) for item in batch]
+        else:
+            tgt = [LongTensor(item.Y).view(-1) for item in batch]
+        tgt_len = [len(t) for t in tgt]
+        inp = nn.utils.rnn.pad_sequence(
+            inp, batch_first=True)
+        tgt = nn.utils.rnn.pad_sequence(
+            tgt, batch_first=True,
+            padding_value=self.pad_token_idx)
+
+        return Batch(
+            X=inp, X_len=LongTensor([len(item.X) for item in batch]),
+            Y=tgt, Y_len=LongTensor(tgt_len))
+
     def __getitem__(self, i: int):
-        item = self._data[i]
-        X = self._builder.load_feature(item['X_path'])
-        return BatchItem(X=X, Y=item['Y'])
+        return self._data[i]

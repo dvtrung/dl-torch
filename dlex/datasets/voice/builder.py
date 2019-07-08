@@ -129,7 +129,10 @@ class VoiceDatasetBuilder(DatasetBuilder):
             return np.load(path)
         elif self.params.dataset.feature.file_type == "htk":
             dat = read_htk(path)
-            return (dat - self.mean) / np.sqrt(self.variance)
+            if dat is not None:
+                return (dat - self.mean) / np.sqrt(self.variance)
+            else:
+                return np.array([self.mean])
 
     def write_dataset(
             self,
@@ -140,9 +143,10 @@ class VoiceDatasetBuilder(DatasetBuilder):
             normalize_fn: Callable[[str], str],
             tokenize_fn: Callable[[str], List[str]]):
         processed_dir = self.get_processed_data_dir()
-        outputs = {'train': [], 'test': []}
         vocab = Vocab(vocab_path)
-        for mode in ["test", "train"]:
+        for mode in file_paths.keys():
+            outputs = []
+            output_fn = os.path.join(processed_dir, "%s_%s" % (output_prefix, mode) + '.csv')
             for file_path, transcript in tqdm(list(zip(file_paths[mode], transcripts[mode])), desc=mode):
                 if file_path == "":
                     continue
@@ -150,23 +154,35 @@ class VoiceDatasetBuilder(DatasetBuilder):
                     feature_path = self._get_npy_path(file_path)
                 elif self.params.dataset.feature.file_type == "htk":
                     feature_path = self._get_htk_path(file_path)
+                else:
+                    raise Exception("Feature file type not supported: %s" % self.params.dataset.feature.file_type)
 
-                if os.path.exists(feature_path):
-                    outputs[mode].append(dict(
+                try:
+                    tokens = [str(vocab[tkn]) for tkn in tokenize_fn(normalize_fn(transcript))]
+                    if self.params.dataset.max_target_length is not None and \
+                            len(tokens) > self.params.dataset.max_target_length:
+                        continue
+                    #if self.params.dataset.max_source_length is not None:
+                    #    feat = self.load_feature(feature_path)
+                    #    if len(feat) > self.params.dataset.max_source_length:
+                    #        continue
+                except FileNotFoundError:
+                    logger.error("File '%s' does not exist." % feature_path)
+                except Exception:
+                    logger.error("Error reading '%s'." % feature_path)
+                else:
+                    outputs.append(dict(
                         filename=feature_path,
                         target=' '.join(
                             [str(vocab[tkn]) for tkn in tokenize_fn(normalize_fn(transcript))]),
                         trans_words=normalize_fn(transcript)
                     ))
-                else:
-                    logger.error("File '%s' does not exist." % feature_path)
 
             # outputs[mode].sort(key=lambda item: len(item['target_word']))
-            fn = os.path.join(processed_dir, "%s_%s" % (output_prefix, mode) + '.csv')
-            logger.info("Output to %s" % fn)
-            with open(fn, 'w', encoding='utf-8') as f:
+            logger.info("Output to %s" % output_fn)
+            with open(output_fn, 'w', encoding='utf-8') as f:
                 f.write('\t'.join(['sound', 'target', 'trans']) + '\n')
-                for o in outputs[mode]:
+                for o in outputs:
                     f.write('\t'.join([
                         o['filename'],
                         o['target'],

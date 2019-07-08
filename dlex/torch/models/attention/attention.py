@@ -1,27 +1,75 @@
+from dataclasses import dataclass
 from typing import List
-import math
 
-import torch
+import math
 import numpy as np
 import torch.nn as nn
 import torch.nn.functional as F
 
+import torch
 from dlex.datasets.voice.torch import PytorchSeq2SeqDataset
 from dlex.torch import Batch
 from dlex.torch.models.base import BaseModel
 from dlex.utils.logging import logger
-from .decoder import DecoderRNN, DecodingStates, BeamSearchConfigs
+from .decoder import DecoderRNN, BeamSearchConfigs
 from .encoder import EncoderRNN
+
+
+@dataclass
+class EncoderConfigDict:
+    num_layers: int
+    hidden_size: int
+    output_size: int
+    rnn_type: str = "lstm"
+    bidirectional: bool = False
+    input_size: int = None
+    update_embedding: bool = True
+
+
+@dataclass
+class DecoderConfigDict:
+    use_attention: bool
+    num_layers: int
+    hidden_size: int
+    max_length: int
+    rnn_type: str = "lstm"
+    output_size: int = None
+
+
+@dataclass
+class BeamSearchConfigDict:
+    beam_size: int
+    penalty: float
+
+
+@dataclass
+class AttentionConfigDict:
+    type: str
+    size: int = None
+
+
+@dataclass
+class AttentionModelConfigDict:
+    name: str
+    encoder: EncoderConfigDict
+    decoder: DecoderConfigDict
+    beam_search: BeamSearchConfigDict
+    attention: AttentionConfigDict
+    decoding_method: str
+    dropout: float
+    teacher_forcing_ratio: float
+
+    def __post_init__(self):
+        self.encoder = EncoderConfigDict(**self.encoder)
+        self.decoder = DecoderConfigDict(**self.decoder)
+        self.beam_search = BeamSearchConfigDict(**self.beam_search)
+        self.attention = AttentionConfigDict(**self.attention)
 
 
 class Attention(BaseModel):
     def __init__(self, params, dataset: PytorchSeq2SeqDataset):
-        """
-        :param dlex.configs.AttrDict params:
-        :param dlex.datasets.base.BaseDataset dataset:
-        """
         super().__init__(params, dataset)
-        cfg = params.model
+        self.configs = AttentionModelConfigDict(**self.params.model)
 
         # TODO: note that sos/eos IDs are identical
         self.sos = dataset.sos_token_idx
@@ -29,7 +77,7 @@ class Attention(BaseModel):
 
         # subsample info
         # +1 means input (+1) and layers outputs (args.elayer)
-        subsample = np.ones(cfg.encoder.num_layers + 1, dtype=np.int)
+        subsample = np.ones(self.configs.encoder.num_layers + 1, dtype=np.int)
         logger.info('subsample: ' + ' '.join([str(x) for x in subsample]))
         self.subsample = subsample
 
@@ -58,7 +106,7 @@ class Attention(BaseModel):
         """
         :rtype: EncoderRNN
         """
-        cfg = self.params.model
+        cfg = self.configs
         return EncoderRNN(
             input_size=self.dataset.input_size,
             rnn_type=cfg.encoder.rnn_type,
@@ -72,7 +120,7 @@ class Attention(BaseModel):
         """
         :rtype: DecoderRNN
         """
-        cfg = self.params.model
+        cfg = self.configs
         return DecoderRNN(
             input_size=cfg.encoder.output_size,
             rnn_type=cfg.decoder.rnn_type,
@@ -91,7 +139,7 @@ class Attention(BaseModel):
             dropout=cfg.dropout)
 
     def _build_attention(self) -> List[torch.nn.Module]:
-        cfg = self.params.model
+        cfg = self.configs
         logger.info("Attention type: %s", cfg.attention.type)
         if cfg.attention.type is None:
             attention = [NoAttention()]
@@ -111,6 +159,8 @@ class Attention(BaseModel):
                 filter_size=cfg.attention.filter_size
             )
             attention = torch.nn.ModuleList([self._test])
+        else:
+            raise Exception(f"Attention type is not defined: ${cfg.attention.type}")
         return attention
 
     def init_like_chainer(self):
@@ -280,6 +330,20 @@ class Attention(BaseModel):
             self.current_epoch)
         # img = [attentions[0] for attentions in others.attentions]
         # logger.debug(len(others.attentions))
+
+    def train_log(self, batch: Batch, output, verbose):
+        d = super().train_log(batch, output, verbose)
+        if verbose:
+            d["input_length"] = batch.X.shape[1]
+            d["output_length"] = batch.Y.shape[1]
+        return d
+
+    def infer_log(self, batch: Batch, output, verbose):
+        d = super().infer_log(batch, output, verbose)
+        if verbose:
+            d["input_length"] = batch.X.shape[1]
+            d["output_length"] = max([len(seq) for seq in output])
+        return d
 
 
 class NMT(Attention):
