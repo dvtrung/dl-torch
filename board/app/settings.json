@@ -17,10 +17,10 @@
       "remoteDir": "~/implementations/nmt"
     },
     "common_voice": {
-      "path": "C:\\repos\\dvtrung\\dlex\\implementations\\nmt\\model_configs\\common_voice.yml",
-      "dir": "C:\\repos\\dvtrung\\dlex\\implementations\\nmt",
-      "machine": "aws",
-      "remoteDir": "/dlex/implementations/speech_recognition"
+      "path": "C:\\repos\\dvtrung\\dlex\\implementations\\speech_recognition\\model_configs\\common_voice.yml",
+      "dir": "C:\\repos\\dvtrung\\dlex\\implementations\\speech_recognition",
+      "machine": "peterchin3",
+      "remoteDir": "~/implementations/speech_recognition"
     }
   },
   "machines": {

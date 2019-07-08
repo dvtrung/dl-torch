@@ -12,7 +12,7 @@ import MachineSelect from "./MachineSelect";
 import Terminal from "./Terminal";
 import {getLogPath, sshConnect} from "../utils/ssh";
 import {ipcRenderer} from "electron";
-import {syncTrainingStats} from "../actions/home";
+import {syncEpochStats} from "../actions/home";
 import TrainingTab from "./tabs/TrainingTab";
 
 const { TabPane }= Tabs;
@@ -21,7 +21,7 @@ const { TextArea } = Input;
 type Props = {
   models: [Model],
   selectModel: (Model) => void,
-  syncTrainingStats: (Model, Machine) => void
+  syncEpochStats: (Model, Machine) => void
 };
 
 const formItemLayout = {
@@ -100,7 +100,7 @@ function mapDispatchToProps(dispatch) {
         model: model
       })
     },
-    syncTrainingStats
+    syncEpochStats
   }
 }
 

@@ -3,8 +3,8 @@ import {
   LOAD_DIRECTORY,
   SELECT_MODEL,
   SSH_CONNECT,
-  SYNC_TRAINING_STATS_END,
-  SYNC_TRAINING_STATS_START
+  SYNC_EPOCH_STATS_END,
+  SYNC_EPOCH_STATS_START, SYNC_EPOCH_STEP_STATS_START, SYNC_EPOCH_STEP_STATS_UPDATE
 } from '../actions/home';
 import type { Action } from './types';
 import {LOAD_SETTINGS} from "../actions/settings";
@@ -50,6 +50,10 @@ export default function home(state = defaultState, action: Action) {
         key,
         stats: {
           isLoading: false
+        },
+        stepStats: {
+          losses: [],
+          epochs: []
         }
       });
       return {
@@ -72,31 +76,64 @@ export default function home(state = defaultState, action: Action) {
       return {
         ...state,
         selectedModelKey: action.key,
-        selectedMachine: null
+        selectedMachineKey: null
       };
     case SSH_CONNECT:
       const { machine } = action;
       return extendMachine(state, machine.key, {
         sshClient: action.client
       });
-    case SYNC_TRAINING_STATS_START:
-      return extendModel(state, action.model, {
-        stats: { isLoading: true },
-      });
-    case SYNC_TRAINING_STATS_END:
-      const { data } = action;
-      const metrics = Object.keys(data.result)
+    case SYNC_EPOCH_STATS_START:
       return extendModel(state, action.model, {
         stats: {
-          isLoading: false,
-          epoch: data.epoch,
-          totalEpoch: 100,
-          metrics: metrics,
-          bestResult: metrics.map(metric => data.best_result[metric].result[metric]),
-          bestResultEpoch: metrics.map(metric => data.best_result[metric].epoch),
-          isLoadingStats: false
-        }
+          ...state.models[action.model.key].stats,
+          isLoading: true
+        },
       });
+    case SYNC_EPOCH_STATS_END:
+      const { data } = action;
+      if (data.length === 0) {
+        return extendModel(state, action.model, {
+          stats: {
+            isLoading: false
+          }
+        });
+      } else {
+        const metrics = Object.keys(data[0].result);
+        return extendModel(state, action.model, {
+          stats: {
+            isLoading: false,
+            epoch: data[data.length - 1].epoch,
+            totalEpoch: 100,
+            metrics: metrics,
+            bestResult: metrics.map(metric => data[data.length - 1].best_result[metric].result[metric]),
+            bestResultEpoch: metrics.map(metric => data[data.length - 1].best_result[metric].epoch),
+            epochs: data.map(res => res.epoch),
+            results: metrics.map(metric => data.map(res => res.result[metric])),
+            isLoadingStats: false,
+            lastUpdated: new Date()
+          }
+        });
+      }
+    case SYNC_EPOCH_STEP_STATS_START:
+      return extendModel(state, action.model, {
+          stepStats: {
+            losses: [],
+            epochs: []
+          }
+        });
+    case SYNC_EPOCH_STEP_STATS_UPDATE:
+      if (action.data) {
+        return extendModel(state, action.model, {
+          stepStats: {
+            epoch: action.data.epoch,
+            loss: action.data.loss,
+            overallLoss: action.data.overall_loss,
+            epochs: [...state.models[action.model.key].stepStats.epochs, action.data.epoch],
+            losses: [...state.models[action.model.key].stepStats.losses, action.data.loss]
+          }
+        });
+      }
     default:
       return state;
   }

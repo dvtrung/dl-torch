@@ -7,6 +7,7 @@ import {bindActionCreators} from "redux";
 import * as HomeActions from "../actions/home";
 import * as SettingActions from "../actions/settings";
 import {SELECT_MODEL} from "../actions/home";
+import {onModelSelected} from "../actions/home";
 
 const { SubMenu } = Menu;
 type Props = {
@@ -68,12 +69,7 @@ function mapStateToProps(state) {
 
 function mapDispatchToProps(dispatch) {
   return {
-    selectModel: (key) => {
-      return dispatch({
-        type: SELECT_MODEL,
-        key: key
-      })
-    }
+    selectModel: bindActionCreators(onModelSelected, dispatch)
   }
 }
 

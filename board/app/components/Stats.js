@@ -3,9 +3,10 @@ import React, { Component } from 'react';
 import { Link } from 'react-router-dom';
 import routes from '../constants/routes';
 import styles from './Home.css';
-import { Statistic, Row, Col, Icon } from 'antd';
+import {Statistic, Row, Col, Icon, Tooltip} from 'antd';
 type Props = {
   stats: any,
+  stepStats: any
 };
 
 export default class Stats extends Component<Props> {
@@ -25,21 +26,53 @@ export default class Stats extends Component<Props> {
   };
 
   render() {
-    const { stats } = this.props;
-    const metric = stats.metrics[this.state.currentMetric]
-    return (
-      <Row gutter={16}>
+    const { stats, stepStats } = this.props;
+    const { currentMetric } = this.state;
+    const metric = stats.metrics ? stats.metrics[currentMetric] : null;
+    return [
+      <Row gutter={16} key="epoch">
         <Col span={8}>
-          <Statistic title="Epoch" value={stats.epoch} suffix={"/ " + stats.totalEpoch} />
+          <Statistic title="Epoch" value={stats.epoch || 0} suffix={"/ " + (stats.totalEpoch || 0)} />
         </Col>
         <Col span={8}>
-          <Statistic title={`Train ${metric}`} value={(stats.bestResult[this.state.currentMetric] * 100).toFixed(4).toString()} />
+          <Statistic
+            title={`Train ${metric || ""}`}
+            value={metric ? (stats.bestResult[this.state.currentMetric] * 100) : ""}
+            precision={2} />
         </Col>
         <Col span={8}>
-          <Statistic title={`Test ${metric}`} value={(stats.bestResult[this.state.currentMetric] * 100).toFixed(4).toString()} />
+          <Tooltip title={metric ? `Epoch ${stats.bestResultEpoch[this.state.currentMetric]}`: ""} placement="bottom">
+            <span>
+            <Statistic
+              title={`Test ${metric || ""}`}
+              value={metric ? (stats.bestResult[this.state.currentMetric] * 100) : ""}
+              precision={2} />
+            </span>
+          </Tooltip>
+        </Col>
+      </Row>,
+      <Row gutter={16} key="epoch-step">
+        <Col span={8}>
+          <Statistic title="Epoch progress" value={stepStats.epoch * 100 || 0} suffix={"%"} precision={2} />
+        </Col>
+        <Col span={8}>
+          <Statistic
+            title={`Training Loss`}
+            value={stepStats.overallLoss || 0}
+            precision={2} />
+        </Col>
+        <Col span={8}>
+          <Tooltip title={metric ? `Epoch ${stats.bestResultEpoch[this.state.currentMetric]}`: ""} placement="bottom">
+            <span>
+            <Statistic
+              title={`Test ${metric || ""}`}
+              value={metric ? (stats.bestResult[this.state.currentMetric] * 100) : ""}
+              precision={2} />
+            </span>
+          </Tooltip>
         </Col>
       </Row>
-    );
+    ];
   }
 }
 
