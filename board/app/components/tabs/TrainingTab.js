@@ -1,12 +1,10 @@
-import {Button, Icon, Row, Typography, Col} from "antd";
-import Stats from "../Stats";
-import Terminal from "../Terminal";
+import {Icon, Row, Typography, Col, Progress, Button, Statistic, Tooltip, Card} from "antd";
 import {syncEpochStats, syncEpochStepStats} from "../../actions/home";
 import {connect} from "react-redux";
 import React, {Component} from "react";
 import type {Machine, Model} from "../../reducers/types";
 import {bindActionCreators} from "redux";
-import {Line, Scatter} from 'react-chartjs-2';
+import {Scatter} from 'react-chartjs-2';
 
 const { Text } = Typography;
 
@@ -27,44 +25,58 @@ class TrainingTab extends Component<Props> {
   }
 
   handleRefreshStats = () => {
-    this.props.syncEpochStats(this.props.model, this.props.machine, true);
-    this.props.syncEpochStepStats(this.props.model, this.props.machine);
-  }
+    if (!this.props.model.stepStats.isConnected) {
+      this.props.syncEpochStepStats(this.props.model, this.props.machine);
+    }
+  };
 
   render() {
     const { model, machine } = this.props;
+    const connectBtn = model.stepStats.isConnected ?
+      <Button type="danger">Disconnect</Button> :
+      (model.stepStats.isConnecting ?
+          <Button disabled={true}>Connecting...</Button> :
+          <Button type="primary" onClick={this.handleRefreshStats}>Connect</Button>
+      )
+    const machineStatusText = model.stepStats.isConnected ?
+        <Text type="warning"><Icon type="check" /> Connected</Text> :
+        (model.stepStats.isConnecting ?
+          <Text type="secondary"><Icon type="sync" spin /> Connecting...</Text> :
+          <Text type="danger"><Icon type="close" /> Not connected</Text>)
     return (
       <div>
         <Row>
-          <Stats stats={model.stats} stepStats={model.stepStats} />
-          <Text type="secondary">Last updated: {model.stats.lastUpdated ? model.stats.lastUpdated.toLocaleTimeString() : "never"}</Text>
-          <Button type="link" onClick={this.handleRefreshStats} disabled={model.stats.isLoading}>
-            {this.props.model.stats.isLoading ? <Icon type="sync" spin /> : <Icon type="sync" />}
-          </Button>
-          <Terminal machine={this.props.machine}/>
+          <Text>Machine: </Text>{connectBtn}
+        </Row>
+        <Row gutter={16} type="flex">
+          <Col span={8}>
+            <Card style={{textAlign: "center", height: "100%"}}>
+              <h3>Epoch Progress</h3>
+              <Progress type="circle" percent={Math.floor(model.stepStats.epoch * 100) % 100} />
+            </Card>
+          </Col>
+          <Col span={8}>
+            <Card
+              style={{textAlign: "center", height: "100%"}}
+              actions={[]}
+            >
+              <div style={{height: 110}}>
+                <h3>Machine Status</h3>
+              </div>
+              </Card>
+          </Col>
+          <Col span={8}>
+            <Card
+              style={{textAlign: "center", height: "100%"}}
+              actions={[<span>Train</span>]}>
+              <div style={{height: 110}}>
+                <h3>Model Status</h3>
+              </div>
+            </Card>
+          </Col>
         </Row>
         <Row>
-          <Col span={12}>
-            <Line
-              data={{
-                labels: model.stats.metrics ? model.stats.epochs : [],
-                datasets: [
-                  {
-                    label: "Train loss",
-                    data: model.stats.metrics ? model.stats.results[0] : [],
-                    fill: false,
-                    lineTension: 0
-                  }
-                  ]
-              }}
-              options={{
-                datasetFill: false,
-                bezierCurve: false,
-              }}
-            />
-          </Col>
-          <Col span={12}>
-            <Scatter
+          <Scatter
               data={{
                 datasets: [
                   {
@@ -81,6 +93,7 @@ class TrainingTab extends Component<Props> {
               options={{
                 datasetFill: false,
                 bezierCurve: false,
+                interactive: true,
                 scales: {
                   xAxes: [{
                     display: true,
@@ -97,7 +110,6 @@ class TrainingTab extends Component<Props> {
                 }
               }}
             />
-          </Col>
         </Row>
       </div>
     )

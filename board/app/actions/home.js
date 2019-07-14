@@ -8,11 +8,14 @@ const fs = require('fs');
 
 export const LOAD_DIRECTORY = 'LOAD_DIRECTORY';
 export const SELECT_MODEL = 'SELECT_MODEL';
+export const SELECT_MACHINE = 'SELECT_MACHINE';
 export const SSH_CONNECT = 'SSH_CONNECT';
 export const SYNC_EPOCH_STATS_START = 'SYNC_EPOCH_STATS_START';
 export const SYNC_EPOCH_STATS_END = 'SYNC_EPOCH_STATS_END';
 export const SYNC_EPOCH_STEP_STATS_UPDATE = 'SYNC_EPOCH_STEP_STATS_UPDATE';
 export const SYNC_EPOCH_STEP_STATS_START = 'SYNC_EPOCH_STEP_STATS_START';
+export const SYNC_EPOCH_STEP_STATS_CONNECTED = 'SYNC_EPOCH_STEP_STATS_CONNECTED';
+export const SYNC_EPOCH_STEP_STATS_DISCONNECTED = 'SYNC_EPOCH_STEP_STATS_DISCONNECTED';
 
 export function loadModelsAsync(path) {
   return (dispatch: Dispatch) => {
@@ -51,8 +54,21 @@ export function onModelSelected(key) {
       key,
       // config: content
     });
-    syncEpochStats(model, machine)(dispatch);
-    syncEpochStepStats(model, machine)(dispatch);
+    // syncEpochStats(model, machine)(dispatch);
+    // syncEpochStepStats(model, machine)(dispatch);
+  }
+}
+
+export function onMachineSelected(key) {
+  return (dispatch: Dispatch, getState) => {
+    // const content = fs.readFileSync(
+    //   path.join(root, 'model_configs', `${modelName}.yml`), { encoding: 'utf-8' });
+    const state = getState();
+    const machine = state.home.machines[key]
+    dispatch({
+      type: SELECT_MACHINE,
+      key
+    });
   }
 }
 
@@ -113,6 +129,7 @@ export function syncEpochStepStats(model, machine) {
     let ret = "";
     dispatch({ type: SYNC_EPOCH_STEP_STATS_START, model });
     sshConnect(machine, (client) => {
+      dispatch({ type: SYNC_EPOCH_STEP_STATS_CONNECTED, model, client });
       client.exec(`tail -f -n 100 ${getLogPath(model)}/epoch-step-info.log`, (err, stream) => {
         if (err) throw err;
         stream.on('data', (data) => {
@@ -126,7 +143,12 @@ export function syncEpochStepStats(model, machine) {
             }
           });
           ret = ret[ret.length - 1];
+        }).on('close', () => {
+          client.end();
         });
+      })
+      client.on('end', () => {
+        dispatch({ type: SYNC_EPOCH_STEP_STATS_DISCONNECTED, model })
       });
     }, (err) => {
       ipcRenderer.send("error-box", {

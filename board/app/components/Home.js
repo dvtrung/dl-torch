@@ -4,6 +4,7 @@ import { Layout, Button, Input, Row, Col, Tabs } from 'antd';
 import Stats from './Stats'
 import Sider from './Sider'
 import ModelTabs from "./ModelTabs";
+import MachineTabs from "./MachineTabs";
 
 const { Content } = Layout;
 const { TabPane } = Tabs;
@@ -52,6 +53,7 @@ export default class Home extends Component<Props> {
         <Layout>
           <Content style={{padding: 24}}>
             {this.props.selectedModelKey && <ModelTabs />}
+            {this.props.selectedMachineKey && <MachineTabs />}
           </Content>
         </Layout>
       </Layout>

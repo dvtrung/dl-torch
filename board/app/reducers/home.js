@@ -1,10 +1,14 @@
 // @flow
 import {
-  LOAD_DIRECTORY,
+  LOAD_DIRECTORY, SELECT_MACHINE,
   SELECT_MODEL,
   SSH_CONNECT,
   SYNC_EPOCH_STATS_END,
-  SYNC_EPOCH_STATS_START, SYNC_EPOCH_STEP_STATS_START, SYNC_EPOCH_STEP_STATS_UPDATE
+  SYNC_EPOCH_STATS_START,
+  SYNC_EPOCH_STEP_STATS_CONNECTED,
+  SYNC_EPOCH_STEP_STATS_DISCONNECTED,
+  SYNC_EPOCH_STEP_STATS_START,
+  SYNC_EPOCH_STEP_STATS_UPDATE
 } from '../actions/home';
 import type { Action } from './types';
 import {LOAD_SETTINGS} from "../actions/settings";
@@ -78,6 +82,12 @@ export default function home(state = defaultState, action: Action) {
         selectedModelKey: action.key,
         selectedMachineKey: null
       };
+    case SELECT_MACHINE:
+      return {
+        ...state,
+        selectedModelKey: null,
+        selectedMachineKey: action.key
+      };
     case SSH_CONNECT:
       const { machine } = action;
       return extendMachine(state, machine.key, {
@@ -118,14 +128,36 @@ export default function home(state = defaultState, action: Action) {
     case SYNC_EPOCH_STEP_STATS_START:
       return extendModel(state, action.model, {
           stepStats: {
+            isConnecting: true,
+            isConnected: false,
             losses: [],
             epochs: []
           }
         });
+    case SYNC_EPOCH_STEP_STATS_CONNECTED:
+      return extendModel(state, action.model, {
+          stepStats: {
+            isConnecting: false,
+            isConnected: true,
+            client: action.client,
+            losses: [],
+            epochs: []
+          }
+        });
+    case SYNC_EPOCH_STEP_STATS_DISCONNECTED:
+      return extendModel(state, action.model, {
+        stepStats: {
+          ...state.models[action.model.key].stepStats,
+          isConnecting: false,
+          isConnected: false,
+          client: null
+        }
+      })
     case SYNC_EPOCH_STEP_STATS_UPDATE:
       if (action.data) {
         return extendModel(state, action.model, {
           stepStats: {
+            ...state.models[action.model.key].stepStats,
             epoch: action.data.epoch,
             loss: action.data.loss,
             overallLoss: action.data.overall_loss,

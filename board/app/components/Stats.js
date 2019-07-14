@@ -30,7 +30,7 @@ export default class Stats extends Component<Props> {
     const { currentMetric } = this.state;
     const metric = stats.metrics ? stats.metrics[currentMetric] : null;
     return [
-      <Row gutter={16} key="epoch">
+      <Row gutter={16}>
         <Col span={8}>
           <Statistic title="Epoch" value={stats.epoch || 0} suffix={"/ " + (stats.totalEpoch || 0)} />
         </Col>
@@ -38,27 +38,6 @@ export default class Stats extends Component<Props> {
           <Statistic
             title={`Train ${metric || ""}`}
             value={metric ? (stats.bestResult[this.state.currentMetric] * 100) : ""}
-            precision={2} />
-        </Col>
-        <Col span={8}>
-          <Tooltip title={metric ? `Epoch ${stats.bestResultEpoch[this.state.currentMetric]}`: ""} placement="bottom">
-            <span>
-            <Statistic
-              title={`Test ${metric || ""}`}
-              value={metric ? (stats.bestResult[this.state.currentMetric] * 100) : ""}
-              precision={2} />
-            </span>
-          </Tooltip>
-        </Col>
-      </Row>,
-      <Row gutter={16} key="epoch-step">
-        <Col span={8}>
-          <Statistic title="Epoch progress" value={stepStats.epoch * 100 || 0} suffix={"%"} precision={2} />
-        </Col>
-        <Col span={8}>
-          <Statistic
-            title={`Training Loss`}
-            value={stepStats.overallLoss || 0}
             precision={2} />
         </Col>
         <Col span={8}>

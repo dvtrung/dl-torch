@@ -21,12 +21,55 @@
       "dir": "C:\\repos\\dvtrung\\dlex\\implementations\\speech_recognition",
       "machine": "peterchin3",
       "remoteDir": "~/implementations/speech_recognition"
+    },
+    "ctc_common_voice": {
+      "path": "C:\\repos\\dvtrung\\dlex\\implementations\\speech_recognition\\model_configs\\ctc_common_voice.yml",
+      "dir": "C:\\repos\\dvtrung\\dlex\\implementations\\speech_recognition",
+      "machine": "peterchin3",
+      "remoteDir": "~/implementations/speech_recognition"
+    },
+    "conll": {
+      "path": "C:\\repos\\dvtrung\\dlex\\implementations\\grammatical_error_correction\\model_configs\\conll.yml",
+      "dir": "C:\\repos\\dvtrung\\dlex\\implementations\\grammatical_error_correction",
+      "machine": "peterchin5",
+      "remoteDir": "~/implementations/grammatical_error_correction"
     }
   },
   "machines": {
     "peterchin3": {
       "title": "peterchin3",
       "host": "peterchin3",
+      "root": "~/repos/dlex/implementations",
+      "tmpPath": "/scratch/trungvd",
+      "username": "trungvd",
+      "privateKey": "-----BEGIN RSA PRIVATE KEY-----\nMIIEpAIBAAKCAQEA1sMxujYiq/c6531VBui0bRI/ga8jcEI6wY0gHYWfpf/InglA\noHRK+30FMdlM8wn6knmgUeY8PnxyrW/ORqOtjs1+b3l4KX5z2yRFeOL0hND/c+bI\nrZOQ2uJORXVBr9X1EcGWYmylqVU/o0O6Aofi+S9xZ1pihsmz8JCtb1HWvK8/FDl4\nuJasAzs/k1m3pGFN8ELaAO8cyutabgptIFMSUGeQ/e+Pjs7SuCzcBdIoUXVzh7YO\nIXykmkQZM/10BxmoQdeWLBJu3kQrJgIkniTXT5sNuMt3faWTa1FfK7dnlXmCjCAy\nMa1P2R7jIdDoFIhcE4JVlLG7vZCey2KO1XE/lQIDAQABAoIBAB2GhGWnX6joum5s\n6q2ifHuqUJTRsTuTv2QwtMOaRVKbEce4Wew1UMG2dGpgB5Y6Pvq4QfRAhPPKRDHX\n9zH6+rdxRPqqZny958uu9uYhvaAs45HZnqlOalHNXxlpf3hfH+wrAzPQ4A2hrLgT\nbZU/fVLo1Nxyrqz9OgHOwilVxQH3jWZ2cH8PHwiuM4Czn2b/ysmLM5hFN3ajg0FB\nW553V3GKAjits5lY2EGfxw5MT1nEjFvXhkidHiRdhbnvWnmMxqS0bCh1S6++BYiZ\n5Y99jnuQeGpT34kb+wO4GIZ+oXx2+yIPO7eLrF7DEJW8OcaI5iCg+f0FUtsbj+fB\nluEWjBkCgYEA7xYKjNHP3nvqW8nF2DxyrcAZnNMw8ctXK7rT4JR2mmM2IxCBSfiq\nVKbcwmOvckRMRyMXOyjS1ydWWe1uVDar73z/2G0iwyZmMVQoNts2RGnKISrfOwNL\nXDrj7lz354JqISIH0uw7xuf1yo8lXw+nLbZEZxtuBNi3ELqwV81WVa8CgYEA5fSk\nIDIGVNYZI3ajCs2dxM2DDFLTtmViAiB4ueX1pRP2vDa897SWqqma3Q4Q0i2N6/+W\naQtRs36H2yK6afI0Un9QhzmU6nsvfAvxgcDMMevQA/Gkz2bC4pWLuMn/qDgY4cEV\nw7eRIeeSsmCj7zobLm85bL2WrvugBLybwDCU0/sCgYEAxWRROYpQMMPl7fpcmfbu\nR31+p/fFRRw40CXjoFtywGyA2dpapBPlrRZG1UcwJws0Xtcd6v39dR1JMd3RZT3u\nHj/5i1ovhSdC4B83RHMgDsO42kFnJHXH1lHYtYeUNVN7A/fwtbfMcqA4UhB1LlLi\nF9+QAgCniODT47/+r78cNIkCgYAvYt9jZwuY9dmOTkdA1ag6QuNLadII1xGAQLLA\nFBwvnVKN7HW6UbNuja7E+L4MoaiKRkv3b4axh1R1ms1xQaD4kxXEF+CRBTt+w3NL\n+q/ZZa+i8Gu29YUZbhmxxaZyQsUV2FUk1LIKm47GRVXi2UV6px7dQqBHhMCv2TH7\nQ8eXewKBgQCTfgh8W/tXPTzgBU5veWfbFj2Dl9g1AjRINm1ZOzo7MFXlpI1pfIA/\npW6rns3fU3xtqAlLjJFFILtF2MxuV7uN42E/imFbxm0yW8sgQy5DrvtCv2E3Mjo+\n/Pk3K2IkxC07J7mFTYT/Ug84v91I/yb4Ez35T67r/mKzJZ/A2wz71A==\n-----END RSA PRIVATE KEY-----\n",
+      "proxy": {
+        "host": "csa1.bu.edu",
+        "username": "trungvd",
+        "privateKey": "-----BEGIN RSA PRIVATE KEY-----\nMIIEpAIBAAKCAQEA4kZ3PkySCxWHco2OLHNpZuitzMKbuBovE5LI0asqbweSdsCh\nmrR5jZEX+HQNqY0wfwpLb/eaLWB0UIYbmg1FJXrWL2xv2WfB9TPBKphq7r4Q47K3\nV648VXCDeWQaUVknUbzEr9FvDvMKKgoA1VczjSgC3p4dv/Qbl8i1nnb6ueyJZk+H\neUY+N2iQPJvrHxQH4idGOh6WTDOVEOlPLXr9oLouRVm6lFMR0wExkE6Ni8v8x3r6\nrL33O+BzkXi0p8xpGla9lX6aKeAy2oCVakvYcOlQF7nwR+jMQ3LJ3bisPf3UW84l\nT1IUl02q7K9vwJIp4yj8+5UdtihRcMSvS+eMOwIDAQABAoIBAQCPa0B7YUcT9XJj\nfiuGKyS8kHBQn2zZ1ObPzjKxCn+b3j3MPS5xA0EkJLn/xXc/Z3k8nIbSEitL5Z3z\nx/zIuO6B4gjOCDogn25Ff6dI21CzwA6udAFXdt1Q/j6m+3be5tZQLYixM9rjq9Je\ncPa0QlAvgRPIjImouA2hOBs9tIYYvw2+IQvlyHN+bsZQj04ZWeFaXU66UOl8A7SS\niRK4r43L9gIi9xhOJ+848z8VJe1NWkhdDx2XyfZjGqFtmi1p+e+BA9yRLSJXYoJa\nSbNspA0QGHp+LWILoenwY/+636rABbWFsZ/WjvXTPr8VTZGgtmLKmwoJfwzXfE0D\n47wQ9kipAoGBAPrk99fZoPO2MFx7i7sGQhTwwIEU+jMQERLYl7htNPJimwZQgF/B\nm2OYDGZLVbqANfA4lG2+sb5la5rbsrMM9SAxRQ2pKLL6NEH2E8QxigZqjgDv+pkv\nBYBKWji4shF7nMmdSke0YVibPXGjRKuThIwATSbVXJwu+OMhnjk8YgJfAoGBAObh\nPpQKI10JinWwU8KEUDD6H7+bYqvELeThTqEM/MuKOOEdQGDGYMAztK5suPY6OSU1\nJ1r5YLuImC5kJHClj+2QgZbYn1F8kR2WNiqmMdUnmI73xrv7x+SgMl7Gs08vjtEG\nvK2QftqsrP5Akb2l076BoMLmOY00E/KQQBSfBBulAoGAQ1jjDpXklob5RFoFkBaF\n9okJo5y17K8LZjutvlvSMp41buR9ETcvNvTBn1Pplz6DPBB0B2GA5NLkp5UByv5X\nbmTLXHdj7WcsT+h2Ndv2aPKBW88PPb9Zgq5yuXcalYbQ9225WrYYy2ggfjiNXmEi\n21HZY+syCNqzBIUpq8OBq5ECgYBsLIjXb9CV3MyEy7LS5o90Ax0w9yrJ88bVAEOI\n7b7b1s1DnCL3tLrMEu3K86HNrAXuSvM/iqwp8Zvr0HvKU6gV1KkC9kffNBAB3slO\nPkQG7OBry+fPV+6WTgCLq2mD5nJxuUhZwePNrS34imQ+iR2mmrGp35iDci0Ob0u2\n3bJdCQKBgQCEaSEsRsYBkwFIA+KieoEoUQoXqCAw/vEpczGRYZPYmkpICakdLdTh\nPVzUX1b6EviTmkC7lVPD0eDaUJu/bP41td25yz258I49BdOULiHrUG5BhpP8AQkh\nGa8A7O47BWWkTHjHceooK1lddFB6IPjito+21mqV5NNFGGLVEf7nWg==\n-----END RSA PRIVATE KEY-----\n"
+      },
+      "models": {
+        "/home/grad3/trungvd/repos/dlex/implementations/grammatical_error_correction/model_configs/conll.yml": {
+          "localPath": "C:\\repos\\dvtrung\\dlex\\implementations\\grammatical_error_correction\\model_configs\\conll.yml"
+        }
+      }
+    },
+    "peterchin4": {
+      "title": "peterchin4",
+      "host": "peterchin4",
+      "root": "~/repos/dlex/implementations",
+      "tmpPath": "/scratch/trungvd",
+      "username": "trungvd",
+      "privateKey": "-----BEGIN RSA PRIVATE KEY-----\nMIIEpAIBAAKCAQEA1sMxujYiq/c6531VBui0bRI/ga8jcEI6wY0gHYWfpf/InglA\noHRK+30FMdlM8wn6knmgUeY8PnxyrW/ORqOtjs1+b3l4KX5z2yRFeOL0hND/c+bI\nrZOQ2uJORXVBr9X1EcGWYmylqVU/o0O6Aofi+S9xZ1pihsmz8JCtb1HWvK8/FDl4\nuJasAzs/k1m3pGFN8ELaAO8cyutabgptIFMSUGeQ/e+Pjs7SuCzcBdIoUXVzh7YO\nIXykmkQZM/10BxmoQdeWLBJu3kQrJgIkniTXT5sNuMt3faWTa1FfK7dnlXmCjCAy\nMa1P2R7jIdDoFIhcE4JVlLG7vZCey2KO1XE/lQIDAQABAoIBAB2GhGWnX6joum5s\n6q2ifHuqUJTRsTuTv2QwtMOaRVKbEce4Wew1UMG2dGpgB5Y6Pvq4QfRAhPPKRDHX\n9zH6+rdxRPqqZny958uu9uYhvaAs45HZnqlOalHNXxlpf3hfH+wrAzPQ4A2hrLgT\nbZU/fVLo1Nxyrqz9OgHOwilVxQH3jWZ2cH8PHwiuM4Czn2b/ysmLM5hFN3ajg0FB\nW553V3GKAjits5lY2EGfxw5MT1nEjFvXhkidHiRdhbnvWnmMxqS0bCh1S6++BYiZ\n5Y99jnuQeGpT34kb+wO4GIZ+oXx2+yIPO7eLrF7DEJW8OcaI5iCg+f0FUtsbj+fB\nluEWjBkCgYEA7xYKjNHP3nvqW8nF2DxyrcAZnNMw8ctXK7rT4JR2mmM2IxCBSfiq\nVKbcwmOvckRMRyMXOyjS1ydWWe1uVDar73z/2G0iwyZmMVQoNts2RGnKISrfOwNL\nXDrj7lz354JqISIH0uw7xuf1yo8lXw+nLbZEZxtuBNi3ELqwV81WVa8CgYEA5fSk\nIDIGVNYZI3ajCs2dxM2DDFLTtmViAiB4ueX1pRP2vDa897SWqqma3Q4Q0i2N6/+W\naQtRs36H2yK6afI0Un9QhzmU6nsvfAvxgcDMMevQA/Gkz2bC4pWLuMn/qDgY4cEV\nw7eRIeeSsmCj7zobLm85bL2WrvugBLybwDCU0/sCgYEAxWRROYpQMMPl7fpcmfbu\nR31+p/fFRRw40CXjoFtywGyA2dpapBPlrRZG1UcwJws0Xtcd6v39dR1JMd3RZT3u\nHj/5i1ovhSdC4B83RHMgDsO42kFnJHXH1lHYtYeUNVN7A/fwtbfMcqA4UhB1LlLi\nF9+QAgCniODT47/+r78cNIkCgYAvYt9jZwuY9dmOTkdA1ag6QuNLadII1xGAQLLA\nFBwvnVKN7HW6UbNuja7E+L4MoaiKRkv3b4axh1R1ms1xQaD4kxXEF+CRBTt+w3NL\n+q/ZZa+i8Gu29YUZbhmxxaZyQsUV2FUk1LIKm47GRVXi2UV6px7dQqBHhMCv2TH7\nQ8eXewKBgQCTfgh8W/tXPTzgBU5veWfbFj2Dl9g1AjRINm1ZOzo7MFXlpI1pfIA/\npW6rns3fU3xtqAlLjJFFILtF2MxuV7uN42E/imFbxm0yW8sgQy5DrvtCv2E3Mjo+\n/Pk3K2IkxC07J7mFTYT/Ug84v91I/yb4Ez35T67r/mKzJZ/A2wz71A==\n-----END RSA PRIVATE KEY-----\n",
+      "proxy": {
+        "host": "csa1.bu.edu",
+        "username": "trungvd",
+        "privateKey": "-----BEGIN RSA PRIVATE KEY-----\nMIIEpAIBAAKCAQEA4kZ3PkySCxWHco2OLHNpZuitzMKbuBovE5LI0asqbweSdsCh\nmrR5jZEX+HQNqY0wfwpLb/eaLWB0UIYbmg1FJXrWL2xv2WfB9TPBKphq7r4Q47K3\nV648VXCDeWQaUVknUbzEr9FvDvMKKgoA1VczjSgC3p4dv/Qbl8i1nnb6ueyJZk+H\neUY+N2iQPJvrHxQH4idGOh6WTDOVEOlPLXr9oLouRVm6lFMR0wExkE6Ni8v8x3r6\nrL33O+BzkXi0p8xpGla9lX6aKeAy2oCVakvYcOlQF7nwR+jMQ3LJ3bisPf3UW84l\nT1IUl02q7K9vwJIp4yj8+5UdtihRcMSvS+eMOwIDAQABAoIBAQCPa0B7YUcT9XJj\nfiuGKyS8kHBQn2zZ1ObPzjKxCn+b3j3MPS5xA0EkJLn/xXc/Z3k8nIbSEitL5Z3z\nx/zIuO6B4gjOCDogn25Ff6dI21CzwA6udAFXdt1Q/j6m+3be5tZQLYixM9rjq9Je\ncPa0QlAvgRPIjImouA2hOBs9tIYYvw2+IQvlyHN+bsZQj04ZWeFaXU66UOl8A7SS\niRK4r43L9gIi9xhOJ+848z8VJe1NWkhdDx2XyfZjGqFtmi1p+e+BA9yRLSJXYoJa\nSbNspA0QGHp+LWILoenwY/+636rABbWFsZ/WjvXTPr8VTZGgtmLKmwoJfwzXfE0D\n47wQ9kipAoGBAPrk99fZoPO2MFx7i7sGQhTwwIEU+jMQERLYl7htNPJimwZQgF/B\nm2OYDGZLVbqANfA4lG2+sb5la5rbsrMM9SAxRQ2pKLL6NEH2E8QxigZqjgDv+pkv\nBYBKWji4shF7nMmdSke0YVibPXGjRKuThIwATSbVXJwu+OMhnjk8YgJfAoGBAObh\nPpQKI10JinWwU8KEUDD6H7+bYqvELeThTqEM/MuKOOEdQGDGYMAztK5suPY6OSU1\nJ1r5YLuImC5kJHClj+2QgZbYn1F8kR2WNiqmMdUnmI73xrv7x+SgMl7Gs08vjtEG\nvK2QftqsrP5Akb2l076BoMLmOY00E/KQQBSfBBulAoGAQ1jjDpXklob5RFoFkBaF\n9okJo5y17K8LZjutvlvSMp41buR9ETcvNvTBn1Pplz6DPBB0B2GA5NLkp5UByv5X\nbmTLXHdj7WcsT+h2Ndv2aPKBW88PPb9Zgq5yuXcalYbQ9225WrYYy2ggfjiNXmEi\n21HZY+syCNqzBIUpq8OBq5ECgYBsLIjXb9CV3MyEy7LS5o90Ax0w9yrJ88bVAEOI\n7b7b1s1DnCL3tLrMEu3K86HNrAXuSvM/iqwp8Zvr0HvKU6gV1KkC9kffNBAB3slO\nPkQG7OBry+fPV+6WTgCLq2mD5nJxuUhZwePNrS34imQ+iR2mmrGp35iDci0Ob0u2\n3bJdCQKBgQCEaSEsRsYBkwFIA+KieoEoUQoXqCAw/vEpczGRYZPYmkpICakdLdTh\nPVzUX1b6EviTmkC7lVPD0eDaUJu/bP41td25yz258I49BdOULiHrUG5BhpP8AQkh\nGa8A7O47BWWkTHjHceooK1lddFB6IPjito+21mqV5NNFGGLVEf7nWg==\n-----END RSA PRIVATE KEY-----\n"
+      }
+    },
+    "peterchin5": {
+      "title": "peterchin5",
+      "host": "peterchin5",
       "root": "~/repos/dlex/implementations",
       "tmpPath": "/scratch/trungvd",
       "username": "trungvd",

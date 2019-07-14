@@ -15,6 +15,7 @@ import {ipcRenderer} from "electron";
 import {syncEpochStats} from "../actions/home";
 import TrainingTab from "./tabs/TrainingTab";
 import EvaluationTab from "./tabs/EvaluationTab";
+import ModelsTab from "./tabs/ModelsTab";
 
 const { TabPane }= Tabs;
 const { TextArea } = Input;
@@ -36,52 +37,51 @@ const formItemLayout = {
   },
 };
 
-class ModelDetailsForm extends Component {
+class MachineDetailsForm extends Component {
   handleSubmit = () => {
 
   }
 
   render() {
-    const { model, machine } = this.props;
+    const { machine } = this.props;
     const { getFieldDecorator } = this.props.form;
     return (
       <Form {...formItemLayout} onSubmit={this.handleSubmit}>
-        <Form.Item label="Path">
-          <Input value={model.path} />
+        <Form.Item label="Name">
+          <Input value={machine.key} />
         </Form.Item>
-        <Form.Item label="Machine">
-          <MachineSelect value={model.machine} onChange={() => {}} />
+        <Form.Item label="Host">
+          <Input value={machine.host} onChange={() => {}} />
         </Form.Item>
-        <Form.Item label="Remote Directory">
-          <Input value={model.remoteDir} />
+        <Form.Item label="Root">
+          <Input value={machine.root} />
+        </Form.Item>
+        <Form.Item label="Username">
+          <Input value={machine.username} />
+        </Form.Item>
+        <Form.Item label="Password">
+          <Input value={machine.password} />
+        </Form.Item>
+        <Form.Item label="Private Key">
+          <TextArea value={machine.privateKey} rows={5} />
         </Form.Item>
       </Form>
     )
   }
 }
 
-const ModelDetails = Form.create({ name: 'register' })(ModelDetailsForm);
+const MachineDetails = Form.create({ name: 'register' })(MachineDetailsForm);
 
-class ModelTabs extends Component<Props> {
+class MachineTabs extends Component<Props> {
   render() {
     const { model, machine } = this.props;
     return (
       <Tabs defaultActiveKey="details" onChange={this.onTabChange}>
         <TabPane tab={<span><Icon type="info" /> Details</span>} key="details">
-          <ModelDetails model={model} machine={machine} />
+          <MachineDetails machine={machine} />
         </TabPane>
-        <TabPane tab={<span><Icon type="line-chart" /> Training</span>} key="training">
-          <TrainingTab />
-        </TabPane>
-        <TabPane tab="Evaluation" key="evaluation">
-          <EvaluationTab />
-        </TabPane>
-        <TabPane tab="Configuration" key="config">
-          <Row style={{height:"100vh"}}>
-            <Col span={8}>
-              <TextArea value={this.props.selectedModel != null ? this.props.selectedModel.config : ""}></TextArea>
-            </Col>
-          </Row>
+        <TabPane tab={<span><Icon type="line-chart" /> Models</span>} key="models">
+          <ModelsTab />
         </TabPane>
       </Tabs>
     );
@@ -89,10 +89,9 @@ class ModelTabs extends Component<Props> {
 }
 
 function mapStateToProps(state) {
-  const model = state.home.models[state.home.selectedModelKey];
+  const machine = state.home.machines[state.home.selectedMachineKey];
   return {
-    model,
-    machine: state.settings.machines[model.machine]
+    machine
   };
 }
 
@@ -111,4 +110,4 @@ function mapDispatchToProps(dispatch) {
 export default connect(
   mapStateToProps,
   mapDispatchToProps
-)(ModelTabs);
+)(MachineTabs);

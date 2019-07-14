@@ -1,0 +1,22 @@
+model:
+  name: src.models.rnn.RNN
+  dropout: 0.2
+  embedding_size: 128
+  input_length: 20
+  rnn_type: lstm
+  num_layers: 2
+  hidden_size: 128
+  tie_weights: true
+dataset:
+  name: dlex.datasets.nlp.wikitext.builder.WikiText2
+  unit: word
+  output_format: null
+train:
+  batch_size: 1024
+  num_epochs: 100
+  optimizer:
+    name: adam
+    lr: 0.01
+test:
+  batch_size: 64
+  metrics: [loss, acc]

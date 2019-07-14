@@ -8,6 +8,7 @@ import * as HomeActions from "../actions/home";
 import * as SettingActions from "../actions/settings";
 import {SELECT_MODEL} from "../actions/home";
 import {onModelSelected} from "../actions/home";
+import {onMachineSelected} from "../actions/home";
 
 const { SubMenu } = Menu;
 type Props = {
@@ -47,7 +48,7 @@ class Sider extends Component<Props> {
             }
           >
             {Object.entries(this.props.machines).map(([key, machine]) =>
-              <Menu.Item key={`machine-${key}`}>{key}</Menu.Item>
+              <Menu.Item key={`machine-${key}`} onClick={() => this.props.selectMachine(key)}>{key}</Menu.Item>
             )}
           </SubMenu>
           <Menu.Item key="9">
@@ -69,7 +70,8 @@ function mapStateToProps(state) {
 
 function mapDispatchToProps(dispatch) {
   return {
-    selectModel: bindActionCreators(onModelSelected, dispatch)
+    selectModel: bindActionCreators(onModelSelected, dispatch),
+    selectMachine: bindActionCreators(onMachineSelected, dispatch)
   }
 }
 

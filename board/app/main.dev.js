@@ -93,7 +93,7 @@ app.on('ready', async () => {
     mainWindow = null;
   });
 
-  const menuBuilder = new MenuBuilder(mainWindow);
+  const menuBuilder = new Menu(mainWindow);
   menuBuilder.buildMenu();
 
   // Remove this if your app does not use auto updates
