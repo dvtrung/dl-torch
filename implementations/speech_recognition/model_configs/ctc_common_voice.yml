@@ -13,24 +13,20 @@ dataset:
   max_source_length: 2000
   output_format: "text"
   debug_size: 100
-  sort: true
   feature:
     tool: htk
     file_type: htk
     num_filters: 120
   special_tokens: [sos, eos, oov, pad]
 train:
-  batch_size:
-    0: 64
-    50: 32
-    75: 16
-    90: 8
+  batch_size: 16
   num_epochs: 300
   optimizer:
-    name: adam
-    lr: 0.001
-  max_grad_norm: 5.0
+    name: sgd
+    lr: 0.01
+  max_grad_norm: 1.0
+  save_every: 0.05e
+  log_every: 60s
 test:
-  batch_size: 16
-  metrics:
-    - wer
+  batch_size: 4
+  metrics: [wer]

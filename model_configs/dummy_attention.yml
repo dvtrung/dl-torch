@@ -12,8 +12,12 @@ model:
     num_layers: 1
     hidden_size: 128
     max_length: 50
+    output_size: 128
   attention:
-    type: null
+    type: location
+    size: 128
+    num_channels: 3
+    filter_size: 10
   decoding_method: greedy
   beam_search:
     beam_size: 4

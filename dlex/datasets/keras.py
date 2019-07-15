@@ -4,7 +4,7 @@ from tensorflow.python import keras
 class KerasDataset:
     def __init__(self, builder, mode, params):
         self.params = params
-        self._mode = mode
+        self.mode = mode
         self.builder = builder
         self.dataset = None
 

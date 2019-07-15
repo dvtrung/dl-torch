@@ -1,17 +1,9 @@
-import abc
 import os
 
 from dlex.datasets.builder import DatasetBuilder
 
 
-class ImageDatasetBuilder(DatasetBuilder):
-    @abc.abstractmethod
-    def evaluate(self, hypothesis, reference, metric: str) -> (int, int):
-        if metric == 'acc':
-            return int(hypothesis == reference), 1
-        else:
-            super().evaluate(hypothesis, reference, metric)
-
+class ImageDataset(DatasetBuilder):
     def format_output(self, y_pred, batch_item, tag="default") -> (str, str, str):
         y_pred = y_pred.cpu().detach().numpy()
         format = self.params.dataset.output_format

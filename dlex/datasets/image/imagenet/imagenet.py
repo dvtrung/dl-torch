@@ -133,7 +133,7 @@ class KerasImageNet(KerasDataset):
     def __init__(self, builder, mode, params):
         super().__init__(builder, mode, params)
 
-        _, self._info = tfds.load("imagenet2012", split=self._mode, with_info=True)
+        _, self._info = tfds.load("imagenet2012", split=self.mode, with_info=True)
         self.maybe_prepare_tfrecord()
         tfrecord_path = os.path.join(builder.get_processed_data_dir(), 'imagenet_%s.tfrecord' % mode)
 
@@ -183,10 +183,10 @@ class KerasImageNet(KerasDataset):
 
     def maybe_prepare_tfrecord(self):
         os.makedirs(self.builder.get_processed_data_dir(), exist_ok=True)
-        tfrecord_path = os.path.join(self.builder.get_processed_data_dir(), 'imagenet_%s.tfrecord' % self._mode)
+        tfrecord_path = os.path.join(self.builder.get_processed_data_dir(), 'imagenet_%s.tfrecord' % self.mode)
         if os.path.exists(tfrecord_path):
             return
-        data, info = tfds.load("imagenet2012", split=self._mode, with_info=True)
+        data, info = tfds.load("imagenet2012", split=self.mode, with_info=True)
         data = data.map(lambda item: (
             tf.reshape(self._preprocess_input(item['image']), [-1]),
             item['label']))
@@ -200,7 +200,7 @@ class KerasImageNet(KerasDataset):
                 writer.write(example)
 
     def __len__(self):
-        return self._info.splits[self._mode].num_examples
+        return self._info.splits[self.mode].num_examples
 
     @property
     def num_classes(self):

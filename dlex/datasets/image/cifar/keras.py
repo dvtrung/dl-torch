@@ -44,7 +44,7 @@ class CIFAR10_tf(TensorflowDataset):
         self._info = info
 
     def __len__(self):
-        return self._info.splits[self._mode].num_examples
+        return self._info.splits[self.mode].num_examples
 
     @property
     def num_classes(self):

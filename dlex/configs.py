@@ -2,7 +2,7 @@
 import os
 import re
 import argparse
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Union, Dict, List
 
 import yaml
@@ -16,6 +16,8 @@ args = None
 
 class ModuleConfigs:
     DATA_TMP_PATH = os.path.join(os.getenv("DATA_TMP_PATH", DEFAULT_DATA_TMP_PATH), "dlex", "datasets")
+    TMP_PATH = os.path.join(os.getenv("DATA_TMP_PATH", DEFAULT_DATA_TMP_PATH), "dlex")
+    SAVED_MODELS_PATH = os.path.join(os.getenv("SAVED_MODELS_PATH", "saved_models"), "dlex")
 
 
 @dataclass
@@ -23,6 +25,7 @@ class TrainConfig:
     batch_size: int
     num_epochs: int
     optimizer: dict
+    eval: list = field(default_factory=lambda: ["test", "valid"])
     max_grad_norm: float = 5.0
     save_every: str = "1e"
     log_every: str = "5s"
@@ -36,9 +39,10 @@ class AttrDict(dict):
     seed = 1
     shuffle = False
     batch_size = None
-    test_batch_size = None
     path = None
     train: TrainConfig
+    verbose: bool
+    num_workers: int
 
     def __init__(self, *args, **kwargs):
         super(AttrDict, self).__init__(*args, **kwargs)
@@ -51,7 +55,7 @@ class AttrDict(dict):
             self.train = TrainConfig(**self['train'])
 
     def __getattr__(self, item: str):
-        logger.warning("Access to unset param %s", item)
+        # logger.warning("Access to unset param %s", item)
         return None
 
     def set(self, field, value):
@@ -126,7 +130,7 @@ class Configs:
     args = None
 
     def __init__(self, mode, argv=None):
-        self._mode = mode
+        self.mode = mode
         self.parse_args(argv)
         self.params = self.get_params()
 
@@ -139,7 +143,7 @@ class Configs:
             required=True,
             dest="config_path",
             help="path to model's configuration file")
-        if self._mode == "train":
+        if self.mode == "train":
             parser.add_argument('--debug', action="store_true",
                                 help="train and eval on the same small data to check if the model works")
         parser.add_argument('--download', action="store_true",
@@ -150,16 +154,28 @@ class Configs:
                             help="do not prepare dataset")
         parser.add_argument('--verbose', action="store_true")
         parser.add_argument('-l, --load', dest="load", default=None,
-                            required=self._mode in ["eval", "infer"],
+                            required=self.mode in ["eval", "infer"],
                             help="tag of the checkpoint to load")
         parser.add_argument('--cpu', action='store_true', default=False,
                             help='disables CUDA training')
-        if self._mode == "train":
+
+        parser.add_argument('--batch_size', default=None,
+                            help="Size of each batch. This will overwrite the value in the config file")
+        parser.add_argument(
+            '--save_every', default=False,
+            help='Save after a certain period of time. Unit: e (epoch), s, m, h (seconds, minutes, hours)')
+        parser.add_argument(
+            '--log_every', action='store_true', default=False,
+            help='Log after a certain period of time. Unit: e (epoch), s, m, h (seconds, minutes, hours)')
+
+        if self.mode == "train":
             parser.add_argument('--num_processes', type=int, default=1, metavar='N',
                                 help="how many training process to use")
+            parser.add_argument('--num_workers', type=int, default=0, metavar='N',
+                                help="Number of workers for loading data")
             parser.add_argument('--save_all', action='store_true', default=False,
                                 help='save every epoch')
-        elif self._mode == "infer":
+        elif self.mode == "infer":
             parser.add_argument(
                 '-i --input',
                 nargs="*", action="append",
@@ -172,14 +188,21 @@ class Configs:
 
     def get_params(self):
         """Load model configs from yaml file"""
-        path = os.path.join("model_configs", self.args.config_path + ".yml")
+        args = self.args
+        path = os.path.join("model_configs", args.config_path + ".yml")
         try:
             with open(path, 'r') as stream:
                 params = yaml.load(stream, Loader=Loader)
                 params = AttrDict(params)
-            params.set("mode", self._mode)
+            params.set("mode", self.mode)
             params.set("path", self.args.config_path)
             params.set("verbose", bool(self.args.verbose))
+            params.num_workers = args.num_workers
+
+            # Some config values are overwritten by command arguments
+            if args.batch_size is not None:
+                params.train.batch_size = args.batch_size
+
             return params
         except yaml.YAMLError as exc:
             raise Exception("Invalid config syntax.")

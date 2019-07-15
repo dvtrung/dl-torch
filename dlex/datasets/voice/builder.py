@@ -14,7 +14,7 @@ from dlex.utils.logging import logger, beautify
 from .utils import read_htk, wav2htk, audio2wav
 
 
-class VoiceDatasetBuilder(DatasetBuilder):
+class VoiceDataset(DatasetBuilder):
     def __init__(self, params: AttrDict):
         super().__init__(params)
         self._mean = None
@@ -129,10 +129,7 @@ class VoiceDatasetBuilder(DatasetBuilder):
             return np.load(path)
         elif self.params.dataset.feature.file_type == "htk":
             dat = read_htk(path)
-            if dat is not None:
-                return (dat - self.mean) / np.sqrt(self.variance)
-            else:
-                return np.array([self.mean])
+            return None if dat is None else (dat - self.mean) / np.sqrt(self.variance)
 
     def write_dataset(
             self,

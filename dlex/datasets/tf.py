@@ -4,7 +4,7 @@ from dlex.tf import Batch
 class TensorflowDataset:
     def __init__(self, dataset, mode, params):
         self.params = params
-        self._mode = mode
+        self.mode = mode
         self.dataset = dataset
 
     @abc.abstractmethod

@@ -5,19 +5,21 @@ model:
   num_layers: 2
   hidden_size: 1500
 dataset:
-  name: dlex.datasets.nlp.wikitext.builder.WikiText2
+  name: dlex.datasets.nlp.wikitext.WikiText103
   unit: word
   output_format: text
   bptt_len: 25
   embedding_dim: 300
   pretrained_embeddings: glove
 train:
-  batch_size: 256
+  batch_size: 16
   num_epochs: 40
   optimizer:
     name: adam
     lr: 0.01
   max_grad_norm: 0.25
+  save_every: 3600s
+  log_every: 3600s
 test:
-  batch_size: 256
+  batch_size: 16
   metrics: [loss, acc]

@@ -86,7 +86,7 @@ class RNNoise(BaseDataset):
         src = self._trim_result(batch_item['X'].cpu().numpy())
         tgt = self._trim_result(batch_item['Y'].cpu().numpy())
         y_pred = self._trim_result(y_pred)
-        if self.cfg.output_format == "text":
+        if self.configs.output_format == "text":
             return ' '.join([self.idx_to_word[self.lang_src][word_id] for word_id in src]), \
                 ' '.join([self.idx_to_word[self.lang_tgt][word_id] for word_id in tgt]), \
                 ' '.join([self.idx_to_word[self.lang_tgt][word_id] for word_id in y_pred])

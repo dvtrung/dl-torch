@@ -1,15 +1,24 @@
 """NLP Dataset"""
-import abc
 import os
 import re
 import unicodedata
 from typing import List
 
+import nltk
+import numpy as np
+import spacy as spacy
+
+from dlex.configs import ModuleConfigs
 from dlex.utils.logging import logger
+
+# nltk.download('punkt')
 
 
 # Turn a Unicode string to plain ASCII, thanks to
 # https://stackoverflow.com/a/518232/2809427
+from dlex.utils import maybe_download, maybe_unzip
+
+
 def unicodeToAscii(s):
     return ''.join(
         c for c in unicodedata.normalize('NFD', s)
@@ -72,7 +81,7 @@ def normalize_string(sentence):
     # x = re.sub("[^ a-zA-Z0-9\uAC00-\uD7A3]+", " ", x)
     # x = re.sub("[\u3040-\u30FF]+", "\u3042", x) # convert Hiragana and Katakana to あ
     # x = re.sub("[\u4E00-\u9FFF]+", "\u6F22", x) # convert CJK unified ideographs to 漢
-    sentence = re.sub(r"([.!?,\"])", r" \1", sentence)
+    sentence = re.sub(r"([\.!?,\";\(\)])\'", r" \1", sentence)
     # sent = re.sub(r"[^a-zA-Z.!?,]+", r" ", sent)
     sentence = re.sub(r"\s+", " ", sentence)
     sentence = re.sub("^ | $", "", sentence)
@@ -98,6 +107,26 @@ def normalize_word(word):
 
 def normalize_none(s):
     return s
+
+
+def nltk_tokenize(s):
+    return nltk.word_tokenize(s)
+
+
+spacy_nlp = None
+
+
+def spacy_tokenize(s):
+    import spacy
+    from spacy.symbols import ORTH
+    global spacy_nlp
+    if spacy_nlp is None:
+        # sputnik.install('spacy', spacy.about.__version__, 'en_default', data_path=ModuleConfigs.TMP_PATH)
+        spacy_nlp = spacy.load('en_core_web_sm', via=ModuleConfigs.TMP_PATH)
+        spacy_nlp.tokenizer.add_special_case('<eos>', [{ORTH: '<eos>'}])
+        spacy_nlp.tokenizer.add_special_case('<bos>', [{ORTH: '<bos>'}])
+        spacy_nlp.tokenizer.add_special_case('<unk>', [{ORTH: '<unk>'}])
+    return [_s.text for _s in spacy_nlp.tokenizer(s)]
 
 
 def normalize_char(char):
@@ -129,7 +158,10 @@ def write_vocab(
     os.makedirs(os.path.join(working_dir, "vocab"), exist_ok=True)
     word_freqs = {}
     for sent in sentences:
-        s = normalize_fn(sent.replace('_', ' '))
+        if normalize_fn is not None:
+            s = normalize_fn(sent.replace('_', ' '))
+        else:
+            s = sent
         # ls = char_tokenize(s) if token == 'char' else space_tokenize(s)
         ls = tokenize_fn(s)
         for word in ls:
@@ -175,6 +207,8 @@ class Vocab:
         else:
             self._token2index = {}
             self._index2token = []
+        self.embeddings = None
+        self.embedding_dim = None
 
     def __getitem__(self, token: str) -> int:
         return self._token2index[token] if token in self._token2index else self.oov_token_idx

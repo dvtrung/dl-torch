@@ -2,12 +2,12 @@ import os
 
 from dlex.datasets.nlp.utils import write_vocab, char_tokenize, space_tokenize, normalize_char, \
     normalize_string
-from dlex.datasets.voice.builder import VoiceDatasetBuilder
+from dlex.datasets.voice.builder import VoiceDataset
 
 DOWNLOAD_URL = "https://ailab.hcmus.edu.vn/assets/vivos.tar.gz"
 
 
-class VIVOS(VoiceDatasetBuilder):
+class VIVOS(VoiceDataset):
     def __init__(self, params):
         super().__init__(params)
 

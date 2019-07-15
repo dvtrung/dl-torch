@@ -1,0 +1,18 @@
+model:
+  name: dlex.torch.models.rnn.SequenceClassifier
+  rnn_type: lstm
+  num_layers: 2
+  hidden_size: 128
+  dropout: 0.2
+  embedding_dim: 100
+dataset:
+  name: dlex.datasets.nlp.newsgroup20.builder.Newsgroup20
+train:
+  batch_size: 128
+  num_epochs: 50
+  optimizer:
+    name: adam
+    lr: 0.01
+test:
+  batch_size: 32
+  metrics: [acc]

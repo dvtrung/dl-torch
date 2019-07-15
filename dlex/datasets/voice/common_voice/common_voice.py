@@ -3,13 +3,13 @@ import os
 import pandas
 
 from dlex.datasets.voice.torch import PytorchVoiceDataset
-from dlex.datasets.voice.builder import VoiceDatasetBuilder
+from dlex.datasets.voice.builder import VoiceDataset
 from dlex.datasets.nlp.utils import write_vocab, normalize_string, char_tokenize, space_tokenize
 from dlex.utils.logging import logger
 from dlex.utils.utils import run_script
 
 
-class CommonVoiceBuilder(VoiceDatasetBuilder):
+class CommonVoice(VoiceDataset):
     def __init__(self, params):
         super().__init__(params)
         self._file_paths = None

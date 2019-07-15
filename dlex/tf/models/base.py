@@ -12,7 +12,7 @@ class BaseModel:
         self.params = params
         self.dataset = dataset
         self._optimizer = tf.keras.optimizers.Adam()
-        self._model = None
+        self.model = None
 
     def training_step(self, batch: Batch):
         with tf.GradientTape() as tape:
@@ -28,7 +28,7 @@ class BaseModel:
 
     @property
     def model(self):
-        return self._model
+        return self.model
 
     def compile(self):
         self.model.compile(

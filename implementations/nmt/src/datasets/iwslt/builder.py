@@ -1,10 +1,10 @@
 import os
 
-from dlex.datasets.nlp.builder import NLPDatasetBuilder
+from dlex.datasets.nlp.builder import NLPDataset
 from dlex.utils import logger
 
 
-class IWSLT15(NLPDatasetBuilder):
+class IWSLT15(NLPDataset):
     def get_pytorch_wrapper(self, mode: str):
         from .torch import IWSLT15EnglishVietnamese
         return IWSLT15EnglishVietnamese(self, mode, self.params)

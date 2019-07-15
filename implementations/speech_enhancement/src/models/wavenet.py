@@ -111,7 +111,7 @@ class WaveNet(BaseModel):
 
     def forward(self, batch):
         imgs = batch.X
-        z = Variable(FloatTensor(np.random.normal(0, 1, (imgs.shape[0], self.cfg.latent_dim))))
+        z = Variable(FloatTensor(np.random.normal(0, 1, (imgs.shape[0], self.configs.latent_dim))))
         return self.generator(z)
 
     def infer(self, batch):

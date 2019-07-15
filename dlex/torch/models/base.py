@@ -1,15 +1,22 @@
 import abc
-import itertools
 import os
+from dataclasses import dataclass
 
+import numpy as np
 import torch
 import torch.nn as nn
 
-from dlex.configs import AttrDict
+from dlex.configs import AttrDict, ModuleConfigs
 from dlex.torch import Batch
-from dlex.torch.utils.losses import nll_loss
 from dlex.torch.utils.model_utils import get_optimizer
 from dlex.utils.logging import logger
+
+
+@dataclass
+class InferenceOutput:
+    output = None
+    result = None
+    loss: float
 
 
 class BaseModel(nn.Module):
@@ -23,7 +30,7 @@ class BaseModel(nn.Module):
     @abc.abstractmethod
     def infer(self, batch: Batch):
         """Infer"""
-        return None
+        raise Exception("Inference method is not implemented")
 
     def train_log(self, batch: Batch, output, verbose):
         d = dict()
@@ -50,19 +57,22 @@ class DataParellelModel(nn.DataParallel):
         self._loss_fn = None
 
     def training_step(self, batch: Batch):
+        self.module.train(True)
         self.zero_grad()
         output = self.forward(batch)
         loss = self.get_loss(batch, output)
+        if np.isnan(loss.item()):
+            raise Exception("NaN loss.")
         loss.backward()
         for optimizer in self.optimizers:
             if self.params.train.max_grad_norm is not None and self.params.train.max_grad_norm > 0:
-                params = itertools.chain.from_iterable([group['params'] for group in optimizer.param_groups])
-                nn.utils.clip_grad_norm_(params, self.params.train.max_grad_norm)
+                # params = itertools.chain.from_iterable([group['params'] for group in optimizer.param_groups])
+                nn.utils.clip_grad_norm_(self.parameters(), self.params.train.max_grad_norm)
             optimizer.step()
         log_dict = self.module.train_log(batch, output, verbose=self.params.verbose)
         if len(log_dict) > 0:
-            print(log_dict)
-        return loss
+            logger.info(log_dict)
+        return loss.detach().item()
 
     @property
     def optimizers(self):
@@ -77,12 +87,12 @@ class DataParellelModel(nn.DataParallel):
         return self._loss_fn
 
     @property
-    def cfg(self):
+    def configs(self):
         # Model configs
         return self.params.model
 
     def load(self, tag):
-        path = os.path.join("saved_models", self.params.path, tag + ".pt")
+        path = os.path.join(ModuleConfigs.SAVED_MODELS_PATH, self.params.path, tag + ".pt")
         self.load_state_dict(torch.load(path))
 
     @property
@@ -92,6 +102,7 @@ class DataParellelModel(nn.DataParallel):
     @abc.abstractmethod
     def infer(self, batch: Batch):
         """Infer"""
+        self.module.train(False)
         return self.module.infer(batch)
 
     def write_summary(self, summary_writer, batch, output):
@@ -101,17 +112,17 @@ class DataParellelModel(nn.DataParallel):
         return self.module.get_loss(batch, output)
 
 
-class ImageClassificationBaseModel(BaseModel):
+class ClassificationBaseModel(BaseModel):
     def __init__(self, params, dataset):
         super().__init__(params, dataset)
+        self._criterion = nn.CrossEntropyLoss()
 
     def infer(self, batch):
         logits = self.forward(batch)
-        return torch.max(logits, 1)[1], None
+        return torch.max(logits, 1)[1], logits, None
 
-    @staticmethod
-    def get_loss(batch: Batch, output):
-        return nll_loss(batch, output)
+    def get_loss(self, batch: Batch, output):
+        return self._criterion(output, batch.Y)
 
 
 def default_params(default):

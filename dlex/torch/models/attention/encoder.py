@@ -30,7 +30,7 @@ class EncoderRNN(nn.Module):
             self._linear = nn.Sequential()  # do nothing
 
     def forward(self, inputs, input_lengths):
-        inputs = nn.utils.rnn.pack_padded_sequence(inputs, input_lengths, batch_first=True)
+        inputs = nn.utils.rnn.pack_padded_sequence(inputs, input_lengths, batch_first=True, enforce_sorted=False)
         output, hidden = self._rnn(inputs)
         output, _ = nn.utils.rnn.pad_packed_sequence(output, batch_first=True)
         output = self._linear(output)

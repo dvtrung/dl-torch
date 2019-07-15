@@ -288,10 +288,10 @@ class VNPos(NLPDataset):
         if y_pred[0] == self.tag_to_idx['<sos>']:
             y_pred = y_pred[1:]
 
-        if self.cfg.output_format is None:
+        if self.configs.output_format is None:
             return str(y_pred)
 
-        if self.cfg.output_format == "word+delimiter":
+        if self.configs.output_format == "word+delimiter":
             ret = []
             for word_id, tag in zip(inp['X'], y_pred):
                 if word_id == self.word_to_idx["<pad>"]:
@@ -301,7 +301,7 @@ class VNPos(NLPDataset):
                 ret.append(self.idx_to_word[word_id])
             return ' '.join(ret)
 
-        if self.cfg.output_format == "word+tag":
+        if self.configs.output_format == "word+tag":
             ret = []
             prev_tag = None
             for word_id, tag in zip(inp['X'], y_pred):

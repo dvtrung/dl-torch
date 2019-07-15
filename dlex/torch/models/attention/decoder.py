@@ -70,23 +70,6 @@ def mask_by_length(xs, length, fill=0):
 
 
 class DecoderRNN(nn.Module):
-    """
-    :param int eprojs: # encoder projection units
-    :param int odim: dimension of outputs
-    :param str dtype: gru or lstm
-    :param int dlayers: # decoder layers
-    :param int dunits: # decoder units
-    :param int sos: start of sequence symbol id
-    :param int eos: end of sequence symbol id
-    :param torch.nn.Module att: attention module
-    :param int verbose: verbose level
-    :param list char_list: list of character strings
-    :param ndarray labeldist: distribution of label smoothing
-    :param float lsm_weight: label smoothing weight
-    :param float sampling_probability: scheduled sampling probability
-    :param float dropout: dropout rate
-    """
-
     def __init__(
             self, 
             input_size: int, 
@@ -127,6 +110,7 @@ class DecoderRNN(nn.Module):
         # self.labeldist = labeldist
         # self.vlabeldist = None
         # self.lsm_weight = lsm_weight
+        self._input_size = input_size
         self._max_length = max_length
         self._dropout = dropout
         self._num_layers = num_layers
@@ -157,7 +141,6 @@ class DecoderRNN(nn.Module):
 
     def forward(self, states: DecodingStates, strm_idx=0, use_teacher_forcing=True) -> DecodingStates:
         batch_size = states.encoder_outputs.size(0)
-        max_length = states.decoder_inputs.size(1) if states.decoder_inputs is not None else self._max_length
         # ys = [y[y != self.ignore_id] for y in decoder_inputs]  # parse padded ys
         # attention index for the attention module
         # in SPA (speaker parallel attention), att_idx is used to select attention module. In other cases, it is 0.
@@ -174,8 +157,10 @@ class DecoderRNN(nn.Module):
         self.attention[att_idx].reset()  # reset pre-computation of h
 
         if use_teacher_forcing:
-            decoder_embedded_inputs = self.dropout_emb(self.embed(states.decoder_inputs[:, :-1]))  # utt x olen x zdim
-
+            if self._input_size != 0:
+                decoder_embedded_inputs = self.dropout_emb(self.embed(states.decoder_inputs[:, :-1]))  # utt x olen x zdim
+            else:
+                decoder_embedded_inputs = None
             # loop for an output sequence
             for i in range(states.decoder_inputs.size(1) - 1):
                 att_c, att_w = self.attention[att_idx](
@@ -183,10 +168,16 @@ class DecoderRNN(nn.Module):
                     states.encoder_output_lens,
                     self._dropout_decoder[0](z_list[0]),
                     att_w)
-                ey = torch.cat((decoder_embedded_inputs[:, i, :], att_c), dim=1)  # utt x (zdim + hdim)
+                if decoder_embedded_inputs is not None:
+                    ey = torch.cat((
+                        decoder_embedded_inputs[:, i, :],
+                        att_c), dim=1)  # utt x (input_size + hidden_size)
+                else:
+                    ey = att_c
                 z_list, c_list = self.rnn_forward(ey, z_list, c_list, z_list, c_list)
                 z_all.append(self._dropout_decoder[-1](z_list[-1]))
         else:
+            max_length = states.decoder_inputs.size(1) if states.decoder_inputs is not None else self._max_length
             for step in range(max_length):
                 att_c, att_w = self.attention[att_idx](
                     states.encoder_outputs,

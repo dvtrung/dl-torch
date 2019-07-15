@@ -3,11 +3,11 @@ from typing import List
 
 import math
 import numpy as np
+import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-import torch
-from dlex.datasets.voice.torch import PytorchSeq2SeqDataset
+from dlex.datasets.torch import PytorchSeq2SeqDataset
 from dlex.torch import Batch
 from dlex.torch.models.base import BaseModel
 from dlex.utils.logging import logger
@@ -46,6 +46,9 @@ class BeamSearchConfigDict:
 class AttentionConfigDict:
     type: str
     size: int = None
+    # location-based attention
+    num_channels: int = None
+    filter_size: int = None
 
 
 @dataclass
@@ -151,6 +154,7 @@ class Attention(BaseModel):
             )
             attention = torch.nn.ModuleList([self._test])
         elif cfg.attention.type == "location":
+            print(cfg.decoder)
             self._test = LocationAwareAttention(
                 encoder_output_size=cfg.encoder.output_size,
                 decoder_hidden_size=cfg.decoder.hidden_size,
@@ -227,7 +231,7 @@ class Attention(BaseModel):
             y.view(-1),
             ignore_index=self.dataset.pad_token_idx,
             reduction='mean')
-        loss *= (np.mean(np.array(batch.Y_len.cpu())))
+        loss *= (np.mean(np.array(batch.Y_len)))
         return loss
 
     def infer(self, batch: Batch):
@@ -236,7 +240,7 @@ class Attention(BaseModel):
             states = self._decoder.greedy_search(states)
         elif self.params.model.decoding_method == 'beam_search':
             states = self._decoder.beam_search(states)
-        return states['decoded_sequences'], states
+        return states['decoded_sequences'], None, states
 
     def recognize(self, x, recog_args, char_list, rnn_language_model=None):
         """E2E beam search
@@ -375,15 +379,11 @@ class NMT(Attention):
         )
 
     def forward(self, batch: Batch):
-        """
-        :param dict[str, torch.Tensor] batch:
-        :rtype:
-        """
         return super().forward(Batch(
             X=self.embedding(batch.X.to(self.embedding.weight.device)),
-            X_len=batch.X_len.to(self.embedding.weight.device),
+            X_len=batch.X_len,
             Y=batch.Y.to(self.embedding.weight.device),
-            Y_len=batch.Y_len.to(self.embedding.weight.device)
+            Y_len=batch.Y_len
         ))
 
     def infer(self, batch: Batch):
@@ -393,33 +393,6 @@ class NMT(Attention):
             Y=batch.Y,
             Y_len=batch.Y_len
         ))
-
-
-class TeacherForcingDecoder(nn.Module):
-    def __init__(self, eos_token_id):
-        self.eos_token_id = eos_token_id
-        super().__init__()
-
-    def forward(self, encoder_outputs, decoder_inputs, decoder_outputs):
-        batch_size = encoder_outputs.size(0)
-        max_length = decoder_outputs.size(1)
-        sequence_symbols = []
-        lengths = np.array([max_length] * batch_size)
-        for step in range(decoder_outputs.size(1)):
-            symbols = decoder_outputs[:, step, :].topk(1)[1]
-            sequence_symbols.append(symbols)
-            eos_batches = decoder_inputs[:, step].eq(self.eos_token_id)
-            if eos_batches.dim() > 0:
-                eos_batches = eos_batches.cpu().view(-1).numpy()
-                update_idx = ((lengths > step) & eos_batches) != 0
-                lengths[update_idx] = step
-        decoder_outputs = decoder_outputs.permute(1, 0, 2)
-        #print("basic")
-        #for i in range(batch_size):
-        #    for j in range(max_length):
-        #        print(sequence_symbols[j][i].item(), end=' ')
-        #    print()
-        return sequence_symbols, lengths, decoder_outputs
 
 
 class BaseAttention(torch.nn.Module):
@@ -463,31 +436,20 @@ class NoAttention(BaseAttention):
         self.pre_compute_enc_h = None
         self.c = None
 
-    def forward(self, enc_hs_pad, enc_hs_len, dec_z, att_prev):
-        """NoAttention forward
-
-        :param torch.Tensor enc_hs_pad: padded encoder hidden state (B, T_max, D_enc)
-        :param list enc_hs_len: padded encoder hidden state length (B)
-        :param torch.Tensor dec_z: dummy (does not use)
-        :param torch.Tensor att_prev: dummy (does not use)
-        :return: attention weighted encoder state (B, D_enc)
-        :rtype: torch.Tensor
-        :return: previous attention weights
-        :rtype: torch.Tensor
-        """
-        batch = len(enc_hs_pad)
+    def forward(self, encoder_outputs, encoder_output_lens, dec_z, att_prev):
+        batch_size = len(encoder_outputs)
         # pre-compute all h outside the decoder loop
         if self.pre_compute_enc_h is None:
-            self.enc_h = enc_hs_pad  # utt x frame x hdim
+            self.enc_h = encoder_outputs  # utt x frame x hdim
             self.h_length = self.enc_h.size(1)
 
         # initialize attention weight with uniform dist.
         if att_prev is None:
             # if no bias, 0 0-pad goes 0
-            mask = 1. - self.make_pad_mask(enc_hs_len).float()
-            att_prev = mask / mask.new(enc_hs_len.float()).unsqueeze(-1)
+            mask = 1. - self.make_pad_mask(encoder_output_lens).float()
+            att_prev = mask / mask.new(encoder_output_lens.float()).unsqueeze(-1)
             att_prev = att_prev.to(self.enc_h)
-            self.c = torch.sum(self.enc_h * att_prev.view(batch, self.h_length, 1), dim=1)
+            self.c = torch.sum(self.enc_h * att_prev.view(batch_size, self.h_length, 1), dim=1)
 
         return self.c, att_prev
 
@@ -591,20 +553,13 @@ class BahdanauAttention(BaseAttention):
         self.pre_compute_enc_h = None
         self.mask = None
 
-    def forward(self, encoder_outputs, encoder_output_lens, decoder_hidden_state, att_prev, scaling=2.0):
-        """AttLoc forward
-
-        :param torch.Tensor enc_hs_pad: padded encoder hidden state (B x T_max x D_enc)
-        :param list enc_hs_len: padded encoder hidden state length (B)
-        :param torch.Tensor dec_z: decoder hidden state (B x D_dec)
-        :param torch.Tensor att_prev: dummy (does not use)
-        :param float scaling: scaling parameter before applying softmax
-        :return: attention weighted encoder state (B, D_enc)
-        :rtype: torch.Tensor
-        :return: previous attention weights (B x T_max)
-        :rtype: torch.Tensor
-        """
-
+    def forward(
+            self,
+            encoder_outputs,
+            encoder_output_lens,
+            decoder_hidden_state,
+            att_prev,
+            scaling=2.0):
         batch_size = len(encoder_outputs)
         # pre-compute all h outside the decoder loop
         if self.pre_compute_enc_h is None:
@@ -639,17 +594,10 @@ class BahdanauAttention(BaseAttention):
         return c, w
 
 
-class LocationAwareAttention(torch.nn.Module):
-    """location-aware attention
-
+class LocationAwareAttention(BaseAttention):
+    """
     Reference: Attention-Based Models for Speech Recognition
         (https://arxiv.org/pdf/1506.07503.pdf)
-
-    :param int eprojs: # projection-units of encoder
-    :param int dunits: # units of decoder
-    :param int att_dim: attention dimension
-    :param int aconv_chans: # channels of attention convolution
-    :param int aconv_filts: filter size of attention convolution
     """
 
     def __init__(self, encoder_output_size, decoder_hidden_size, attention_dim, num_channels, filter_size):
@@ -676,7 +624,13 @@ class LocationAwareAttention(torch.nn.Module):
         self.pre_compute_enc_h = None
         self.mask = None
 
-    def forward(self, encoder_outputs, encoder_output_lens, dec_z, att_prev, scaling=2.0):
+    def forward(
+            self,
+            encoder_outputs,
+            encoder_output_lens,
+            dec_z,
+            att_prev,
+            scaling=2.0):
         """AttLoc forward
 
         :param torch.Tensor encoder_outputs: padded encoder hidden state (B x T_max x D_enc)
@@ -706,7 +660,7 @@ class LocationAwareAttention(torch.nn.Module):
         if att_prev is None:
             # if no bias, 0 0-pad goes 0
             att_prev = 1. - self.make_pad_mask(encoder_output_lens).float()
-            att_prev = att_prev / att_prev.new(encoder_output_lens.float()).unsqueeze(-1)
+            att_prev = att_prev / att_prev.new(torch.FloatTensor(encoder_output_lens).to(next(self.parameters()).device)).unsqueeze(-1)
 
         # att_prev: utt x frame -> utt x 1 x 1 x frame -> utt x att_conv_chans x 1 x frame
         att_conv = self.loc_conv(att_prev.view(batch, 1, 1, self.h_length))

@@ -10,7 +10,7 @@ from dlex.configs import ModuleConfigs, AttrDict
 class BaseTensorflowWrapper:
     def __init__(self, mode, params):
         self.params = params
-        self._mode = mode
+        self.mode = mode
 
 
 class BasePytorchWrapper:
@@ -18,7 +18,7 @@ class BasePytorchWrapper:
 
     def __init__(self, mode, params):
         self.params = params
-        self._mode = mode
+        self.mode = mode
         self._data = []
 
     def __len__(self):
@@ -50,7 +50,7 @@ class BaseDataset:
         return os.path.join(self.get_working_dir(), "processed")
 
     @property
-    def cfg(self) -> AttrDict:
+    def configs(self) -> AttrDict:
         return self.params.dataset
 
     def prepare(self, download=False, preprocess=False):

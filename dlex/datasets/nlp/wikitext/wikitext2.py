@@ -44,7 +44,7 @@ class PytorchWikiText2(PytorchDataset):
 
     @property
     def data(self):
-        return self.builder.train_data if self._mode == "train" else self.builder.test_data
+        return self.builder.train_data if self.mode == "train" else self.builder.test_data
 
     def get_iter(self, batch_size, start=0, end=-1):
         iter = data.BPTTIterator(
@@ -72,7 +72,7 @@ class PytorchWikiText2(PytorchDataset):
         return self.builder.TEXT.vocab.vectors
 
     def format_output(self, y_pred, batch_item: BatchItem) -> (str, str, str):
-        if self.cfg.output_format == "text":
+        if self.configs.output_format == "text":
             return ' '.join(self.builder.decode(batch_item.X)), \
                    ' '.join(self.builder.decode(batch_item.Y)), \
                    ' '.join(self.builder.decode(y_pred))

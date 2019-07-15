@@ -11,10 +11,10 @@ class TensorflowSpeechRecognitionDataset(TensorflowDataset):
             params,
             vocab_path: str):
         super().__init__(builder, mode, params)
-        self._vocab = Vocab(vocab_path)
-        self._vocab.add_token('<sos>')
-        self._vocab.add_token('<eos>')
-        self._output_size = len(self._vocab)
+        self.vocab = Vocab(vocab_path)
+        self.vocab.add_token('<sos>')
+        self.vocab.add_token('<eos>')
+        self._output_size = len(self.vocab)
 
     @property
     def output_size(self) -> int:
@@ -22,8 +22,8 @@ class TensorflowSpeechRecognitionDataset(TensorflowDataset):
 
     @property
     def sos_token_idx(self) -> int:
-        return self._vocab.sos_token_idx
+        return self.vocab.sos_token_idx
 
     @property
     def eos_token_idx(self) -> int:
-        return self._vocab.eos_token_idx
+        return self.vocab.eos_token_idx

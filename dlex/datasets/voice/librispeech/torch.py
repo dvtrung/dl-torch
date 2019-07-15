@@ -1,6 +1,5 @@
 import os
 
-from dlex.datasets.nlp.utils import Vocab
 from dlex.datasets.voice.torch import PytorchVoiceDataset
 
 

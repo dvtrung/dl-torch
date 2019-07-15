@@ -3,13 +3,13 @@ from torchtext import data, datasets
 
 from dlex.configs import AttrDict
 from dlex.datasets.nlp.builder import NLPDataset
-from dlex.datasets.nlp.utils import nltk_tokenize, spacy_tokenize
+from dlex.datasets.nlp.utils import spacy_tokenize
 from dlex.datasets.torch import PytorchDataset
 from dlex.torch import Batch
 from dlex.torch import BatchItem
 
 
-class WikiText2(NLPDataset):
+class WikiText103(NLPDataset):
     def __init__(self, params: AttrDict):
         super().__init__(params)
 
@@ -18,7 +18,7 @@ class WikiText2(NLPDataset):
 
     def maybe_preprocess(self, force=False):
         TEXT = data.Field(lower=True, tokenize=spacy_tokenize)
-        self.train_data, self.valid_data, self.test_data = datasets.WikiText2.splits(TEXT, root=self.get_raw_data_dir())
+        self.train_data, self.valid_data, self.test_data = datasets.WikiText103.splits(TEXT, root=self.get_raw_data_dir())
         TEXT.build_vocab(self.train_data, vectors=self.get_embedding_vectors())
         self.TEXT = TEXT
 
@@ -29,7 +29,7 @@ class WikiText2(NLPDataset):
             return super().evaluate(pred, ref, metric)
 
     def get_pytorch_wrapper(self, mode: str):
-        return PytorchWikiText2(self, mode, self.params)
+        return PytorchWikiText103(self, mode, self.params)
 
     def get_tensorflow_wrapper(self, mode: str):
         raise Exception("No tensorflow interface.")
@@ -38,13 +38,13 @@ class WikiText2(NLPDataset):
         return [self.TEXT.vocab.itos[idx] for idx in tokens]
 
 
-class PytorchWikiText2(PytorchDataset):
+class PytorchWikiText103(PytorchDataset):
     def __init__(self, builder, mode, params):
         super().__init__(builder, mode, params)
 
     @property
     def data(self):
-        return self.builder.train_data if self._mode == "train" else self.builder.test_data
+        return self.builder.train_data if self.mode == "train" else self.builder.test_data
 
     def get_iter(self, batch_size, start=0, end=-1):
         iter = data.BPTTIterator(
@@ -57,7 +57,7 @@ class PytorchWikiText2(PytorchDataset):
         ), iter)
 
     def __len__(self):
-        return 10000
+        return len(self.data)
 
     @property
     def vocab_size(self):
@@ -72,7 +72,7 @@ class PytorchWikiText2(PytorchDataset):
         return self.builder.TEXT.vocab.vectors
 
     def format_output(self, y_pred, batch_item: BatchItem) -> (str, str, str):
-        if self.cfg.output_format == "text":
+        if self.configs.output_format == "text":
             return ' '.join(self.builder.decode(batch_item.X)), \
                    ' '.join(self.builder.decode(batch_item.Y)), \
                    ' '.join(self.builder.decode(y_pred))

@@ -4,9 +4,10 @@ model:
   num_layers: 2
   hidden_size: 128
   dropout: 0.2
-  embedding_dim: 100
 dataset:
-  name: dlex.datasets.nlp.newsgroup20.builder.Newsgroup20
+  name: dlex.datasets.nlp.imdb.IMDB
+  embedding_dim: 300
+  pretrained_embeddings: glove
 train:
   batch_size: 128
   num_epochs: 50

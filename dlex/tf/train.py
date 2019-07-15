@@ -10,7 +10,7 @@ import numpy as np
 
 from dlex.utils.logging import logger
 from .utils.model_utils import get_model, get_dataset
-from dlex.configs import Configs
+from dlex.configs import Configs, ModuleConfigs
 
 
 def main(argv=None):
@@ -89,7 +89,7 @@ def train_keras(params, args):
     hist = History()
 
     # checkpoint
-    checkpoint_path = os.path.join("saved_models", params.path)
+    checkpoint_path = os.path.join(ModuleConfigs.SAVED_MODELS_PATH, params.path)
     os.makedirs(checkpoint_path, exist_ok=True)
     model_checkpoint_latest = ModelCheckpoint(os.path.join(checkpoint_path, "latest.h5"))
     model_checkpoint_best = ModelCheckpoint(os.path.join(checkpoint_path, "best.h5"), save_best_only=True)
@@ -101,7 +101,7 @@ def train_keras(params, args):
 
     start_time = time.time()
 
-    checkpoint_path = os.path.join("saved_models", params.path, "latest.h5")
+    checkpoint_path = os.path.join(ModuleConfigs.SAVED_MODELS_PATH, params.path, "latest.h5")
     logger.info("Load checkpoint from %s" % checkpoint_path)
     model.load_weights(checkpoint_path)
 

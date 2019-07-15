@@ -4,7 +4,7 @@ from typing import Tuple
 from tensorflow.python.keras.optimizers import SGD
 from tqdm import tqdm
 
-from dlex.configs import Configs, AttrDict
+from dlex.configs import Configs, AttrDict, ModuleConfigs
 from dlex.datasets.torch import PytorchDataset
 from dlex.tf.models import BaseModel
 from dlex.utils.logging import logger
@@ -64,7 +64,7 @@ def main(argv=None):
         metrics=["acc"])
 
     # checkpoint
-    checkpoint_path = os.path.join("saved_models", params.path, "latest.h5")
+    checkpoint_path = os.path.join(ModuleConfigs.SAVED_MODELS_PATH, params.path, "latest.h5")
     logger.info("Load checkpoint from %s" % checkpoint_path)
     model.load_weights(checkpoint_path)
 

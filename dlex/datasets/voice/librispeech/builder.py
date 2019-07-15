@@ -3,7 +3,7 @@ import glob
 
 import pandas
 
-from dlex.datasets.voice.builder import VoiceDatasetBuilder
+from dlex.datasets.voice.builder import VoiceDataset
 from dlex.datasets.nlp.utils import normalize_string, char_tokenize, space_tokenize
 from dlex.utils.logging import logger
 from utils import run_script
@@ -12,7 +12,7 @@ FILES = ["raw-metadata.tar.gz", "train-clean-100.tar.gz", "dev-clean.tar.gz"]
 BASE_URL = "http://www.openslr.org/resources/12/"
 
 
-class LibriSpeech(VoiceDatasetBuilder):
+class LibriSpeech(VoiceDataset):
     input_size = 120
 
     def __init__(self, params):
@@ -31,7 +31,6 @@ class LibriSpeech(VoiceDatasetBuilder):
         os.makedirs(self.get_processed_data_dir(), exist_ok=True)
 
         working_dir = os.path.join(self.get_raw_data_dir(), "LibriSpeech")
-        for trans_path in glob.glob()
 
         logger.info("Converting mp3 files to wav...")
         run_script('convert-to-wav.py', [

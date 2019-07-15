@@ -4,6 +4,8 @@ import importlib
 import os
 
 import torch
+
+from dlex.configs import ModuleConfigs
 from dlex.utils.logging import logger
 
 
@@ -28,27 +30,29 @@ def get_optimizer(cfg, model_parameters):
 
     optimizer = {
         'sgd': torch.optim.SGD,
-        'adam': torch.optim.Adam
+        'adam': torch.optim.Adam,
+        'adagrad': torch.optim.Adagrad,
+        'adadelta': torch.optim.Adadelta
     }[cfg.name]
     return optimizer(model_parameters, **op_params)
 
 
 def save_checkpoint(tag, params, model):
     """Save current training state"""
-    os.makedirs(os.path.join("saved_models", params.path), exist_ok=True)
+    os.makedirs(os.path.join(ModuleConfigs.SAVED_MODELS_PATH, params.path), exist_ok=True)
     state = {
         'training_id': params.training_id,
         'global_step': model.global_step,
         'model': model.state_dict(),
         'optimizers': [optimizer.state_dict() for optimizer in model.optimizers]
     }
-    fn = os.path.join("saved_models", params.path, tag + ".pt")
+    fn = os.path.join(ModuleConfigs.SAVED_MODELS_PATH, params.path, tag + ".pt")
     torch.save(state, fn)
 
 
 def load_checkpoint(tag, params, model):
     """Load from saved state"""
-    file_name = os.path.join("saved_models", params.path, tag + ".pt")
+    file_name = os.path.join(ModuleConfigs.SAVED_MODELS_PATH, params.path, tag + ".pt")
     logger.info("Load checkpoint from %s" % file_name)
     if os.path.exists(file_name):
         checkpoint = torch.load(file_name, map_location='cpu')
