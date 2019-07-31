@@ -7,7 +7,7 @@ from dlex.utils import logger
 class IWSLT15(NLPDataset):
     def get_pytorch_wrapper(self, mode: str):
         from .torch import IWSLT15EnglishVietnamese
-        return IWSLT15EnglishVietnamese(self, mode, self.params)
+        return IWSLT15EnglishVietnamese(self, mode)
 
     def maybe_download_and_extract(self, force=False):
         super().maybe_download_and_extract(force)

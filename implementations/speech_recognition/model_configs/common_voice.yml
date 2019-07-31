@@ -40,6 +40,7 @@ dataset:
     file_type: htk
     num_filters: 120
   special_tokens: [sos, eos, oov, pad]
+  num_workers: 4
 train:
   eval: [test]
   batch_size:
@@ -47,12 +48,12 @@ train:
     20: 40
     40: 35
     60: 30
-    90: 20
   num_epochs: 100
   optimizer:
     name: adadelta
     weight_decay: 1e-6
     rho: 0.95
+    lr: 0.001
   max_grad_norm: 5.0
   save_every: 3600s
   log_every: 3600s

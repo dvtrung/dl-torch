@@ -45,4 +45,4 @@ class CTC(BaseModel):
                     seq.append(token)
             sequences.append(seq)
             lengths.append(len(seq))
-        return sequences, lengths
+        return sequences, output, None

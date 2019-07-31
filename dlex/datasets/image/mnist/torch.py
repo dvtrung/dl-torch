@@ -9,8 +9,8 @@ from dlex.torch.utils.ops_utils import maybe_cuda
 
 
 class PytorchMNIST(PytorchImageDataset):
-    def __init__(self, builder, mode, params):
-        super().__init__(builder, mode, params)
+    def __init__(self, builder, mode):
+        super().__init__(builder, mode)
         img_transform = transforms.Compose([
             transforms.ToTensor(),
             transforms.Normalize((0.1307,), (0.3081,))

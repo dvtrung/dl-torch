@@ -13,9 +13,8 @@ from tqdm import tqdm
 from dlex.configs import Configs, AttrDict
 from dlex.datasets.torch import PytorchDataset
 from dlex.torch.evaluate import evaluate
-from dlex.torch.models.base import DataParellelModel, BaseModel
-from dlex.torch.utils.model_utils import get_model, \
-    load_checkpoint, save_checkpoint
+from dlex.torch.models.base import DataParellelModel
+from dlex.torch.utils.model_utils import get_model
 from dlex.utils.logging import logger, epoch_info_logger, epoch_step_info_logger, logging, log_result, json_dumps, \
     log_outputs
 from dlex.utils.model_utils import get_dataset
@@ -35,7 +34,7 @@ class Datasets:
 def train(
         params: AttrDict,
         args,
-        model: BaseModel,
+        model: DataParellelModel,
         datasets: Datasets,
         summary_writer):
     epoch = model.global_step // len(datasets.train)
@@ -59,9 +58,8 @@ def train(
             best_result = log_result(mode, params, result, datasets.train.builder.is_better_result)
             for metric in best_result:
                 if best_result[metric] == result:
-                    save_checkpoint(
-                        "best" if len(params.test.metrics) == 1 else "%s-best-%s" % (mode, metric),
-                        params, model)
+                    model.save_checkpoint(
+                        "best" if len(params.test.metrics) == 1 else "%s-best-%s" % (mode, metric))
                     logger.info("Best %s for %s set reached: %f", metric, mode, result['result'][metric])
             return result, best_result, outputs
 
@@ -110,16 +108,16 @@ def train_epoch(
         current_epoch: int,
         params: AttrDict,
         args,
-        model: BaseModel,
+        model: DataParellelModel,
         datasets: Datasets,
         summary_writer,
         num_samples=0):
     """Train."""
-    if params.dataset.shuffle:
-        datasets.train.shuffle()
+    #if params.dataset.shuffle:
+    #    datasets.train.shuffle()
 
     logger.info("EPOCH %d", current_epoch)
-    loss_sum, loss_count = 0, 0
+    model.start_calculating_loss()
     start_time = datetime.now()
 
     if isinstance(params.train.batch_size, int):  # fixed batch size
@@ -127,7 +125,7 @@ def train_epoch(
     else:
         batch_sizes = params.train.batch_size
     for key in batch_sizes:
-        batch_sizes[key] *= torch.cuda.device_count()
+        batch_sizes[key] *= max(torch.cuda.device_count(), 1)
     assert 0 in batch_sizes
 
     total = len(datasets.train)
@@ -149,18 +147,22 @@ def train_epoch(
 
             for epoch_step, batch in enumerate(data_train):
                 try:
+                    if batch.X.shape[0] == 0:
+                        raise Exception("Batch size 0")
                     loss = model.training_step(batch)
-                    loss_sum += loss
-                    loss_count += 1
                     # clean
                     torch.cuda.empty_cache()
                 except RuntimeError as e:
+                    torch.cuda.empty_cache()
                     logger.error(str(e))
                     logger.info("Saving model before exiting...")
-                    save_checkpoint("latest", params, model)
+                    model.save_checkpoint("latest")
                     sys.exit(2)
+                except Exception as e:
+                    logger.error(str(e))
+                    continue
                 else:
-                    t.set_postfix(loss=loss)
+                    t.set_postfix(loss=loss, epoch_loss=model.epoch_loss)
 
                 # if args.debug and epoch_step > DEBUG_NUM_ITERATIONS:
                 #    break
@@ -179,9 +181,9 @@ def train_epoch(
                 if is_passed:
                     logger.info("Saving checkpoint...")
                     if args.save_all:
-                        save_checkpoint("epoch-%02d" % current_epoch, params, model)
+                        model.save_checkpoint("epoch-%02d" % current_epoch)
                     else:
-                        save_checkpoint("latest", params, model)
+                        model.save_checkpoint("latest")
 
                 # Log
                 is_passed, last_log = check_interval_passed(last_log, params.train.log_every, progress)
@@ -189,12 +191,15 @@ def train_epoch(
                     epoch_step_info_logger.info(json_dumps(dict(
                         epoch=current_epoch + progress - 1,
                         loss=loss,
-                        overall_loss=loss_sum / loss_count
+                        overall_loss=model.epoch_loss
                     )))
 
-    save_checkpoint("epoch-latest", params, model)
+                if args.debug:
+                    input("Press any key to continue...")
+
+    model.save_checkpoint("epoch-latest")
     end_time = datetime.now()
-    return str(end_time - start_time), loss_sum / loss_count
+    return str(end_time - start_time), model.epoch_loss
 
 
 def main(argv=None):
@@ -216,8 +221,8 @@ def main(argv=None):
         dataset_builder.prepare(download=args.download, preprocess=args.preprocess)
     if args.debug:
         datasets = Datasets(
-            train=dataset_builder.get_pytorch_wrapper("debug"),
-            test=dataset_builder.get_pytorch_wrapper("debug"))
+            train=dataset_builder.get_pytorch_wrapper("test"),
+            test=dataset_builder.get_pytorch_wrapper("test"))
     else:
         datasets = Datasets(
             train=dataset_builder.get_pytorch_wrapper("train"),
@@ -228,6 +233,7 @@ def main(argv=None):
     model_cls = get_model(params)
     assert model_cls
     model = model_cls(params, datasets.train)
+    # model.summary()
 
     for parameter in model.parameters():
         logger.debug(parameter.shape)
@@ -242,7 +248,7 @@ def main(argv=None):
 
     # Load checkpoint or initialize new training
     if args.load:
-        load_checkpoint(args.load, params, model)
+        model.load_checkpoint(args.load)
         init_dirs(params)
         logger.info("Saved model loaded: %s", args.load)
         logger.info("Epoch: %f", model.global_step / len(datasets.train))

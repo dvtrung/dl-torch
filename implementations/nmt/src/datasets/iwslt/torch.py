@@ -2,15 +2,15 @@ import os
 import random
 
 from dlex.datasets.nlp.utils import Vocab
-from dlex.datasets.torch import PytorchSeq2SeqDataset
+from dlex.datasets.seq2seq.torch import PytorchSeq2SeqDataset
 from dlex.utils.logging import logger
 from dlex.torch import BatchItem
 
 
 class IWSLT15EnglishVietnamese(PytorchSeq2SeqDataset):
-    def __init__(self, builder, mode, params):
+    def __init__(self, builder, mode):
         super().__init__(
-            builder, mode, params,
+            builder, mode,
             vocab_path=os.path.join(builder.get_raw_data_dir(), "vocab.en"))
 
         self._src_vocab = Vocab(os.path.join(builder.get_raw_data_dir(), "vocab.vi"))

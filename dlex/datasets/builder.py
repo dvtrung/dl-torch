@@ -13,7 +13,7 @@ class DatasetBuilder:
         self.params = params
 
     def get_working_dir(self) -> str:
-        return os.path.join(ModuleConfigs.DATA_TMP_PATH, self.__class__.__name__)
+        return os.path.join(ModuleConfigs.DATASETS_PATH, self.__class__.__name__)
 
     def get_raw_data_dir(self) -> str:
         return os.path.join(self.get_working_dir(), "raw")
@@ -68,10 +68,16 @@ class DatasetBuilder:
         return None
 
     @abc.abstractmethod
+    def get_sklearn_wrapper(self, mode: str):
+        return None
+
+    @abc.abstractmethod
     def evaluate(self, pred, ref, metric: str):
         if metric == "acc":
             if isinstance(pred, int):
                 return int(pred == ref), 1
+            elif isinstance(pred, list) and len(pred) == len(ref):
+                return len([1 for p, r in zip(pred, ref) if p == r]), len(pred)
         elif metric == "err":
             ret = self.evaluate(pred, ref, "acc")
             return 1 - ret[0], ret[1]
@@ -94,3 +100,15 @@ class DatasetBuilder:
             return str(batch_item.X), str(batch_item.Y), str(y_pred)
         else:
             raise Exception("Dataset method 'format_output' must be implemented")
+
+
+class KaggleDatasetBuilder(DatasetBuilder):
+    def __init__(self, params: AttrDict, competition: str):
+        super().__init__(params)
+
+        import kaggle
+        kaggle.api.authenticate()
+        kaggle.api.dataset_download_files(
+            competition,
+            path=self.get_raw_data_dir(),
+            unzip=True)

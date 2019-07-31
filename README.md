@@ -57,6 +57,22 @@ class Model(BaseModel):
 
 ## Configuration
 
+### Model
+
+### Dataset
+
+### Train
+
+- `batch_size`: `int` or `dict` of `{ [progress]: [batch_size] }` (`0` as key must always be included)
+
+- `num_epochs`
+
+- `optimizer`: `dict` of name and optimizer's arguments. Support `sgd`, `adam`, `adadelta`.
+
+### Test
+
+- `batch_size`: `int`. Training batch size value is used if not specified.
+
 ```yaml
 model:
   name: {model import path}
@@ -64,12 +80,13 @@ model:
 dataset:
   name: {dataset import path}
   ...{dataset configs}
-batch_size: 256
-num_epochs: 30
-optimizer:
-  name: adam
-  learning_rate: 0.01
-  weight_decay: 1e-5
+train:
+  batch_size: 256
+  num_epochs: 30
+  optimizer:
+    name: adam
+    learning_rate: 0.01
+    weight_decay: 1e-5
 ```
 
 ## Train
@@ -79,3 +96,9 @@ dlex train <config_path>
 dlex evaluate <config_path>
 dlex infer <config_path>
 ```
+
+## Environment Variables
+
+- `DLEX_TMP_PATH` (default: `~/tmp`)
+- `DLEX_DATASETS_PATH` (default: `~/tmp/dlex/datasets`)
+- `DLEX_SAVED_MODELS_PATH` (default: `./saved_models`)

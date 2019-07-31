@@ -31,15 +31,18 @@ dataset:
   sort: true
   special_tokens: [sos, eos, oov, pad]
   feature:
+    tool: python_speech_features
+    file_type: npy
     num_filters: 40
 train:
-  batch_size: 8
+  batch_size: 64
   num_epochs: 400
   optimizer:
-    name: sgd
-    lr: 0.01
+    name: adadelta
+    weight_decay: 1e-6
+    rho: 0.95
   max_grad_norm: 5.
 test:
-  batch_size: 8
+  batch_size: 64
   metrics:
     - wer

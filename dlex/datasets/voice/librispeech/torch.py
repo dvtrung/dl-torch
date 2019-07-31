@@ -6,11 +6,11 @@ from dlex.datasets.voice.torch import PytorchVoiceDataset
 class PytorchLibriSpeech(PytorchVoiceDataset):
     input_size = 120
 
-    def __init__(self, builder, mode, params):
+    def __init__(self, builder, mode):
         super().__init__(
-            builder, mode, params,
-            vocab_path=os.path.join(builder.get_processed_data_dir(), "vocab", "%ss.txt" % params.dataset.unit))
-        cfg = params.dataset
+            builder, mode,
+            vocab_path=os.path.join(builder.get_processed_data_dir(), "vocab", "%s.txt" % builder.params.dataset.unit))
+        cfg = self.params.dataset
 
         is_debug = mode == "debug"
         if mode == "debug":
@@ -25,6 +25,3 @@ class PytorchLibriSpeech(PytorchVoiceDataset):
                 'X_path': l[0],
                 'Y': [int(w) for w in l[1].split(' ')],
             } for l in lines]
-
-            if is_debug:
-                self._data = self._data[:20]

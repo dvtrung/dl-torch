@@ -1,7 +1,9 @@
+import os
+
 import tensorflow as tf
 from tensorflow.python.keras.optimizers import SGD
 
-from dlex.configs import AttrDict
+from dlex.configs import AttrDict, ModuleConfigs
 from dlex.datasets import TensorflowDataset as Dataset
 from dlex.tf import Batch
 
@@ -35,6 +37,3 @@ class BaseModel:
             optimizer=SGD(self.params.train.optimizer.learning_rate, momentum=0.9),
             loss="categorical_crossentropy",
             metrics=self.dataset.get_metrics())
-
-    def summary(self):
-        self.model.summary()

@@ -18,7 +18,7 @@ DOWNLOAD_URL = "https://people.xiph.org/~jm/demo/rnnoise/rnnoise_contributions.t
 
 
 class RNNoise(BaseDataset):
-    working_dir = os.path.join(ModuleConfigs.DATA_TMP_PATH, "rnnoise")
+    working_dir = os.path.join(ModuleConfigs.DLEXDATASETS_PATH, "rnnoise")
     raw_data_dir = os.path.join(working_dir, "raw")
     processed_data_dir = os.path.join(working_dir, "data")
 

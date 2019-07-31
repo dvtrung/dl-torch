@@ -6,7 +6,7 @@ import numpy as np
 import torch.nn as nn
 
 import torch
-from dlex.datasets.torch import PytorchSeq2SeqDataset
+from dlex.datasets.seq2seq.torch import PytorchSeq2SeqDataset
 from dlex.torch import Batch
 from dlex.torch.models.attention.attention import BahdanauAttention, NoAttention
 from dlex.torch.models.base import ClassificationBaseModel

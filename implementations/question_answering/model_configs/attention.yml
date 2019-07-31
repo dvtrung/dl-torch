@@ -1,0 +1,28 @@
+model:
+  name: dlex.models.attention.NMT
+  encoder:
+    rnn_type: lstm
+    bidirectional: false
+    num_layers: 1
+    hidden_size: 64
+    embedding: none
+    update_embedding: true
+  decoder:
+    rnn_type: lstm
+    use_attention: true
+    num_layers: 1
+    hidden_size: 64
+    max_length: 10
+  dropout_p: 0.1
+dataset:
+  name: dlex.datasets.squad.SquadV2
+  output_format: text
+batch_size: 128
+num_epochs: 50
+optimizer:
+  name: adam
+  lr: 0.1
+max_length: 10
+teacher_forcing_ratio: 0.0
+metrics:
+  - bleu

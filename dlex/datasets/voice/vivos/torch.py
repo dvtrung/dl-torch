@@ -4,9 +4,9 @@ from dlex.datasets.voice.torch import PytorchVoiceDataset
 
 
 class PytorchVIVOS(PytorchVoiceDataset):
-    def __init__(self, builder, mode, params):
-        cfg = params.dataset
-        super().__init__(builder, mode, params, builder.get_vocab_path(cfg.unit))
+    def __init__(self, builder, mode):
+        cfg = self.params.dataset
+        super().__init__(builder, mode, builder.get_vocab_path(cfg.unit))
 
         is_debug = mode == "debug"
         if mode == "debug":

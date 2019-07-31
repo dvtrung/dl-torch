@@ -106,14 +106,14 @@ class Newsgroup20(NLPDataset):
             return super().evaluate(pred, ref, metric)
 
     def get_pytorch_wrapper(self, mode: str):
-        return PytorchNewsgroup20(self, mode, self.params)
+        return PytorchNewsgroup20(self, mode)
 
 
 class PytorchNewsgroup20(PytorchDataset):
-    def __init__(self, builder, mode, params):
-        super().__init__(builder, mode, params)
-        cfg = params.dataset
-        super().__init__(builder, mode, params)
+    def __init__(self, builder, mode):
+        super().__init__(builder, mode)
+        cfg = self.params.dataset
+        super().__init__(builder, mode)
 
         if self.params.dataset.pretrained_embeddings is None:
             self.vocab = Vocab(os.path.join(builder.get_processed_data_dir(), "vocab", "word.txt"))

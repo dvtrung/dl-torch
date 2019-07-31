@@ -130,8 +130,8 @@ def _resize_image(image, height, width):
 
 
 class KerasImageNet(KerasDataset):
-    def __init__(self, builder, mode, params):
-        super().__init__(builder, mode, params)
+    def __init__(self, builder, mode):
+        super().__init__(builder, mode)
 
         _, self._info = tfds.load("imagenet2012", split=self.mode, with_info=True)
         self.maybe_prepare_tfrecord()
@@ -142,13 +142,13 @@ class KerasImageNet(KerasDataset):
         parsed_dataset = raw_dataset.map(self._string2feature)
         dataset = parsed_dataset.map(
             lambda item: (
-                tf.reshape(item['image'] / 128, [params.dataset.size, params.dataset.size, 3]),
+                tf.reshape(item['image'] / 128, [self.params.dataset.size, self.params.dataset.size, 3]),
                 tf.one_hot(item['label'][0], self.num_classes)))
 
         if mode == "train":
-            dataset = dataset.repeat().shuffle(1000).batch(params.train.batch_size)
+            dataset = dataset.repeat().shuffle(1000).batch(self.params.train.batch_size)
         else:
-            dataset = dataset.take(len(self) // params.train.batch_size * params.train.batch_size).repeat().batch(params.train.batch_size)
+            dataset = dataset.take(len(self) // self.params.train.batch_size * self.params.train.batch_size).repeat().batch(params.train.batch_size)
         self.dataset = dataset
 
     def _string2feature(self, example_proto):
@@ -209,4 +209,4 @@ class KerasImageNet(KerasDataset):
 
 class ImageNet(DatasetBuilder):
     def get_keras_wrapper(self, mode: str) -> KerasDataset:
-        return KerasImageNet(self, mode, self.params)
+        return KerasImageNet(self, mode)

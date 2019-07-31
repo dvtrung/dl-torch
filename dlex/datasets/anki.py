@@ -21,14 +21,14 @@ class Anki(NLPDataset):
         )
 
     def get_tensorflow_wrapper(self, mode: str) -> TensorflowDataset:
-        return AnkiTensorflowDataset(self, mode, self.params)
+        return AnkiTensorflowDataset(self, mode)
 
     def get_pytorch_wrapper(self, mode: str) -> PytorchDataset:
-        return AnkiPytorchDataset(mode, self.params)
+        return AnkiPytorchDataset(mode)
 
 
 class AnkiTensorflowDataset(TensorflowDataset):
-    def __init__(self, dataset: Anki, mode: str, params: AttrDict):
+    def __init__(self, dataset: Anki, mode: str):
         super().__init__(mode, params)
         lines = io.open(
             os.path.join(dataset.get_raw_data_dir(), "spa-eng", "spa.txt"),

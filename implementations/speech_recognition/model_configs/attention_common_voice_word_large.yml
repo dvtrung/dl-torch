@@ -1,0 +1,59 @@
+backend: pytorch
+model:
+  name: dlex.torch.models.attention.Attention
+  encoder:
+    rnn_type: lstm
+    bidirectional: true
+    num_layers: 4
+    input_size: 256
+    hidden_size: 1024
+    output_size: 256
+  decoder:
+    rnn_type: lstm
+    use_attention: true
+    num_layers: 2
+    hidden_size: 256
+    output_size: 256
+    max_length: 25
+  beam_search:
+    beam_size: 16
+    penalty: 0.5
+  attention:
+    type: location
+    size: 256
+    num_channels: 10
+    filter_size: 100
+  decoding_method: greedy
+  dropout: 0.2
+  teacher_forcing_ratio: 0.0
+dataset:
+  name: dlex.datasets.voice.common_voice.CommonVoice
+  alias: common_voice
+  unit: word
+  output_format: "text"
+  debug_size: 100
+  max_target_length: 25
+  max_source_length: 1500
+  feature:
+    tool: python_speech_features
+    file_type: npy
+    num_filters: 120
+  special_tokens: [sos, eos, oov, pad]
+  num_workers: 4
+  sort: true
+train:
+  eval: [test]
+  batch_size:
+    0: 50
+    60: 40
+    90: 30
+  num_epochs: 100
+  optimizer:
+    name: adadelta
+    lr: 0.001
+  max_grad_norm: 1.0
+  save_every: 3600s
+  log_every: 3600s
+test:
+  batch_size: 4
+  metrics: [wer]

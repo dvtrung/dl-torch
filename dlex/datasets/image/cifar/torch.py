@@ -11,8 +11,8 @@ from dlex.torch.utils.ops_utils import maybe_cuda
 class PytorchCIFAR10(PytorchDataset):
     """CIFAR10 dataset"""
 
-    def __init__(self, builder, mode, params):
-        super().__init__(builder, mode, params)
+    def __init__(self, builder, mode):
+        super().__init__(builder, mode)
         img_transform = transforms.Compose([
             transforms.ToTensor(),
             transforms.Normalize((0.4914, 0.4822, 0.4465), (0.247, 0.243, 0.261))

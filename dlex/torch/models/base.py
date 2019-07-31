@@ -47,6 +47,9 @@ class BaseModel(nn.Module):
 
 
 class DataParellelModel(nn.DataParallel):
+    epoch_loss_total = 0.
+    epoch_loss_count = 0
+
     def __init__(self, *args, **kargs):
         super().__init__(*args, **kargs)
         self.global_step = 0
@@ -59,10 +62,14 @@ class DataParellelModel(nn.DataParallel):
     def training_step(self, batch: Batch):
         self.module.train(True)
         self.zero_grad()
+        if len(batch.Y) == 0:
+            raise Exception("Empty batch.")
         output = self.forward(batch)
         loss = self.get_loss(batch, output)
+
         if np.isnan(loss.item()):
             raise Exception("NaN loss.")
+
         loss.backward()
         for optimizer in self.optimizers:
             if self.params.train.max_grad_norm is not None and self.params.train.max_grad_norm > 0:
@@ -72,6 +79,11 @@ class DataParellelModel(nn.DataParallel):
         log_dict = self.module.train_log(batch, output, verbose=self.params.verbose)
         if len(log_dict) > 0:
             logger.info(log_dict)
+
+        # update accumulative loss
+        self.epoch_loss_total += loss.detach().item()
+        self.epoch_loss_count += 1
+
         return loss.detach().item()
 
     @property
@@ -110,6 +122,45 @@ class DataParellelModel(nn.DataParallel):
 
     def get_loss(self, batch, output):
         return self.module.get_loss(batch, output)
+
+    def start_calculating_loss(self):
+        self.epoch_loss_total = 0.
+        self.epoch_loss_count = 0
+
+    @property
+    def epoch_loss(self):
+        return self.epoch_loss_total / self.epoch_loss_count if self.epoch_loss_count > 0 else None
+
+    def save_checkpoint(self, tag):
+        """Save current training state"""
+        os.makedirs(os.path.join(ModuleConfigs.SAVED_MODELS_PATH, self.params.path), exist_ok=True)
+        state = {
+            'training_id': self.params.training_id,
+            'global_step': self.global_step,
+            'epoch_loss_total': self.epoch_loss_total,
+            'epoch_loss_count': self.epoch_loss_count,
+            'model': self.state_dict(),
+            'optimizers': [optimizer.state_dict() for optimizer in self.optimizers]
+        }
+        fn = os.path.join(ModuleConfigs.SAVED_MODELS_PATH, self.params.path, tag + ".pt")
+        torch.save(state, fn)
+
+    def load_checkpoint(self, tag):
+        """Load from saved state"""
+        file_name = os.path.join(ModuleConfigs.SAVED_MODELS_PATH, self.params.path, tag + ".pt")
+        logger.info("Load checkpoint from %s" % file_name)
+        if os.path.exists(file_name):
+            checkpoint = torch.load(file_name, map_location='cpu')
+            self.params.training_id = checkpoint['training_id']
+            logger.info(checkpoint['training_id'])
+            self.global_step = checkpoint['global_step']
+            self.epoch_loss_count = checkpoint['epoch_loss_count']
+            self.epoch_loss_total = checkpoint['epoch_loss_total']
+            self.load_state_dict(checkpoint['model'])
+            #for i, optimizer in enumerate(self.optimizers):
+            #    optimizer.load_state_dict(checkpoint['optimizers'][i])
+        else:
+            raise Exception("Checkpoint not found.")
 
 
 class ClassificationBaseModel(BaseModel):

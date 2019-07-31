@@ -1,29 +1,32 @@
 backend: pytorch
 model:
   name: dlex.torch.models.ctc.CTC
-  hidden_size: 512
+  hidden_size: 1024
   num_layers: 5
-  bidirectional: false
+  bidirectional: true
   dropout: 0
 dataset:
-  name: dlex.datasets.voice.common_voice.common_voice.CommonVoiceBuilder
+  name: dlex.datasets.voice.common_voice.common_voice.CommonVoice
   alias: common_voice
   unit: char
-  max_target_length: 250
-  max_source_length: 2000
+  max_target_length: 100
+  max_source_length: 800
   output_format: "text"
   debug_size: 100
   feature:
-    tool: htk
-    file_type: htk
+    tool: npy
+    file_type: npy
     num_filters: 120
-  special_tokens: [sos, eos, oov, pad]
+  special_tokens: [oov, pad]
+  shuffle: true
 train:
-  batch_size: 16
+  batch_size:
+    0: 50
+    50: 30
   num_epochs: 300
   optimizer:
-    name: sgd
-    lr: 0.01
+    name: adam
+    lr: 0.001
   max_grad_norm: 1.0
   save_every: 0.05e
   log_every: 60s

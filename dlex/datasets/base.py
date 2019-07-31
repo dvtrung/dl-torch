@@ -41,7 +41,7 @@ class BaseDataset:
         self.params = params
 
     def get_working_dir(self) -> str:
-        return os.path.join(ModuleConfigs.DATA_TMP_PATH, camel2snake(self.__class__.__name__))
+        return os.path.join(ModuleConfigs.DATASETS_PATH, camel2snake(self.__class__.__name__))
 
     def get_raw_data_dir(self) -> str:
         return os.path.join(self.get_working_dir(), "raw")

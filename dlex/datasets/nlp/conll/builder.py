@@ -8,7 +8,7 @@ import numpy as np
 from dlex.configs import AttrDict
 from dlex.datasets.builder import DatasetBuilder
 from dlex.datasets.nlp.utils import write_vocab, Vocab
-from dlex.datasets.torch import PytorchSeq2SeqDataset
+from dlex.datasets.seq2seq.torch import PytorchSeq2SeqDataset
 from dlex.torch import BatchItem
 from dlex.utils.logging import logger
 
@@ -90,15 +90,15 @@ class CoNLL2014(DatasetBuilder):
             return super().evaluate(pred, ref, metric)
 
     def get_pytorch_wrapper(self, mode: str):
-        return PytorchCoNLL2014(self, mode, self.params)
+        return PytorchCoNLL2014(self, mode)
 
 
 class PytorchCoNLL2014(PytorchSeq2SeqDataset):
-    def __init__(self, builder, mode, params):
+    def __init__(self, builder, mode):
         super().__init__(
-            builder, mode, params,
+            builder, mode,
             vocab_path=os.path.join(builder.get_processed_data_dir(), "vocab", "word.txt"))
-        cfg = params.dataset
+        cfg = self.params.dataset
 
         is_debug = mode == "debug"
         if mode == "debug":

@@ -13,7 +13,7 @@ class VIVOS(VoiceDataset):
 
     def get_pytorch_wrapper(self, mode: str):
         from .torch import PytorchVIVOS
-        return PytorchVIVOS(self, mode, self.params)
+        return PytorchVIVOS(self, mode)
 
     def maybe_download_and_extract(self, force=False):
         super().maybe_download_and_extract(force)
@@ -24,8 +24,8 @@ class VIVOS(VoiceDataset):
 
     def maybe_preprocess(self, force=False):
         super().maybe_preprocess(force)
-        if os.path.exists(self.get_processed_data_dir()):
-            return
+        #if os.path.exists(self.get_processed_data_dir()):
+        #    return
         raw_dir = os.path.join(self.get_raw_data_dir(), "vivos")
         os.makedirs(self.get_processed_data_dir(), exist_ok=True)
 
@@ -42,8 +42,16 @@ class VIVOS(VoiceDataset):
                     file_paths[mode].append(file_path)
                     transcripts[mode].append(sent)
 
-        write_vocab(self.get_processed_data_dir(), transcripts['train'], output_file_name="words.txt", normalize_fn=normalize_string, tokenize_fn=space_tokenize)
-        write_vocab(self.get_processed_data_dir(), transcripts['train'], output_file_name="chars.txt", normalize_fn=normalize_char, tokenize_fn=char_tokenize)
+        write_vocab(
+            self.get_processed_data_dir(), transcripts['train'],
+            output_file_name="words.txt",
+            normalize_fn=normalize_string,
+            tokenize_fn=space_tokenize)
+        write_vocab(
+            self.get_processed_data_dir(), transcripts['train'],
+            output_file_name="chars.txt",
+            normalize_fn=normalize_char,
+            tokenize_fn=char_tokenize)
 
         self.extract_features(file_paths)
         for token_type in ['word', 'char']:

@@ -50,6 +50,10 @@ def load_idx_to_tkn(filename):
     return idx_to_tkn
 
 
+def normalize_lower(sentence: str):
+    return sentence.strip().lower()
+
+
 def normalize_string_ascii(sentence):
     """
     :param str sentence:
@@ -137,7 +141,8 @@ def space_tokenize(s):
     return s.split(' ')
 
 
-def char_tokenize(s):
+def char_tokenize(s: str):
+    s = s.replace(" ", "_")
     return list(s)
 
 

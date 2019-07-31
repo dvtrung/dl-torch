@@ -233,7 +233,7 @@ class DecoderRNN(nn.Module):
         n_best_hypotheses = self.recognize_beam_batch(
             states,
             configs=self._beam_search_configs,
-            rnn_language_model=None)
+            language_model=None)
         states.decoded_sequences = [n_best[0]['y_seq'][1:-1] for n_best in n_best_hypotheses]
         return states
 
@@ -241,7 +241,7 @@ class DecoderRNN(nn.Module):
             self,
             states: DecodingStates,
             configs: BeamSearchConfigs,
-            rnn_language_model=None,
+            language_model=None,
             normalize_score=True, strm_idx=0):
         att_idx = min(strm_idx, len(self.attention) - 1)
         encoder_outputs = mask_by_length(states.encoder_outputs, states.encoder_output_lens, 0.0)
@@ -274,7 +274,7 @@ class DecoderRNN(nn.Module):
         stop_search = [False for _ in range(batch_size)]
         ended_hypotheses = [[] for _ in range(batch_size)]
 
-        exp_encoder_output_lens = states.encoder_output_lens.repeat(configs.beam_size).view(-1)
+        exp_encoder_output_lens = LongTensor(states.encoder_output_lens).repeat(configs.beam_size).view(-1)
         exp_h = encoder_outputs.unsqueeze(1).repeat(1, configs.beam_size, 1, 1).contiguous()
         exp_h = exp_h.view(-1, exp_h.shape[2], exp_h.shape[3])
 
@@ -289,8 +289,8 @@ class DecoderRNN(nn.Module):
             local_scores = F.log_softmax(self._output(self._dropout_decoder[-1](z_list[-1])), dim=1)
 
             # rnn_language_model
-            if rnn_language_model:
-                rnn_language_model_state, local_lm_scores = rnn_language_model.buff_predict(rnn_language_model_prev, last_predicted_labels, n_bb)
+            if language_model:
+                rnn_language_model_state, local_lm_scores = rnnlm.buff_predict(rnn_language_model_prev, last_predicted_labels, n_bb)
                 local_scores = local_scores + self._language_model_weight * local_lm_scores
             local_scores = local_scores.view(batch_size, configs.beam_size, self._output_size)
 
@@ -347,7 +347,7 @@ class DecoderRNN(nn.Module):
             z_prev = [torch.index_select(z_list[li].view(n_bb, -1), 0, vidx) for li in range(self._num_layers)]
             c_prev = [torch.index_select(c_list[li].view(n_bb, -1), 0, vidx) for li in range(self._num_layers)]
 
-            if rnn_language_model:
+            if language_model:
                 rnn_language_model_prev = index_select_lm_state(rnn_language_model_state, 0, vidx)
 
             # pick ended hypotheses

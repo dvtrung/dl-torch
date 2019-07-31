@@ -29,7 +29,7 @@ class WikiText2(NLPDataset):
             return super().evaluate(pred, ref, metric)
 
     def get_pytorch_wrapper(self, mode: str):
-        return PytorchWikiText2(self, mode, self.params)
+        return PytorchWikiText2(self, mode)
 
     def get_tensorflow_wrapper(self, mode: str):
         raise Exception("No tensorflow interface.")
@@ -39,8 +39,8 @@ class WikiText2(NLPDataset):
 
 
 class PytorchWikiText2(PytorchDataset):
-    def __init__(self, builder, mode, params):
-        super().__init__(builder, mode, params)
+    def __init__(self, builder, mode):
+        super().__init__(builder, mode)
 
     @property
     def data(self):

@@ -7,9 +7,10 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from dlex.datasets.torch import PytorchSeq2SeqDataset
+from dlex.datasets.seq2seq.torch import PytorchSeq2SeqDataset
 from dlex.torch import Batch
 from dlex.torch.models.base import BaseModel
+from dlex.torch.utils.ops_utils import FloatTensor, maybe_cuda
 from dlex.utils.logging import logger
 from .decoder import DecoderRNN, BeamSearchConfigs
 from .encoder import EncoderRNN
@@ -154,7 +155,6 @@ class Attention(BaseModel):
             )
             attention = torch.nn.ModuleList([self._test])
         elif cfg.attention.type == "location":
-            print(cfg.decoder)
             self._test = LocationAwareAttention(
                 encoder_output_size=cfg.encoder.output_size,
                 decoder_hidden_size=cfg.decoder.hidden_size,
@@ -659,8 +659,8 @@ class LocationAwareAttention(BaseAttention):
         # initialize attention weight with uniform dist.
         if att_prev is None:
             # if no bias, 0 0-pad goes 0
-            att_prev = 1. - self.make_pad_mask(encoder_output_lens).float()
-            att_prev = att_prev / att_prev.new(torch.FloatTensor(encoder_output_lens).to(next(self.parameters()).device)).unsqueeze(-1)
+            att_prev = 1. - maybe_cuda(self.make_pad_mask(encoder_output_lens).float())
+            att_prev = att_prev / att_prev.new(FloatTensor(encoder_output_lens)).unsqueeze(-1)
 
         # att_prev: utt x frame -> utt x 1 x 1 x frame -> utt x att_conv_chans x 1 x frame
         att_conv = self.loc_conv(att_prev.view(batch, 1, 1, self.h_length))
@@ -678,7 +678,7 @@ class LocationAwareAttention(BaseAttention):
 
         # NOTE consider zero padding when compute w.
         if self.mask is None:
-            self.mask = self.make_pad_mask(encoder_output_lens)
+            self.mask = maybe_cuda(self.make_pad_mask(encoder_output_lens))
         e.masked_fill_(self.mask, -float('inf'))
         w = F.softmax(scaling * e, dim=1)
 

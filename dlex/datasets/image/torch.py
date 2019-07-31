@@ -3,8 +3,8 @@ from dlex.torch import Batch
 
 
 class PytorchImageDataset(PytorchDataset):
-    def __init__(self, builder, mode, params):
-        super().__init__(builder, mode, params)
+    def __init__(self, builder, mode):
+        super().__init__(builder, mode)
 
     def evaluate_batch(self, y_pred, batch: Batch, metric: str):
         if metric == "acc":

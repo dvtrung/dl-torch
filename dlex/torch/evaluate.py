@@ -1,3 +1,4 @@
+import random
 from typing import Tuple
 
 from tqdm import tqdm
@@ -7,7 +8,7 @@ from torch.utils.data import DataLoader
 from dlex.datasets.torch import PytorchDataset
 from dlex.configs import Configs, AttrDict
 from dlex.utils.model_utils import get_dataset
-from dlex.torch.utils.model_utils import get_model, load_checkpoint
+from dlex.torch.utils.model_utils import get_model
 from dlex.utils.logging import logger
 from dlex.utils.utils import init_dirs
 from dlex.torch.models.base import DataParellelModel, BaseModel
@@ -31,6 +32,8 @@ def evaluate(
         outputs = []
         for batch in tqdm(data_iter, desc="Eval"):
             try:
+                if batch.X.shape[0] == 0:
+                    raise Exception("Batch size 0")
                 y_pred, model_output, others = model.infer(batch)
                 # print(model.module.infer_log(batch, y_pred, params.verbose))
                 for key in params.test.metrics:
@@ -91,7 +94,7 @@ def main():
     # Init model
     model = model_cls(params, dataset_test)
     device_ids = [i for i in range(torch.cuda.device_count())]
-    logger.info("Training on %s" % str(device_ids))
+    logger.info("Evaluating on %s" % str(device_ids))
     model = DataParellelModel(model, device_ids)
     use_cuda = torch.cuda.is_available()
     if use_cuda:
@@ -100,15 +103,15 @@ def main():
 
     if args.load is None:
         raise Exception("A saved model file must be specified.")
-    load_checkpoint(args.load, params, model)
+    model.load_checkpoint(args.load)
     init_dirs(params)
 
     logger.info("Saved model loaded: %s", args.load)
 
     result, outputs = evaluate(model, dataset_test, params, output=True)
 
-    # for output in outputs:
-    #     logger.info(str(output))
+    for output in random.choices(outputs, k=50):
+        logger.info(str(output))
 
     logger.info(str(result))
 

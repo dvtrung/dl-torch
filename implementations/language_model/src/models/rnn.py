@@ -53,7 +53,8 @@ class RNNLM(BaseModel):
     def forward(self, batch: Batch):
         self._hidden = self.repackage_hidden(self._hidden, batch.X.device)
         emb = self.drop(self.embed(batch.X))
-        output, self._hidden = self.rnn(emb, self._hidden)
+        # output, self._hidden = self.rnn(emb, self._hidden)
+        output, self._hidden = self.rnn(emb)
         output = self.drop(output)
         decoded = self.decoder(output)
         return decoded

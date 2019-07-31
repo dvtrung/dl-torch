@@ -18,7 +18,7 @@ DOWNLOAD_URL = "http://datashare.is.ed.ac.uk/download/DS_10283_2791.zip"
 
 
 class NSDTSEA(BaseDataset):
-    working_dir = os.path.join(ModuleConfigs.DATA_TMP_PATH, "nsdtsea")
+    working_dir = os.path.join(ModuleConfigs.DATASETS_PATH, "nsdtsea")
     raw_data_dir = os.path.join(working_dir, "raw")
     processed_data_dir = os.path.join(working_dir, "data")
 

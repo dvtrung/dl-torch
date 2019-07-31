@@ -35,12 +35,12 @@ class IMDB(NLPDataset):
         self.TEXT, self.LABEL = TEXT, LABEL
 
     def get_pytorch_wrapper(self, mode: str):
-        return PytorchIMDB(self, mode, self.params)
+        return PytorchIMDB(self, mode)
 
 
 class PytorchIMDB(PytorchDataset):
-    def __init__(self, builder, mode, params):
-        super().__init__(builder, mode, params)
+    def __init__(self, builder, mode):
+        super().__init__(builder, mode)
 
     def get_iter(self, batch_size, start=0, end=-1):
         iter = data.BucketIterator(

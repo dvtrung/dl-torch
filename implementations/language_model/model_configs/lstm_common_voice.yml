@@ -5,21 +5,20 @@ model:
   num_layers: 2
   hidden_size: 1500
 dataset:
-  name: dlex.datasets.nlp.wikitext.WikiText103
+  name: src.datasets.common_voice.CommonVoiceLM
   unit: word
   output_format: text
-  bptt_len: 25
+  bptt_len: 10
   embedding_dim: 300
-  pretrained_embeddings: glove
 train:
-  batch_size: 16
-  num_epochs: 40
+  batch_size: 256
+  num_epochs: 100
   optimizer:
     name: adam
-    lr: 0.01
+    lr: 0.001
   max_grad_norm: 0.25
   save_every: 3600s
   log_every: 3600s
 test:
-  batch_size: 16
-  metrics: [loss, acc]
+  batch_size: 256
+  metrics: [acc]

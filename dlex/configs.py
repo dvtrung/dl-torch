@@ -1,23 +1,21 @@
 """Reading model configurations"""
+import argparse
 import os
 import re
-import argparse
 from dataclasses import dataclass, field
-from typing import Union, Dict, List
 
 import yaml
-import tempfile
 
-from dlex.utils.logging import logger
-
-DEFAULT_DATA_TMP_PATH = os.path.expanduser(os.path.join("~", "tmp"))
+DEFAULT_TMP_PATH = os.path.expanduser(os.path.join("~", "tmp"))
+DEFAULT_DATASETS_PATH = os.path.expanduser(os.path.join("~", "tmp", "datasets"))
+DEFAULT_SAVED_MODELS_PATH = "saved_models"
 args = None
 
 
 class ModuleConfigs:
-    DATA_TMP_PATH = os.path.join(os.getenv("DATA_TMP_PATH", DEFAULT_DATA_TMP_PATH), "dlex", "datasets")
-    TMP_PATH = os.path.join(os.getenv("DATA_TMP_PATH", DEFAULT_DATA_TMP_PATH), "dlex")
-    SAVED_MODELS_PATH = os.path.join(os.getenv("SAVED_MODELS_PATH", "saved_models"), "dlex")
+    DATASETS_PATH = os.getenv("DLEX_DATASETS_PATH", DEFAULT_DATASETS_PATH)
+    TMP_PATH = os.path.join(os.getenv("DLEX_TMP_PATH", DEFAULT_TMP_PATH), "dlex")
+    SAVED_MODELS_PATH = os.getenv("DLEX_SAVED_MODELS_PATH", DEFAULT_SAVED_MODELS_PATH)
 
 
 @dataclass
@@ -25,7 +23,7 @@ class TrainConfig:
     batch_size: int
     num_epochs: int
     optimizer: dict
-    eval: list = field(default_factory=lambda: ["test", "valid"])
+    eval: list = field(default_factory=lambda: ["test"])
     max_grad_norm: float = 5.0
     save_every: str = "1e"
     log_every: str = "5s"
@@ -42,7 +40,6 @@ class AttrDict(dict):
     path = None
     train: TrainConfig
     verbose: bool
-    num_workers: int
 
     def __init__(self, *args, **kwargs):
         super(AttrDict, self).__init__(*args, **kwargs)
@@ -168,13 +165,16 @@ class Configs:
             '--log_every', action='store_true', default=False,
             help='Log after a certain period of time. Unit: e (epoch), s, m, h (seconds, minutes, hours)')
 
+        parser.add_argument('--num-workers', type=int, default=0, metavar='N',
+                            help="Number of workers for loading data")
+
         if self.mode == "train":
-            parser.add_argument('--num_processes', type=int, default=1, metavar='N',
+            parser.add_argument('--num-processes', type=int, default=1, metavar='N',
                                 help="how many training process to use")
-            parser.add_argument('--num_workers', type=int, default=0, metavar='N',
-                                help="Number of workers for loading data")
-            parser.add_argument('--save_all', action='store_true', default=False,
+            parser.add_argument('--save-all', action='store_true', default=False,
                                 help='save every epoch')
+            parser.add_argument('--exit-on-runtime-error', action="store_true",
+                                help="Exit when encoutering rumtime error (eg: CUDA out of memery). Exit code: 2")
         elif self.mode == "infer":
             parser.add_argument(
                 '-i --input',
@@ -197,7 +197,7 @@ class Configs:
             params.set("mode", self.mode)
             params.set("path", self.args.config_path)
             params.set("verbose", bool(self.args.verbose))
-            params.num_workers = args.num_workers
+            params.dataset.num_workers = args.num_workers
 
             # Some config values are overwritten by command arguments
             if args.batch_size is not None:

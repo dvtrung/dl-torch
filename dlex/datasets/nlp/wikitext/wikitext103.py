@@ -1,3 +1,5 @@
+import os
+
 from sklearn.metrics import accuracy_score
 from torchtext import data, datasets
 
@@ -7,6 +9,7 @@ from dlex.datasets.nlp.utils import spacy_tokenize
 from dlex.datasets.torch import PytorchDataset
 from dlex.torch import Batch
 from dlex.torch import BatchItem
+from dlex.utils import logger
 
 
 class WikiText103(NLPDataset):
@@ -18,8 +21,15 @@ class WikiText103(NLPDataset):
 
     def maybe_preprocess(self, force=False):
         TEXT = data.Field(lower=True, tokenize=spacy_tokenize)
+        logger.info("Loading dataset...")
         self.train_data, self.valid_data, self.test_data = datasets.WikiText103.splits(TEXT, root=self.get_raw_data_dir())
-        TEXT.build_vocab(self.train_data, vectors=self.get_embedding_vectors())
+
+        if not os.path.exists(self.get_vocab_path("word")):
+            logger.info("Building vocabulary...")
+            TEXT.build_vocab(self.train_data, vectors=self.get_embedding_vectors())
+            with open(self.get_vocab_path("word"), "w") as f:
+                f.write('\n'.join(TEXT.vocab.itos))
+
         self.TEXT = TEXT
 
     def evaluate(self, pred, ref, metric: str):
@@ -29,7 +39,7 @@ class WikiText103(NLPDataset):
             return super().evaluate(pred, ref, metric)
 
     def get_pytorch_wrapper(self, mode: str):
-        return PytorchWikiText103(self, mode, self.params)
+        return PytorchWikiText103(self, mode)
 
     def get_tensorflow_wrapper(self, mode: str):
         raise Exception("No tensorflow interface.")
@@ -39,8 +49,8 @@ class WikiText103(NLPDataset):
 
 
 class PytorchWikiText103(PytorchDataset):
-    def __init__(self, builder, mode, params):
-        super().__init__(builder, mode, params)
+    def __init__(self, builder, mode):
+        super().__init__(builder, mode)
 
     @property
     def data(self):
@@ -51,6 +61,7 @@ class PytorchWikiText103(PytorchDataset):
             self.data,
             batch_size=batch_size,
             bptt_len=self.params.dataset.bptt_len)
+        logger.debug(f"{self.mode}: {len(iter)}")
         return map(lambda item: Batch(
             X=item.text.transpose(1, 0).cuda(),
             Y=item.target.transpose(1, 0).cuda()

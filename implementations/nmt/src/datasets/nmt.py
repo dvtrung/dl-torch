@@ -21,7 +21,7 @@ class NMTBaseDataset(NLPDataset):
     :type output_size: int
     :type data: list
     """
-    def __init__(self, mode: str, params: AttrDict, vocab_paths: str = None):
+    def __init__(self, mode: str, vocab_paths: str = None):
         super().__init__(mode, params)
         cfg = params.dataset
 

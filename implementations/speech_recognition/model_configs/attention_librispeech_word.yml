@@ -1,47 +1,59 @@
 backend: pytorch
 model:
   name: dlex.torch.models.attention.Attention
-  alias: attention
   encoder:
     rnn_type: lstm
-    bidirectional: false
-    num_layers: 5
+    bidirectional: true
+    num_layers: 4
     input_size: 256
-    hidden_size: 512
+    hidden_size: 1024
     output_size: 256
   decoder:
     rnn_type: lstm
     use_attention: true
-    num_layers: 1
+    num_layers: 2
     hidden_size: 256
     output_size: 256
-    max_length: 20
+    max_length: 35
   beam_search:
     beam_size: 16
     penalty: 0.5
   attention:
-    type: bahdanau
+    type: location
     size: 256
+    num_channels: 10
+    filter_size: 100
   decoding_method: greedy
   dropout: 0.2
-  teacher_forcing_ratio: 0.5
+  teacher_forcing_ratio: 0.0
 dataset:
   name: dlex.datasets.voice.librispeech.builder.LibriSpeech
-  alias: librispeech
+  alias: common_voice
   unit: word
   output_format: "text"
   debug_size: 100
-  sort: true
+  max_target_length: 35
+  max_source_length: 1500
   feature:
     tool: python_speech_features
-  vocab:
-    sos_eos: true
-    blank: false
-batch_size: 8
-num_epochs: 300
-optimizer:
-  name: adam
-  lr: 0.001
-max_grad_norm: 5.0
-metrics:
-  - wer
+    file_type: npy
+    num_filters: 120
+  special_tokens: [sos, eos, oov, pad]
+  num_workers: 4
+  sort: true
+train:
+  eval: [test]
+  batch_size:
+    0: 30
+    60: 30
+    90: 30
+  num_epochs: 100
+  optimizer:
+    name: adadelta
+    lr: 0.001
+  max_grad_norm: 1.0
+  save_every: 3600s
+  log_every: 3600s
+test:
+  batch_size: 4
+  metrics: [wer]

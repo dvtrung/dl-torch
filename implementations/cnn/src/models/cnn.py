@@ -32,9 +32,6 @@ class BasicModel(ClassificationBaseModel):
         x = self.fc2(x)
         return F.log_softmax(x, dim=1)
 
-    def infer(self, batch):
-        return super().infer(batch)
-
 
 @default_params(dict(
     vgg_type="VGG11"

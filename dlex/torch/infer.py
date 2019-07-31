@@ -3,7 +3,7 @@ import torch
 from torch.utils.data import DataLoader
 
 from configs import Configs
-from torch.utils.model_utils import get_dataset, get_model, load_checkpoint
+from torch.utils.model_utils import get_dataset, get_model
 from utils.logging import logger
 from utils.utils import init_dirs
 
@@ -46,7 +46,7 @@ def main():
         logger.info("Cuda available: %s", torch.cuda.get_device_name(0))
         model.cuda()
 
-    load_checkpoint(args.load, params, model)
+    model.load_checkpoint(args.load)
     init_dirs(params)
 
     if args.input:

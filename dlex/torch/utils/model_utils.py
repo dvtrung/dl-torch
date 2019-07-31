@@ -37,35 +37,6 @@ def get_optimizer(cfg, model_parameters):
     return optimizer(model_parameters, **op_params)
 
 
-def save_checkpoint(tag, params, model):
-    """Save current training state"""
-    os.makedirs(os.path.join(ModuleConfigs.SAVED_MODELS_PATH, params.path), exist_ok=True)
-    state = {
-        'training_id': params.training_id,
-        'global_step': model.global_step,
-        'model': model.state_dict(),
-        'optimizers': [optimizer.state_dict() for optimizer in model.optimizers]
-    }
-    fn = os.path.join(ModuleConfigs.SAVED_MODELS_PATH, params.path, tag + ".pt")
-    torch.save(state, fn)
-
-
-def load_checkpoint(tag, params, model):
-    """Load from saved state"""
-    file_name = os.path.join(ModuleConfigs.SAVED_MODELS_PATH, params.path, tag + ".pt")
-    logger.info("Load checkpoint from %s" % file_name)
-    if os.path.exists(file_name):
-        checkpoint = torch.load(file_name, map_location='cpu')
-        params.training_id = checkpoint['training_id']
-        logger.info(checkpoint['training_id'])
-        model.global_step = checkpoint['global_step']
-        model.load_state_dict(checkpoint['model'])
-        for i, optimizer in enumerate(model.optimizers):
-            optimizer.load_state_dict(checkpoint['optimizers'][i])
-    else:
-        raise Exception("Checkpoint not found.")
-
-
 def rnn_cell(cell):
     if cell == 'lstm':
         return torch.nn.LSTM

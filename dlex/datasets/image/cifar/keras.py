@@ -10,8 +10,8 @@ from dlex.datasets.tf import TensorflowDataset
 
 
 class KerasCIFAR10(KerasDataset):
-    def __init__(self, dataset, mode, params):
-        super().__init__(dataset, mode, params)
+    def __init__(self, dataset, mode):
+        super().__init__(dataset, mode)
         if mode == "train":
             (X, Y), _ = cifar10.load_data()
             generator = ImageDataGenerator(

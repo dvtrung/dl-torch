@@ -12,7 +12,7 @@ from dlex.torch.utils.ops_utils import maybe_cuda
 
 
 class ImageNet(BaseDataset):
-    def __init__(self, mode: str, params: AttrDict):
+    def __init__(self, mode: str):
         super().__init__(mode, params)
         normalize = transforms.Normalize(
             mean=[0.485, 0.456, 0.406],

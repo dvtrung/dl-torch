@@ -10,7 +10,7 @@ class TensorflowSpeechRecognitionDataset(TensorflowDataset):
             mode: str,
             params,
             vocab_path: str):
-        super().__init__(builder, mode, params)
+        super().__init__(builder, mode)
         self.vocab = Vocab(vocab_path)
         self.vocab.add_token('<sos>')
         self.vocab.add_token('<eos>')

@@ -3,7 +3,7 @@ import random
 import numpy as np
 
 from dlex.datasets.voice.builder import VoiceDataset
-from dlex.datasets.torch import PytorchSeq2SeqDataset
+from dlex.datasets.seq2seq.torch import PytorchSeq2SeqDataset
 from dlex.torch import BatchItem
 
 random.seed(1)
@@ -14,15 +14,15 @@ class Dummy(VoiceDataset):
         super().__init__(params)
 
     def get_pytorch_wrapper(self, mode: str):
-        return PytorchDummy(self, mode, self.params)
+        return PytorchDummy(self, mode)
 
 
 class PytorchDummy(PytorchSeq2SeqDataset):
     input_size = 50
 
-    def __init__(self, builder, mode, params):
-        super().__init__(builder, mode, params)
-        label_start_from = 1 if 'blank' in params.dataset.special_tokens else 2
+    def __init__(self, builder, mode):
+        super().__init__(builder, mode)
+        label_start_from = 1 if 'blank' in self.params.dataset.special_tokens else 2
         self._output_size = self.input_size + label_start_from
         for w in range(1, self.input_size + 1):
             self.vocab.add_token(str(w))
@@ -35,7 +35,7 @@ class PytorchDummy(PytorchSeq2SeqDataset):
             BatchItem(X=[feats[label - label_start_from] for label in seq], Y=seq)
             for seq in inputs]
 
-        if params.dataset.sort:
+        if self.params.dataset.sort:
             self._data.sort(key=lambda item: len(item.Y))
 
     @property
