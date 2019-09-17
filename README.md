@@ -1,3 +1,5 @@
+[!] This code is under development and mainly for my personal use. The purpose of this project is to reproduce paper results or prototype new model by writing minimal code and reusing code from related models. Some parts of the code are not well-commented or lack of citation.
+
 # Features
 
 This project provides a codebase for deep learning experiments with Pytorch.
@@ -5,7 +7,7 @@ This project provides a codebase for deep learning experiments with Pytorch.
 - [ ] Writing minimal code to set up an experiment
 - [ ] Pytorch or Tensorflow 2.0 as backend with same training flow
 - [ ] Efficient way of logging and analyzing training models
-- [ ] Terminal GUI for tracking experiments
+- [ ] GUI for monitoring experiments
 - [ ] Integration with Google Colab or remote SSH server
 
 # Set up an experiment
