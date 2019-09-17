@@ -23,9 +23,14 @@ class PytorchVoiceDataset(PytorchSeq2SeqDataset):
         return data
 
     def collate_fn(self, batch: List[dict]):
-        batch = [BatchItem(
-            X=self.builder.load_feature(item['X_path']),
-            Y=item['Y']) for item in batch]
+        if 'X_path' in batch[0]:
+            batch = [BatchItem(
+                X=self.builder.load_feature(item['X_path']),
+                Y=item['Y']) for item in batch]
+        else:
+            batch = [BatchItem(
+                X=item['X'], Y=item['Y']
+            ) for item in batch]
         batch = [item for item in batch if item.X is not None]
         return super().collate_fn(batch)
 

@@ -20,13 +20,16 @@ class ModuleConfigs:
 
 @dataclass
 class TrainConfig:
-    batch_size: int
-    num_epochs: int
-    optimizer: dict
+    num_epochs: int = None
+    num_workers: int = None
+    batch_size: int = None
+    optimizer: dict = None
+    lr_scheduler: dict = None
     eval: list = field(default_factory=lambda: ["test"])
     max_grad_norm: float = 5.0
     save_every: str = "1e"
     log_every: str = "5s"
+    cross_validation: bool = False
 
 
 class AttrDict(dict):
@@ -83,7 +86,7 @@ class AttrDict(dict):
     @property
     def output_dir(self):
         """Get output directory based on model configs"""
-        result_dir = os.path.join("model_outputs", self.path)
+        result_dir = os.path.join(ModuleConfigs.TMP_PATH, "model_outputs", self.path)
         return result_dir
 
 
@@ -197,7 +200,10 @@ class Configs:
             params.set("mode", self.mode)
             params.set("path", self.args.config_path)
             params.set("verbose", bool(self.args.verbose))
+
             params.dataset.num_workers = args.num_workers
+            if params.train.num_workers is None:
+                params.train.num_workers = args.num_workers
 
             # Some config values are overwritten by command arguments
             if args.batch_size is not None:

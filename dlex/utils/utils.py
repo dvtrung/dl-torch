@@ -82,8 +82,8 @@ def maybe_unzip(file_path, folder_path):
 
 def init_dirs(params):
     os.makedirs(params.log_dir, exist_ok=True)
-    shutil.rmtree(params.output_dir, ignore_errors=True)
-    os.makedirs(params.output_dir)
+    # shutil.rmtree(params.output_dir, ignore_errors=True)
+    os.makedirs(params.output_dir, exist_ok=True)
     if params.mode == "train":
         set_log_dir(params)
 

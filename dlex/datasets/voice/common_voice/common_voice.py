@@ -1,11 +1,12 @@
 import os
+from subprocess import call
 
 import pandas
-import random
 
-from dlex.datasets.voice.torch import PytorchVoiceDataset
+from dlex.datasets.nlp.utils import write_vocab, normalize_lower, char_tokenize, spacy_tokenize, \
+    normalize_lower_alphanumeric
 from dlex.datasets.voice.builder import VoiceDataset
-from dlex.datasets.nlp.utils import write_vocab, normalize_lower, char_tokenize, spacy_tokenize
+from dlex.datasets.voice.torch import PytorchVoiceDataset
 from dlex.utils.logging import logger
 from dlex.utils.utils import run_script
 
@@ -47,9 +48,12 @@ class CommonVoice(VoiceDataset):
     @property
     def output_prefix(self):
         cfg = self.params.dataset
-        return "%s_vocab_size_%d" % (
+        s = "%s_vocab_size_%d" % (
             cfg.unit,
             cfg.vocab_size or 0)
+        if cfg.alphanumeric:
+            s += "_alphanumeric"
+        return s
 
     @property
     def vocab_path(self):
@@ -57,8 +61,8 @@ class CommonVoice(VoiceDataset):
 
     def maybe_preprocess(self, force=False):
         super().maybe_preprocess(force)
-        #if os.path.exists(self.get_processed_data_dir()):
-        #    return
+        # if os.path.exists(self.get_processed_data_dir()):
+        #   return
         os.makedirs(self.get_processed_data_dir(), exist_ok=True)
 
         if not os.path.exists(self.vocab_path):
@@ -93,6 +97,10 @@ class CommonVoice(VoiceDataset):
 
         output_prefix = self.output_prefix
         logger.info("Output prefix: %s", output_prefix)
+        if self.params.dataset.alphanumeric:
+            normalize_fn = normalize_lower_alphanumeric
+        else:
+            normalize_fn = normalize_lower
         if not os.path.exists(os.path.join(self.get_processed_data_dir(), f"{output_prefix}_train.csv")) \
                 or not os.path.exists(os.path.join(self.get_processed_data_dir(), f"{output_prefix}_test.csv")):
             file_paths, transcripts = self._get_raw_data()
@@ -101,7 +109,7 @@ class CommonVoice(VoiceDataset):
                 file_paths,
                 transcripts,
                 vocab_path=self.vocab_path,
-                normalize_fn=normalize_lower,
+                normalize_fn=normalize_fn,
                 tokenize_fn=spacy_tokenize if self.params.dataset.unit == 'word' else char_tokenize,
             )
 
@@ -116,10 +124,24 @@ class PytorchCommonVoice(PytorchVoiceDataset):
         super().__init__(
             builder, mode,
             vocab_path=os.path.join(builder.get_processed_data_dir(), "vocab", "%s.txt" % builder.params.dataset.unit))
+        if mode == "infer":
+            self._data = []
+        else:
+            self._data = self.load_data(self.csv_path)
 
-        self._data = self.load_data(os.path.join(
-            builder.get_processed_data_dir(),
-            "%s_%s" % (builder.output_prefix, mode) + '.csv'))
+    @property
+    def csv_path(self):
+        return os.path.join(
+            self.builder.get_processed_data_dir(),
+            "%s_%s" % (self.builder.output_prefix, self.mode) + '.csv')
 
-        if self.params.dataset.shuffle:
-            random.shuffle(self._data)
+    def load_from_input(self, s):
+        output_path = os.path.join("tmp", os.path.basename(s))
+        f_trash = open(os.devnull, "w")
+        call(
+            ["ffmpeg", "-n", "-i", s, "-ar", "16000", "-ac", "1", output_path],
+            stdout=f_trash, stderr=f_trash)
+        self._data = [{
+            'X': self.builder.regularize(self.builder.get_features_from_audio(output_path)),
+            'Y': [0]
+        }]

@@ -2,10 +2,12 @@
 import torch
 from torch.utils.data import DataLoader
 
-from configs import Configs
-from torch.utils.model_utils import get_dataset, get_model
-from utils.logging import logger
-from utils.utils import init_dirs
+from dlex.configs import Configs
+from dlex.torch.models.base import DataParellelModel
+from dlex.utils.model_utils import get_dataset
+from dlex.torch.utils.model_utils import get_model
+from dlex.utils.logging import logger
+from dlex.utils.utils import init_dirs
 
 
 def infer(model, dataset, params):
@@ -18,7 +20,7 @@ def infer(model, dataset, params):
 
     count = 0
     for batch in data_loader:
-        y_pred = model.infer(batch)
+        y_pred, _, _ = model.infer(batch)
         for i, _y in enumerate(y_pred):
             count += 1
             logger.info(dataset.format_output(
@@ -34,14 +36,15 @@ def main():
     args = configs.args
     torch.manual_seed(params.seed)
 
-    dataset_cls = get_dataset(params)
+    dataset_builder = get_dataset(params)
+    dataset = dataset_builder.get_pytorch_wrapper("infer")
     model_cls = get_model(params)
 
-    # Init dataset
-    dataset_infer = dataset_cls("infer", params)
-
     # Init model
-    model = model_cls(params, dataset_infer)
+    model = model_cls(params, dataset)
+    device_ids = [i for i in range(torch.cuda.device_count())]
+    logger.info("Inferring on %s" % str(device_ids))
+    model = DataParellelModel(model, device_ids)
     if torch.cuda.is_available():
         logger.info("Cuda available: %s", torch.cuda.get_device_name(0))
         model.cuda()
@@ -49,13 +52,10 @@ def main():
     model.load_checkpoint(args.load)
     init_dirs(params)
 
-    if args.input:
-        dataset_infer.load_from_input(args.input)
-        infer(model, dataset_infer, params)
-    else:
+    while True:
         s = input('--> ')
-        dataset_infer.load_from_input(s)
-        infer(model, dataset_infer, params)
+        dataset.load_from_input(s)
+        infer(model, dataset, params)
 
 
 if __name__ == "__main__":

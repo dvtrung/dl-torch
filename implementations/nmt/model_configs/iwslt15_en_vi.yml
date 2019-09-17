@@ -5,23 +5,23 @@ model:
     bidirectional: false
     num_layers: 2
     input_size: 256
-    hidden_size: 256
-    output_size: 256
+    hidden_size: 500
+    output_size: 500
   decoder:
     rnn_type: lstm
     use_attention: true
     num_layers: 1
-    hidden_size: 256
+    hidden_size: 500
     max_length: 50
   attention:
     type: bahdanau
     size: 256
   beam_search:
-    beam_size: 16
-    penalty: 0
-  dropout: 0.1
-  teacher_forcing_ratio: 1.0
-  decoding_method: beam_search
+    beam_size: 8
+    penalty: 0.2
+  dropout: 0.2
+  teacher_forcing_ratio: 0.2
+  decoding_method: greedy
 dataset:
   name: src.datasets.iwslt.builder.IWSLT15
   source: en
@@ -30,12 +30,15 @@ dataset:
   unit: word
   special_tokens: [sos, eos, oov, pad]
 train:
-  batch_size: 32
+  batch_size: 24
   num_epochs: 100
   optimizer:
     name: sgd
-    lr: 0.01
-  max_grad_norm: 5.0
+    lr: 1.
+  lr_scheduler:
+    milestones: [15, 25, 35]
+    gamma: 0.2
+  max_grad_norm: 1.0
 test:
   batch_size: 16
   metrics:

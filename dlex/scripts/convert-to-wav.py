@@ -7,7 +7,8 @@ from subprocess import call
 from tqdm import tqdm
 
 parser = argparse.ArgumentParser(description="Convert audio file to wav format.")
-parser.add_argument('-i', dest='src', help="Input directory", required=True)
+parser.add_argument('-i', dest='src', help="Input directory")
+parser.add_argument('-if', dest='input_files', help="Input files", nargs='+')
 parser.add_argument('-o', dest='tgt', help='Output directory', required=True)
 # parser.add_argument('--prefix', dest='prefix')
 parser.add_argument('--verbose', action="store_true", dest='verbose')
@@ -17,11 +18,14 @@ args = parser.parse_args()
 
 os.makedirs(args.tgt, exist_ok=True)
 f_trash = open(os.devnull, "w")
-audio_paths = list(Path(args.src).glob("**/*.*"))
+if args.src:
+    audio_paths = list(Path(args.src).glob("**/*.*"))
+elif args.input_files:
+    audio_paths = [Path(fn) for fn in args.input_files]
 
 
 def process(audio_path: Path):
-    if audio_path.suffix not in [".mp3", ".flac"]:
+    if audio_path.suffix not in [".mp3", ".flac", ".wav"]:
         return
     output_path = Path(args.tgt, audio_path.name)
     output_path = Path(str(output_path).replace(audio_path.suffix, ".wav"))

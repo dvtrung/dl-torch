@@ -3,9 +3,8 @@ import abc
 import shutil
 
 from dlex.utils.logging import logger
-from dlex.utils.utils import maybe_download, maybe_unzip, camel2snake
+from dlex.utils.utils import maybe_download, maybe_unzip
 from dlex.configs import ModuleConfigs, AttrDict
-from dlex.torch import BatchItem
 
 
 class DatasetBuilder:
@@ -95,7 +94,7 @@ class DatasetBuilder:
             raise Exception("Result comparison is not defined: %s" % metric)
 
     @abc.abstractmethod
-    def format_output(self, y_pred, batch_item: BatchItem) -> (str, str, str):
+    def format_output(self, y_pred, batch_item) -> (str, str, str):
         if self.params.dataset.output_format is None:
             return str(batch_item.X), str(batch_item.Y), str(y_pred)
         else:

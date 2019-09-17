@@ -2,7 +2,6 @@
 import random
 import sys
 import time
-from dataclasses import dataclass
 from datetime import datetime
 
 import torch
@@ -10,25 +9,15 @@ import torch.multiprocessing as mp
 # from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
 
-from dlex.configs import Configs, AttrDict
-from dlex.datasets.torch import PytorchDataset
+from dlex.configs import AttrDict
+from dlex.torch.datatypes import Datasets
 from dlex.torch.evaluate import evaluate
 from dlex.torch.models.base import DataParellelModel
-from dlex.torch.utils.model_utils import get_model
+from dlex.torch.utils.utils import load_model
 from dlex.utils.logging import logger, epoch_info_logger, epoch_step_info_logger, logging, log_result, json_dumps, \
     log_outputs
-from dlex.utils.model_utils import get_dataset
-from dlex.utils.utils import init_dirs
 
 DEBUG_NUM_ITERATIONS = 5
-DEBUG_BATCH_SIZE = 4
-
-
-@dataclass
-class Datasets:
-    train: PytorchDataset
-    valid: PytorchDataset = None
-    test: PytorchDataset = None
 
 
 def train(
@@ -113,8 +102,8 @@ def train_epoch(
         summary_writer,
         num_samples=0):
     """Train."""
-    #if params.dataset.shuffle:
-    #    datasets.train.shuffle()
+    if params.dataset.shuffle:
+        datasets.train.shuffle()
 
     logger.info("EPOCH %d", current_epoch)
     model.start_calculating_loss()
@@ -147,7 +136,7 @@ def train_epoch(
 
             for epoch_step, batch in enumerate(data_train):
                 try:
-                    if batch.X.shape[0] == 0:
+                    if batch is None or batch.X.shape[0] == 0:
                         raise Exception("Batch size 0")
                     loss = model.training_step(batch)
                     # clean
@@ -196,6 +185,7 @@ def train_epoch(
 
                 if args.debug:
                     input("Press any key to continue...")
+            model.end_training_epoch()
 
     model.save_checkpoint("epoch-latest")
     end_time = datetime.now()
@@ -205,71 +195,17 @@ def train_epoch(
 def main(argv=None):
     mp.set_start_method('spawn', force=True)
     """Read config and train model."""
-    configs = Configs(mode="train", argv=argv)
-    params, args = configs.params, configs.args
-
-    if args.debug:
-        params.train.batch_size = DEBUG_BATCH_SIZE
-        params.test.batch_size = DEBUG_BATCH_SIZE
-
+    params, args, model, datasets = load_model("train", argv)
     torch.manual_seed(params.seed)
-
-    # Init dataset
-    dataset_builder = get_dataset(params)
-    assert dataset_builder
-    if not args.no_prepare:
-        dataset_builder.prepare(download=args.download, preprocess=args.preprocess)
-    if args.debug:
-        datasets = Datasets(
-            train=dataset_builder.get_pytorch_wrapper("test"),
-            test=dataset_builder.get_pytorch_wrapper("test"))
-    else:
-        datasets = Datasets(
-            train=dataset_builder.get_pytorch_wrapper("train"),
-            valid=dataset_builder.get_pytorch_wrapper("valid") if "valid" in params.train.eval else None,
-            test=dataset_builder.get_pytorch_wrapper("test") if "test" in params.train.eval else None)
-
-    # Init model
-    model_cls = get_model(params)
-    assert model_cls
-    model = model_cls(params, datasets.train)
-    # model.summary()
-
-    for parameter in model.parameters():
-        logger.debug(parameter.shape)
-
-    device_ids = [i for i in range(torch.cuda.device_count())]
-    logger.info("Training on %s" % str(device_ids))
-    model = DataParellelModel(model, device_ids)
-
-    use_cuda = torch.cuda.is_available()
-    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    model.to(device)
-
-    # Load checkpoint or initialize new training
-    if args.load:
-        model.load_checkpoint(args.load)
-        init_dirs(params)
-        logger.info("Saved model loaded: %s", args.load)
-        logger.info("Epoch: %f", model.global_step / len(datasets.train))
-    else:
-        params.set('training_id', datetime.now().strftime('%Y%m%d-%H%M%S'))
-        init_dirs(params)
-
     if args.debug:
         logger.setLevel(logging.DEBUG)
 
-    logger.info("Dataset: %s. Model: %s", str(dataset_builder), str(model_cls))
-    if use_cuda:
-        logger.info("CUDA available: %s", torch.cuda.get_device_name(0))
-
     logger.info("Training started.")
-
     # summary_writer = SummaryWriter()
     summary_writer = None
 
     if args.num_processes == 1:
-        train(configs.params, configs.args, model, datasets, summary_writer=summary_writer)
+        train(params, args, model, datasets, summary_writer=summary_writer)
     else:
         model.share_memory()
         # TODO: Implement multiprocessing

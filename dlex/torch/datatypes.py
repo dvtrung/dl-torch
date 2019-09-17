@@ -27,3 +27,11 @@ class Batch(dict):
     @property
     def batch_size(self):
         return self.X.shape[0]
+
+
+@dataclass
+class Datasets:
+    def __init__(self, train=None, valid=None, test=None):
+        self.train = train
+        self.valid = valid
+        self.test = test

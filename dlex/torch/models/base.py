@@ -8,7 +8,7 @@ import torch.nn as nn
 
 from dlex.configs import AttrDict, ModuleConfigs
 from dlex.torch import Batch
-from dlex.torch.utils.model_utils import get_optimizer
+from dlex.torch.utils.model_utils import get_optimizer, get_lr_scheduler
 from dlex.utils.logging import logger
 
 
@@ -57,12 +57,13 @@ class DataParellelModel(nn.DataParallel):
         self.params = self.module.params
         self.dataset = self.module.dataset
         self._optimizers = None
+        self._lr_schedulers = None
         self._loss_fn = None
 
     def training_step(self, batch: Batch):
         self.module.train(True)
         self.zero_grad()
-        if len(batch.Y) == 0:
+        if batch is None or len(batch.Y) == 0:
             raise Exception("Empty batch.")
         output = self.forward(batch)
         loss = self.get_loss(batch, output)
@@ -71,11 +72,14 @@ class DataParellelModel(nn.DataParallel):
             raise Exception("NaN loss.")
 
         loss.backward()
+        # clip grad norm
+        if self.params.train.max_grad_norm is not None and self.params.train.max_grad_norm > 0:
+            # params = itertools.chain.from_iterable([group['params'] for group in optimizer.param_groups])
+            nn.utils.clip_grad_norm_(self.parameters(), self.params.train.max_grad_norm)
+
         for optimizer in self.optimizers:
-            if self.params.train.max_grad_norm is not None and self.params.train.max_grad_norm > 0:
-                # params = itertools.chain.from_iterable([group['params'] for group in optimizer.param_groups])
-                nn.utils.clip_grad_norm_(self.parameters(), self.params.train.max_grad_norm)
             optimizer.step()
+
         log_dict = self.module.train_log(batch, output, verbose=self.params.verbose)
         if len(log_dict) > 0:
             logger.info(log_dict)
@@ -86,11 +90,24 @@ class DataParellelModel(nn.DataParallel):
 
         return loss.detach().item()
 
+    def end_training_epoch(self):
+        if self.lr_schedulers:
+            for lr_scheduler in self.lr_schedulers:
+                lr_scheduler.step(self.epoch)
+
     @property
     def optimizers(self):
         if self._optimizers is None:
             self._optimizers = [get_optimizer(self.params.train.optimizer, self.parameters())]
+            if self.params.train.lr_scheduler:
+                self._lr_schedulers = [get_lr_scheduler(
+                    self.params.train.lr_scheduler,
+                    self.optimizers[0])]
         return self._optimizers
+
+    @property
+    def lr_schedulers(self):
+        return self._lr_schedulers
 
     @property
     def loss_fn(self):
@@ -145,7 +162,7 @@ class DataParellelModel(nn.DataParallel):
         fn = os.path.join(ModuleConfigs.SAVED_MODELS_PATH, self.params.path, tag + ".pt")
         torch.save(state, fn)
 
-    def load_checkpoint(self, tag):
+    def load_checkpoint(self, tag, load_optimizers=True):
         """Load from saved state"""
         file_name = os.path.join(ModuleConfigs.SAVED_MODELS_PATH, self.params.path, tag + ".pt")
         logger.info("Load checkpoint from %s" % file_name)
@@ -157,10 +174,11 @@ class DataParellelModel(nn.DataParallel):
             self.epoch_loss_count = checkpoint['epoch_loss_count']
             self.epoch_loss_total = checkpoint['epoch_loss_total']
             self.load_state_dict(checkpoint['model'])
-            #for i, optimizer in enumerate(self.optimizers):
-            #    optimizer.load_state_dict(checkpoint['optimizers'][i])
+            if load_optimizers:
+                for i, optimizer in enumerate(self.optimizers):
+                    optimizer.load_state_dict(checkpoint['optimizers'][i])
         else:
-            raise Exception("Checkpoint not found.")
+            raise Exception("Checkpoint not found: %s" % file_name)
 
 
 class ClassificationBaseModel(BaseModel):

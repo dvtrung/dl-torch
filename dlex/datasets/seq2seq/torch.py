@@ -53,9 +53,12 @@ class PytorchSeq2SeqDataset(PytorchDataset):
         batch.sort(key=lambda item: len(item.X), reverse=True)
 
         if self.params.dataset.max_source_length is not None:
-            batch = [item for item in batch if len(item.X) < self.params.dataset.max_source_length and len(item.X) > 0]
+            batch = [item for item in batch if self.params.dataset.max_source_length > len(item.X) > 0]
         if self.params.dataset.max_target_length is not None:
-            batch = [item for item in batch if len(item.Y) < self.params.dataset.max_target_length + 2]
+            batch = [item for item in batch if 0 < len(item.Y) < self.params.dataset.max_target_length + 2]
+
+        if len(batch) == 0:
+            return None
 
         if isinstance(batch[0].X[0], int):
             inp = [torch.LongTensor(item.X) for item in batch]
@@ -79,15 +82,6 @@ class PytorchSeq2SeqDataset(PytorchDataset):
         return Batch(
             X=maybe_cuda(inp), X_len=[len(item.X) for item in batch],
             Y=maybe_cuda(tgt), Y_len=tgt_len)
-
-    def evaluate_batch(self, y_pred, batch: Batch, metric: str) -> (int, int):
-        score, count = 0, 0
-        for i, pr in enumerate(y_pred):
-            ref = batch.item(i).Y[1:-1] if 'sos' in self.params.dataset.special_tokens else batch.item(i).Y
-            s, c = self.builder.evaluate(np.array(pr), ref, metric)
-            score += s
-            count += c
-        return score, count
 
     def format_output(self, y_pred, batch_item: BatchItem):
         pr = np.array(y_pred)

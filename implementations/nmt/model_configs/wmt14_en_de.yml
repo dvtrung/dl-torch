@@ -1,20 +1,18 @@
 model:
-  name: dlex.models.attention.NMT
+  name: dlex.torch.models.attention.NMT
   encoder:
     rnn_type: lstm
-    bidirectional: false
+    bidirectional: true
     num_layers: 2
     input_size: 256
     hidden_size: 256
     output_size: 256
-    embedding: none
-    update_embedding: true
   decoder:
     rnn_type: lstm
     use_attention: true
     num_layers: 1
     hidden_size: 256
-    max_length: 20
+    max_length: 25
   beam_search:
     beam_size: 16
     penalty: 0
@@ -25,17 +23,24 @@ model:
   teacher_forcing_ratio: 1.0
   decoding_method: greedy
 dataset:
-  name: src.datasets.wmt.WMT14EnglishGerman
+  name: src.datasets.wmt.builder.WMT14
   source: de
   target: en
   output_format: text
   debug_size: 20
-batch_size: 64
-num_epochs: 100
-optimizer:
-  name: adam
-  lr: 0.001
-max_length: 10
-metrics:
-  - bleu
-max_grad_norm: 5.0
+  unit: word
+  special_tokens: [sos, eos, oov, pad]
+  sort: true
+train:
+  batch_size: 32
+  num_epochs: 100
+  optimizer:
+    name: sgd
+    lr: 1.
+  lr_scheduler:
+    milestones: [10, 20, 30]
+    gamma: 0.1
+  max_grad_norm: 1.0
+test:
+  batch_size: 16
+  metrics: [bleu]

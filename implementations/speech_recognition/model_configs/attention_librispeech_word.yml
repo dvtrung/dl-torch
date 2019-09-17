@@ -3,10 +3,10 @@ model:
   name: dlex.torch.models.attention.Attention
   encoder:
     rnn_type: lstm
-    bidirectional: true
-    num_layers: 4
+    bidirectional: false
+    num_layers: 3
     input_size: 256
-    hidden_size: 1024
+    hidden_size: 512
     output_size: 256
   decoder:
     rnn_type: lstm
@@ -50,7 +50,7 @@ train:
   num_epochs: 100
   optimizer:
     name: adadelta
-    lr: 0.001
+    lr: 0.01
   max_grad_norm: 1.0
   save_every: 3600s
   log_every: 3600s

@@ -81,13 +81,13 @@ class CoNLL2014(DatasetBuilder):
     def get_vocab_path(self):
         return os.path.join(self.get_processed_data_dir(), "vocab", "word.txt")
 
-    def evaluate(self, pred, ref, metric: str):
+    def evaluate(self, y_pred, y_ref, metric: str):
         if metric == "wer":
-            return nltk.edit_distance(pred, ref), len(ref)
+            return nltk.edit_distance(y_pred, y_ref)
         if metric == "acc":
-            return accuracy_score(pred, ref) * len(pred), len(pred)
+            return accuracy_score(y_pred, y_ref)
         else:
-            return super().evaluate(pred, ref, metric)
+            return super().evaluate(y_pred, y_ref, metric)
 
     def get_pytorch_wrapper(self, mode: str):
         return PytorchCoNLL2014(self, mode)

@@ -23,3 +23,5 @@ runs/
 configs/
 build/
 private/
+repos/
+temp/

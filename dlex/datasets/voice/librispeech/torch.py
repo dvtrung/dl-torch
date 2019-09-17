@@ -1,6 +1,7 @@
 import os
 
 from dlex.datasets.voice.torch import PytorchVoiceDataset
+from dlex.utils import logger
 
 
 class PytorchLibriSpeech(PytorchVoiceDataset):
@@ -12,14 +13,12 @@ class PytorchLibriSpeech(PytorchVoiceDataset):
             vocab_path=os.path.join(builder.get_processed_data_dir(), "vocab", "%s.txt" % builder.params.dataset.unit))
         cfg = self.params.dataset
 
-        is_debug = mode == "debug"
-        if mode == "debug":
-            mode = "train"
-
+        logger.info(os.path.join(builder.get_processed_data_dir(), "%s_%s" % (cfg.unit, mode) + '.csv'))
         with open(
                 os.path.join(builder.get_processed_data_dir(), "%s_%s" % (cfg.unit, mode) + '.csv'),
                 'r', encoding='utf-8') as f:
             lines = f.read().split('\n')[1:]
+            logger.info(len(lines))
             lines = [l.split('\t') for l in lines if l != ""]
             self._data = [{
                 'X_path': l[0],

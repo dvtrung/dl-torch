@@ -10,7 +10,7 @@ import torch.nn.functional as F
 from dlex.datasets.seq2seq.torch import PytorchSeq2SeqDataset
 from dlex.torch import Batch
 from dlex.torch.models.base import BaseModel
-from dlex.torch.utils.ops_utils import FloatTensor, maybe_cuda
+from dlex.torch.utils.ops_utils import maybe_cuda
 from dlex.utils.logging import logger
 from .decoder import DecoderRNN, BeamSearchConfigs
 from .encoder import EncoderRNN
@@ -22,6 +22,7 @@ class EncoderConfigDict:
     hidden_size: int
     output_size: int
     rnn_type: str = "lstm"
+    subsample: list = None
     bidirectional: bool = False
     input_size: int = None
     update_embedding: bool = True
@@ -104,7 +105,9 @@ class Attention(BaseModel):
         #                  'space': args.sym_space, 'blank': args.sym_blank}
 
         #    self.recog_args = argparse.Namespace(**recog_args)
-        self.rnn_language_model = None
+        #self.rnn_language_model = load_model(mode="integrate", argv=[
+        #    "-c", "lstm_common_voice"
+        #])
 
     def _build_encoder(self) -> EncoderRNN:
         """
@@ -116,6 +119,7 @@ class Attention(BaseModel):
             rnn_type=cfg.encoder.rnn_type,
             bidirectional=cfg.encoder.bidirectional,
             num_layers=cfg.encoder.num_layers,
+            subsample=cfg.encoder.subsample,
             hidden_size=cfg.encoder.hidden_size,
             output_size=cfg.encoder.output_size,
             dropout=cfg.dropout)
@@ -224,14 +228,13 @@ class Attention(BaseModel):
     def get_loss(self, batch: Batch, states) -> torch.Tensor:
         y = batch.Y[:, 1:].contiguous()
         batch_size = y.shape[0]
-        max_length = y.shape[1]
         decoder_outputs = states['decoder_outputs'].view(batch_size, -1, self.dataset.output_size)
         loss = F.cross_entropy(
             decoder_outputs.view(-1, self.dataset.output_size),
             y.view(-1),
             ignore_index=self.dataset.pad_token_idx,
-            reduction='mean')
-        loss *= (np.mean(np.array(batch.Y_len)))
+            reduction='sum')
+        loss /= (np.sum(np.array(batch.Y_len)))
         return loss
 
     def infer(self, batch: Batch):
@@ -240,7 +243,9 @@ class Attention(BaseModel):
             states = self._decoder.greedy_search(states)
         elif self.params.model.decoding_method == 'beam_search':
             states = self._decoder.beam_search(states)
-        return states['decoded_sequences'], None, states
+
+        y_ref = [y[1:y_len - 1].tolist() for y, y_len in zip(batch.Y, batch.Y_len)]
+        return states['decoded_sequences'], y_ref, None, states
 
     def recognize(self, x, recog_args, char_list, rnn_language_model=None):
         """E2E beam search
@@ -255,11 +260,11 @@ class Attention(BaseModel):
         prev = self.training
         self.eval()
         # subsample frame
-        h, ilen = self.subsample_frames(x)
+        h, input_lengths = self.subsample_frames(x)
 
-        # 1. encoder
+        # 1. encoderqt
         # make a utt list (1) to use the same interface for encoder
-        h, _, _ = self.enc(h.unsqueeze(0), ilen)
+        h, _, _ = self.enc(h.unsqueeze(0), input_lengths)
 
         # calculate log P(z_t|X) for CTC scores
         if recog_args.ctc_weight > 0.0:
@@ -372,6 +377,7 @@ class NMT(Attention):
             input_size=cfg.encoder.input_size,
             rnn_type=cfg.encoder.rnn_type,
             num_layers=cfg.encoder.num_layers,
+            subsample=cfg.encoder.subsample,
             hidden_size=cfg.encoder.hidden_size,
             output_size=cfg.encoder.output_size,
             bidirectional=cfg.encoder.bidirectional,
@@ -660,7 +666,7 @@ class LocationAwareAttention(BaseAttention):
         if att_prev is None:
             # if no bias, 0 0-pad goes 0
             att_prev = 1. - maybe_cuda(self.make_pad_mask(encoder_output_lens).float())
-            att_prev = att_prev / att_prev.new(FloatTensor(encoder_output_lens)).unsqueeze(-1)
+            att_prev = att_prev / att_prev.new(maybe_cuda(encoder_output_lens.float())).unsqueeze(-1)
 
         # att_prev: utt x frame -> utt x 1 x 1 x frame -> utt x att_conv_chans x 1 x frame
         att_conv = self.loc_conv(att_prev.view(batch, 1, 1, self.h_length))
@@ -1813,35 +1819,3 @@ def att_for(args, num_att=1):
                                           args.aconv_chans, args.aconv_filts)
         att_list.append(att)
     return att_list
-
-
-def att_to_numpy(att_ws, att):
-    """Converts attention weights to a numpy array given the attention
-
-    :param list att_ws: The attention weights
-    :param torch.nn.Module att: The attention
-    :rtype: np.ndarray
-    :return: The numpy array of the attention weights
-    """
-    # convert to numpy array with the shape (B, Lmax, Tmax)
-    if isinstance(att, AttLoc2D):
-        # att_ws => list of previous concate attentions
-        att_ws = torch.stack([aw[:, -1] for aw in att_ws], dim=1).cpu().numpy()
-    elif isinstance(att, (AttCov, AttCovLoc)):
-        # att_ws => list of list of previous attentions
-        att_ws = torch.stack([aw[-1] for aw in att_ws], dim=1).cpu().numpy()
-    elif isinstance(att, AttLocRec):
-        # att_ws => list of tuple of attention and hidden states
-        att_ws = torch.stack([aw[0] for aw in att_ws], dim=1).cpu().numpy()
-    elif isinstance(att, (AttMultiHeadDot, AttMultiHeadAdd, AttMultiHeadLoc, AttMultiHeadMultiResLoc)):
-        # att_ws => list of list of each head attention
-        n_heads = len(att_ws[0])
-        att_ws_sorted_by_head = []
-        for h in range(n_heads):
-            att_ws_head = torch.stack([aw[h] for aw in att_ws], dim=1)
-            att_ws_sorted_by_head += [att_ws_head]
-        att_ws = torch.stack(att_ws_sorted_by_head, dim=1).cpu().numpy()
-    else:
-        # att_ws => list of attentions
-        att_ws = torch.stack(att_ws, dim=1).cpu().numpy()
-    return att_ws

@@ -1,15 +1,21 @@
 import os
 from pathlib import Path
 
-import pandas
-
-from dlex.datasets.nlp.utils import normalize_string, char_tokenize, space_tokenize, write_vocab, spacy_tokenize, \
+from dlex.datasets.nlp.utils import char_tokenize, write_vocab, spacy_tokenize, \
     normalize_lower
 from dlex.datasets.voice.builder import VoiceDataset
 from dlex.utils import run_script
 from dlex.utils.logging import logger
 
-FILES = ["raw-metadata.tar.gz", "train-clean-100.tar.gz", "dev-clean.tar.gz", "test-clean.tar.gz"]
+FILES = [
+    # "raw-metadata.tar.gz",
+    # "train-clean-100.tar.gz",
+    "dev-clean.tar.gz",
+    "test-clean.tar.gz",
+    "train-other-500.tar.gz",
+    "dev-other.tar.gz",
+    "test-other.tar.gz"
+]
 BASE_URL = "http://www.openslr.org/resources/12/"
 
 
@@ -32,7 +38,6 @@ class LibriSpeech(VoiceDataset):
         os.makedirs(self.get_processed_data_dir(), exist_ok=True)
 
         working_dir = os.path.join(self.get_raw_data_dir(), "LibriSpeech")
-        # if True:
         if not Path(self.get_processed_data_dir(), "wav").exists():
             logger.info("Converting mp3 files to wav...")
             run_script('convert-to-wav.py', [
@@ -49,9 +54,10 @@ class LibriSpeech(VoiceDataset):
 
         file_paths = {'train': [], 'valid': [], 'test': []}
         transcripts = {'train': [], 'valid': [], 'test': []}
+        folders = {'train': 'train-other-500', 'valid': 'dev-other', 'test': 'test-other'}
         for mode in file_paths.keys():
-            folder = {'train': 'train-clean-100', 'valid': 'dev-clean', 'test': 'test-clean'}[mode]
-            for path in Path(working_dir, folder).glob("**/*.txt"):
+            folder = folders[mode]
+            for path in list(Path(working_dir, folder).glob("**/*.txt")):
                 for line in path.open():
                     idx, transcript = line.split(' ', 1)
                     transcripts[mode].append(transcript.strip())

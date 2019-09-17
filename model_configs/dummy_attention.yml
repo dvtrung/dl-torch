@@ -3,7 +3,8 @@ model:
   encoder:
     rnn_type: lstm
     bidirectional: true
-    num_layers: 1
+    num_layers: 3
+    subsample: [2, 2, 1]
     hidden_size: 128
     output_size: 128
   decoder:

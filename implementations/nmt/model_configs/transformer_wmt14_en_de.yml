@@ -1,0 +1,48 @@
+model:
+  name: dlex.models.transformer.NMT
+  num_layers: 6
+  num_heads: 8
+  key_size: 64
+  value_size: 64
+  dim_model: 512
+  dim_inner: 2048
+  encoder:
+    rnn_type: lstm
+    bidirectional: false
+    num_layers: 2
+    input_size: 256
+    hidden_size: 256
+    output_size: 256
+    embedding: none
+    update_embedding: true
+    max_length: 50
+  decoder:
+    share_embeddings: true
+    use_attention: true
+    num_layers: 1
+    hidden_size: 256
+    max_length: 50
+  beam_search:
+    beam_size: 16
+    penalty: 0
+  attention:
+    type: bahdanau
+    size: 256
+  dropout: 0.1
+  teacher_forcing_ratio: 1.0
+  decoding_method: greedy
+dataset:
+  name: src.datasets.wmt.WMT14EnglishGerman
+  source: de
+  target: en
+  output_format: text
+  debug_size: 20
+batch_size: 64
+num_epochs: 100
+optimizer:
+  name: adam
+  lr: 0.001
+max_length: 10
+metrics:
+  - bleu
+max_grad_norm: 5.0

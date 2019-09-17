@@ -9,16 +9,13 @@ from dlex.datasets.builder import DatasetBuilder
 
 class NLPDataset(DatasetBuilder):
     @abc.abstractmethod
-    def evaluate(self, pred, ref, metric: str) -> (int, int):
+    def evaluate(self, y_pred, y_ref, metric: str) -> (int, int):
         if metric == "bleu":
             import nltk
-            # reference = self._trim_result(reference)
-            # hypothesis = self._trim_result(hypothesis)
-            score = nltk.translate.bleu_score.sentence_bleu([ref], pred, weights=(0.5, 0.5))
-            total = 1
-            return score, total
+            score = nltk.translate.bleu_score.corpus_bleu([[ref] for ref in y_ref], y_pred)
+            return score
         else:
-            return super().evaluate(pred, ref, metric)
+            return super().evaluate(y_pred, y_ref, metric)
 
     def get_embedding_vectors(self):
         if self.params.dataset.pretrained_embeddings == 'glove':

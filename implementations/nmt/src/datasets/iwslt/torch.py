@@ -11,9 +11,9 @@ class IWSLT15EnglishVietnamese(PytorchSeq2SeqDataset):
     def __init__(self, builder, mode):
         super().__init__(
             builder, mode,
-            vocab_path=os.path.join(builder.get_raw_data_dir(), "vocab.en"))
+            vocab_path=os.path.join(builder.get_raw_data_dir(), "vocab.%s" % builder.params.dataset.target))
 
-        self._src_vocab = Vocab(os.path.join(builder.get_raw_data_dir(), "vocab.vi"))
+        self._src_vocab = Vocab(os.path.join(builder.get_raw_data_dir(), "vocab.%s" % builder.params.dataset.source))
         self._data = self._load_data()
 
     @property
@@ -29,10 +29,10 @@ class IWSLT15EnglishVietnamese(PytorchSeq2SeqDataset):
         if self.mode in ["train", "test"]:
             data = []
             src_data = open(
-                os.path.join(self.builder.get_raw_data_dir(), data_file_names[self.mode]['vi']), "r",
+                os.path.join(self.builder.get_raw_data_dir(), data_file_names[self.mode][self.params.dataset.source]), "r",
                 encoding='utf-8').read().split("\n")
             tgt_data = open(
-                os.path.join(self.builder.get_raw_data_dir(), data_file_names[self.mode]['en']), "r",
+                os.path.join(self.builder.get_raw_data_dir(), data_file_names[self.mode][self.params.dataset.target]), "r",
                 encoding='utf-8').read().split("\n")
             for src, tgt in zip(src_data, tgt_data):
                 data.append(BatchItem(

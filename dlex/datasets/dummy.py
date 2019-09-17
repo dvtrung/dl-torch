@@ -29,8 +29,9 @@ class PytorchDummy(PytorchSeq2SeqDataset):
 
         labels = list(range(label_start_from, self.output_size))
         feats = np.eye(self.input_size)
+        min_length = 10
         max_length = 20
-        inputs = [[random.choice(labels) for _ in range(random.randint(1, max_length))] for _ in range(len(self))]
+        inputs = [[random.choice(labels) for _ in range(random.randint(min_length, max_length))] for _ in range(len(self))]
         self._data = [
             BatchItem(X=[feats[label - label_start_from] for label in seq], Y=seq)
             for seq in inputs]

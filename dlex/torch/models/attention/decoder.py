@@ -69,6 +69,18 @@ def mask_by_length(xs, length, fill=0):
     return ret
 
 
+def index_select_lm_state(rnnlm_state, dim, vidx):
+    if isinstance(rnnlm_state, dict):
+        new_state = {}
+        for k, v in rnnlm_state.items():
+            new_state[k] = [torch.index_select(vi, dim, vidx) for vi in v]
+    elif isinstance(rnnlm_state, list):
+        new_state = []
+        for i in vidx:
+            new_state.append(rnnlm_state[int(i)][:])
+    return new_state
+
+
 class DecoderRNN(nn.Module):
     def __init__(
             self, 
@@ -274,7 +286,7 @@ class DecoderRNN(nn.Module):
         stop_search = [False for _ in range(batch_size)]
         ended_hypotheses = [[] for _ in range(batch_size)]
 
-        exp_encoder_output_lens = LongTensor(states.encoder_output_lens).repeat(configs.beam_size).view(-1)
+        exp_encoder_output_lens = maybe_cuda(states.encoder_output_lens).repeat(configs.beam_size).view(-1)
         exp_h = encoder_outputs.unsqueeze(1).repeat(1, configs.beam_size, 1, 1).contiguous()
         exp_h = exp_h.view(-1, exp_h.shape[2], exp_h.shape[3])
 
@@ -378,7 +390,7 @@ class DecoderRNN(nn.Module):
             if len(stop_search_summary) == 1 and stop_search_summary[0]:
                 break
 
-            torch.cuda.empty_cache()
+            # torch.cuda.empty_cache()
 
         dummy_hypotheses = [{'y_seq': [self._sos_idx, self._eos_idx], 'score': np.array([-float('inf')])}]
         ended_hypotheses = [

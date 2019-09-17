@@ -41,6 +41,52 @@ class VoiceDataset(DatasetBuilder):
         prefix = "" if prefix is None else prefix + "_"
         return os.path.join(self.get_processed_data_dir(), "npy", "%s%s.npy" % (prefix, file_name))
 
+    def get_features_from_audio(self, file_path: str):
+        _, file_ext = os.path.splitext(file_path)
+        feat = None
+        try:
+            # convert to wav
+            if file_ext == ".mp3":
+                wav_path = self._get_wav_path(file_path)
+                audio2wav(file_path, wav_path)
+            elif file_ext == ".wav":
+                wav_path = file_path
+            elif file_ext == ".htk":
+                pass
+            else:
+                raise Exception("Unsupported file type %s" % file_ext)
+
+            if self.params.dataset.feature.tool == "htk":
+                # export feature
+                htk_path = self._get_htk_path(file_path)
+                wav2htk(wav_path, htk_path)
+                feat = read_htk(htk_path)
+            elif self.params.dataset.feature.tool == "librosa":
+                raise Exception("Not implemented.")
+            elif self.params.dataset.feature.tool == "python_speech_features":
+                npy_path = self._get_npy_path(file_path)
+                if not os.path.exists(npy_path):
+                    from python_speech_features import logfbank, delta
+                    import scipy.io.wavfile as wav
+                    try:
+                        (rate, sig) = wav.read(wav_path)
+                        feat = logfbank(sig, rate, winlen=0.025, winstep=0.01, nfilt=40)
+                        d1 = delta(feat, 2)
+                        d2 = delta(d1, 2)
+                        feat = np.concatenate([feat, d1, d2], axis=-1)
+                        np.save(npy_path, feat)
+                    except Exception as e:
+                        logger.error(str(e))
+                else:
+                    feat = np.load(npy_path)
+        except FileExistsError as e:
+            logger.error("Error processing %s (%s)", file_path, str(e))
+
+        return feat
+
+    def regularize(self, feat):
+        return (feat - self.mean) / np.sqrt(self.variance)
+
     def extract_features(
             self,
             file_paths: Dict[str, List[str]]):
@@ -68,43 +114,8 @@ class VoiceDataset(DatasetBuilder):
             for file_path in tqdm(file_paths[mode], desc=mode):
                 _, file_ext = os.path.splitext(file_path)
 
-                try:
-                    # convert to wav
-                    if file_ext == ".mp3":
-                        wav_path = self._get_wav_path(file_path)
-                        audio2wav(file_path, wav_path)
-                    elif file_ext == ".wav":
-                        wav_path = file_path
-                    elif file_ext == ".htk":
-                        pass
-                    else:
-                        raise Exception("Unsupported file type %s" % file_ext)
-
-                    feat = None
-                    if self.params.dataset.feature.tool == "htk":
-                        # export feature
-                        htk_path = self._get_htk_path(file_path)
-                        wav2htk(wav_path, htk_path)
-                        feat = read_htk(htk_path)
-                    elif self.params.dataset.feature.tool == "librosa":
-                        raise Exception("Not implemented.")
-                    elif self.params.dataset.feature.tool == "python_speech_features":
-                        npy_path = self._get_npy_path(file_path)
-                        if not os.path.exists(npy_path):
-                            from python_speech_features import logfbank, delta
-                            import scipy.io.wavfile as wav
-                            try:
-                                (rate, sig) = wav.read(wav_path)
-                                feat = logfbank(sig, rate, winlen=0.025, winstep=0.01, nfilt=40)
-                                d1 = delta(feat, 2)
-                                d2 = delta(d1, 2)
-                                feat = np.concatenate([feat, d1, d2], axis=-1)
-                                np.save(npy_path, feat)
-                            except Exception as e:
-                                logger.error(str(e))
-                        else:
-                            feat = np.load(npy_path)
-
+                feat = self.get_features_from_audio(file_path)
+                if feat:
                     # update mean and var
                     if mode == "train":
                         if feat is not None:
@@ -113,8 +124,6 @@ class VoiceDataset(DatasetBuilder):
                                 var = (count * var + (feat[k] - mean) * (feat[k] - updated_mean)) / (count + 1)
                                 mean = updated_mean
                                 count += 1
-                except FileExistsError as e:
-                    logger.error("Error processing %s (%s)", file_path, str(e))
         f_trash.close()
         logger.debug("mean: %s", beautify(mean))
         logger.debug("var: %s", beautify(var))
@@ -167,27 +176,13 @@ class VoiceDataset(DatasetBuilder):
                 else:
                     raise Exception("Feature file type not supported: %s" % self.params.dataset.feature.file_type)
 
-                try:
-                    tokens = [str(vocab[tkn]) for tkn in tokenize_fn(normalize_fn(transcript))]
-                    if self.params.dataset.max_target_length is not None and \
-                            len(tokens) > self.params.dataset.max_target_length:
-                        continue
-                    #if self.params.dataset.max_source_length is not None:
-                    #    feat = self.load_feature(feature_path)
-                    #    if len(feat) > self.params.dataset.max_source_length:
-                    #        continue
-                except FileNotFoundError:
-                    logger.error("File '%s' does not exist." % feature_path)
-                except Exception:
-                    logger.error("Error reading '%s'." % feature_path)
-                else:
-                    outputs.append(dict(
-                        filename=feature_path,
-                        target=' '.join(
-                            [str(vocab[tkn]) for tkn in tokenize_fn(normalize_fn(transcript))]),
-                        original=transcript,
-                        tokenized=' '.join(tokenize_fn(normalize_fn(transcript)))
-                    ))
+                outputs.append(dict(
+                    filename=feature_path,
+                    target=' '.join(
+                        [str(vocab[tkn]) for tkn in tokenize_fn(normalize_fn(transcript))]),
+                    original=transcript,
+                    tokenized=' '.join(tokenize_fn(normalize_fn(transcript)))
+                ))
 
             # outputs[mode].sort(key=lambda item: len(item['target_word']))
             logger.info("Output to %s" % output_fn)
@@ -203,4 +198,8 @@ class VoiceDataset(DatasetBuilder):
 
     def evaluate(self, pred, ref, metric: str):
         if metric == "wer":
-            return nltk.edit_distance(pred, ref), len(ref)
+            score, length = 0, 0
+            for p, r in zip(pred, ref):
+                score += nltk.edit_distance(p, r)
+                length += len(r)
+            return score / length

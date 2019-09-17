@@ -54,6 +54,11 @@ def normalize_lower(sentence: str):
     return sentence.strip().lower()
 
 
+def normalize_lower_alphanumeric(sentence: str):
+    s = sentence.strip().lower()
+    s = re.sub("[^a-z0-9\uAC00-\uD7A3]+", " ", s)
+    return s
+
 def normalize_string_ascii(sentence):
     """
     :param str sentence:

@@ -24,7 +24,6 @@ def get_loss_fn(params):
 
 def get_optimizer(cfg, model_parameters):
     """Return the optimizer object by its type."""
-    import torch
     op_params = cfg.copy()
     del op_params['name']
 
@@ -35,6 +34,15 @@ def get_optimizer(cfg, model_parameters):
         'adadelta': torch.optim.Adadelta
     }[cfg.name]
     return optimizer(model_parameters, **op_params)
+
+
+def get_lr_scheduler(cfg, optimizer):
+    scheduler_params = cfg.copy()
+    # del scheduler_params['name']
+    scheduler = torch.optim.lr_scheduler.MultiStepLR(
+        optimizer,
+        **scheduler_params)
+    return scheduler
 
 
 def rnn_cell(cell):

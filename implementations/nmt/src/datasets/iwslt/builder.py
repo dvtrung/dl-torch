@@ -29,6 +29,5 @@ class IWSLT15(NLPDataset):
                 logger.error("Failed to download %s" % url)
                 logger.error(str(e))
 
-    @classmethod
-    def maybe_preprocess(cls, force=False):
+    def maybe_preprocess(self, force=False):
         super().maybe_preprocess(force)

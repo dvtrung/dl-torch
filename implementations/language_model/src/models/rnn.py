@@ -1,4 +1,5 @@
 import torch.nn as nn
+import torch.nn.functional as F
 import torch
 
 from dlex.configs import AttrDict
@@ -75,3 +76,31 @@ class RNNLM(BaseModel):
 
     def get_loss(self, batch, output):
         return self.criterion(output.view(output.shape[0] * output.shape[1], -1), batch.Y.view(-1))
+
+    def predict(self, state, x):
+        """Predict log probabilities for given state and input x using the predictor
+
+        :param torch.Tensor state : The current state
+        :param torch.Tensor x : The input
+        :return a tuple (new state, log prob vector)
+        :rtype (torch.Tensor, torch.Tensor)
+        """
+        if hasattr(self.predictor, 'normalized') and self.predictor.normalized:
+            return self.predictor(state, x)
+        else:
+            state, z = self.predictor(state, x)
+            return state, F.log_softmax(z, dim=1)
+
+    def buff_predict(self, state, x, n):
+        if self.predictor.__class__.__name__ == 'RNNLM':
+            return self.predict(state, x)
+
+        new_state = []
+        new_log_y = []
+        for i in range(n):
+            state_i = None if state is None else state[i]
+            state_i, log_y = self.predict(state_i, x[i].unsqueeze(0))
+            new_state.append(state_i)
+            new_log_y.append(log_y)
+
+        return new_state, torch.cat(new_log_y)

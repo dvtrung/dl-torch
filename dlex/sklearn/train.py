@@ -1,84 +1,21 @@
 """Train a model."""
-import random
-from dataclasses import dataclass
+import importlib
 from datetime import datetime
 
-from dlex.configs import Configs, AttrDict
-from dlex.datasets.torch import PytorchDataset
-from dlex.torch.evaluate import evaluate
-from dlex.torch.models.base import DataParellelModel
-from dlex.torch.utils.model_utils import get_model
-from dlex.utils.logging import logger, epoch_info_logger, logging, log_result, json_dumps, \
-    log_outputs
+import numpy as np
+from sklearn.model_selection import KFold
+
+from dlex.configs import Configs
+from dlex.utils.logging import logger, logging
 from dlex.utils.model_utils import get_dataset
 from dlex.utils.utils import init_dirs
 
 
-# from torch.utils.tensorboard import SummaryWriter
-
-
-@dataclass
-class Datasets:
-    train: PytorchDataset
-    valid: PytorchDataset = None
-    test: PytorchDataset = None
-
-
-def train(
-        params: AttrDict,
-        args,
-        model: DataParellelModel,
-        datasets: Datasets,
-        summary_writer):
-    epoch = model.global_step // len(datasets.train)
-    num_samples = model.global_step % len(datasets.train)
-    # num_samples = 0
-    for current_epoch in range(epoch + 1, epoch + params.train.num_epochs + 1):
-        log_dict = dict(epoch=current_epoch)
-        log_dict['total_time'], log_dict['loss'] = train_epoch(
-            current_epoch, params, args,
-            model, datasets, summary_writer, num_samples)
-        num_samples = 0
-
-        def _evaluate(mode):
-            # Evaluate model
-            result, outputs = evaluate(
-                model,
-                getattr(datasets, mode),
-                params,
-                output=True,
-                summary_writer=summary_writer)
-            best_result = log_result(mode, params, result, datasets.train.builder.is_better_result)
-            for metric in best_result:
-                if best_result[metric] == result:
-                    model.save_checkpoint(
-                        "best" if len(params.test.metrics) == 1 else "%s-best-%s" % (mode, metric))
-                    logger.info("Best %s for %s set reached: %f", metric, mode, result['result'][metric])
-            return result, best_result, outputs
-
-        test_result, _, test_outputs = _evaluate("test")
-        log_outputs("test", params, test_outputs)
-        log_dict['test_result'] = test_result['result']
-        if datasets.valid is not None:
-            valid_result, valid_best_result, valid_outputs = _evaluate("valid")
-            log_outputs("valid", params, valid_outputs)
-            log_dict['valid_result'] = valid_result['result']
-            for metric in valid_best_result:
-                if valid_best_result[metric] == valid_result:
-                    logger.info("Best result: %f", test_result['result'][metric])
-                    log_result(f"valid_test_{metric}", params, test_result, datasets.train.builder.is_better_result)
-                    log_outputs("valid_test", params, test_outputs)
-
-        for metric in test_result['result']:
-            if summary_writer is not None:
-                summary_writer.add_scalar("eval_%s" % metric, test_result['result'][metric], current_epoch)
-
-        logger.info("Random samples")
-        for output in random.choices(test_outputs, k=5):
-            logger.info(str(output))
-
-        epoch_info_logger.info(json_dumps(log_dict))
-        logger.info(json_dumps(log_dict))
+def get_model(params):
+    """Return the model class by its name."""
+    module_name, class_name = params.model.name.rsplit('.', 1)
+    i = importlib.import_module(module_name)
+    return getattr(i, class_name)
 
 
 def main(argv=None):
@@ -96,7 +33,7 @@ def main(argv=None):
     # Init model
     model_cls = get_model(params)
     assert model_cls
-    model = model_cls(params)
+    model = model_cls(params, dataset)
 
     # Load checkpoint or initialize new training
     if args.load:
@@ -114,9 +51,26 @@ def main(argv=None):
     logger.info("Dataset: %s. Model: %s", str(dataset_builder), str(model_cls))
     logger.info("Training started.")
 
-    logger.info("Training started")
-    model.fit(dataset.X_train, dataset.y_train)
-    logger.info("Score: %f", model.score(dataset.X_test, dataset.y_test))
+    if params.train.cross_validation:
+        scores = []
+        cv = KFold(n_splits=10, random_state=42, shuffle=True)
+        for train_index, test_index in cv.split(dataset.X):
+            X_train, X_test, y_train, y_test = dataset.X[train_index], dataset.X[test_index], dataset.y[train_index], dataset.y[test_index]
+            model.fit(X_train, y_train)
+            score = model.score(X_test, y_test)
+            scores.append(score)
+            logger.info("Fold score: %f", score)
+
+        # model.fit(dataset.X_train, dataset.y_train)
+        # scores = cross_val_score(model, dataset.X, dataset.y, cv=10)
+        score = np.mean(scores)
+        # score = model.score(dataset.X_test, dataset.y_test)
+        logger.info("Score: %f", score)
+        logger.info("Score deviation: %f", np.var(scores))
+    else:
+        model.fit(dataset.X_train, dataset.y_train)
+        score = model.score(dataset.X_test, dataset.y_test)
+        logger.info(score)
 
 
 if __name__ == "__main__":

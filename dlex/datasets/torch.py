@@ -1,4 +1,5 @@
 import abc
+import random
 
 from torch.utils.data import Dataset
 from torch.utils.data.dataloader import default_collate, DataLoader
@@ -24,18 +25,17 @@ class PytorchDataset(Dataset):
     def data(self):
         return self._data
 
+    def shuffle(self):
+        random.seed = 9
+        random.shuffle(self._data)
+
     @property
     def configs(self):
         return self.params.dataset
 
     @abc.abstractmethod
-    def evaluate_batch(self, y_pred, batch: Batch, metric: str):
-        score, total = 0, 0
-        for _target, _y_pred in zip(batch.Y, y_pred):
-            s, t = self.builder.evaluate(_target.cpu().detach().numpy().tolist(), _y_pred, metric)
-            score += s
-            total += t
-        return score, total
+    def evaluate(self, y_pred, y_ref, metric: str):
+        return self.builder.evaluate(y_pred, y_ref, metric)
 
     def format_output(self, y_pred, batch_input) -> (str, str, str):
         return self.builder.format_output(y_pred, batch_input)
