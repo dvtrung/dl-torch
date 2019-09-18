@@ -4,22 +4,22 @@
 
 ### [Language Model](./language_model)
 
-### Text Classification
+### [Text Classification](./text_classification)
 
-### Word Segmentation & POS Tagging
+### [Word Segmentation & POS Tagging](./lstm_crf)
 
-### Neural Machine Translation
+### [Neural Machine Translation](./nmt)
 
-### Grammatical Error Correction
+### [Grammatical Error Correction](./grammatical_error_correction)
 
 ## Audio & Speech
 
-### Speech Recognition
+### [Speech Recognition](./speech_recognition)
 
 ## Image
 
-### CNN-based model
+### [Object Recognition](./cnn)
 
-### GAN
+### [GAN](./gan)
 
-### VAE
+### [VAE](./vae)
