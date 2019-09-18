@@ -1,14 +1,15 @@
-[!] This code is under development and mainly for my personal use. The purpose of this project is to reproduce paper results or prototype new model by writing minimal code and reusing code from related models. Some parts of the code are not well-commented or lack of citation.
+[!] This code is under development and mainly for my personal use. The purpose of this project is to reproduce paper results or prototype new model by writing minimal code and reusing code from related models. Some parts of the code may not be well-commented or lack of citation.
 
 # Features
 
 This project provides a codebase for deep learning experiments with Pytorch.
 
-- [ ] Writing minimal code to set up an experiment
-- [ ] Pytorch or Tensorflow 2.0 as backend with same training flow
-- [ ] Efficient way of logging and analyzing training models
-- [ ] GUI for monitoring experiments
-- [ ] Integration with Google Colab or remote SSH server
+- [ ] Writing minimal code to set up a new experiment
+- [ ] Pytorch or Tensorflow 2.0 or scikit-learn as backend with similar training flow
+- [ ] Efficiently log and analyze model results
+- [ ] GUI for monitoring experiments, either local or remote sever
+
+See [here](implementations/README.md) for list of implemented models
 
 # Set up an experiment
 
@@ -28,20 +29,46 @@ Experiment/
 |-- README.md
 ```
 
+Model parameters and outputs are saved to `./saved_models` and `./model_outputs` unless `DLEX_SAVED_MODELS_PATH` and `DLEX_MODEL_OUTPUTS_PATH` is specified
+
 ## Define dataset
 
-```python
-from dlex.datasets.base import BaseDataset
+- `Dataset Builder`: handle downloading and preprocessing data. `DatasetBuilder` should be framework and config independent.
+- `PytorchDataset`, `TensorflowDataset`: handle loading dataset from the storage, shuffle, sort, batchify, etc. using concepts from each framework
 
-class Dataset(BaseDataset):
-    def __init__(self, mode, params):
-        super().__init__(mode, params)
+```python
+from dlex.configs import AttrDict
+from dlex.datasets.torch import PytorchDataset
+from dlex.datasets.builder import DatasetBuilder
+
+class SampleDatasetBuilder(DatasetBuilder):
+    def __init__(self, params: AttrDict):
+        super().__init__(params)
+        
+    def maybe_download_and_extract(self, force=False):
+        super().maybe_download_and_extract(force)
+        # Download dataset...
+        # self.download_and_extract([some url], self.get_raw_data_dir())
+            
+    def maybe_preprocess(self, force=False):
+        super().maybe_preprocess(force)
+        # Preprocess data...
+        
+    def get_pytorch_wrapper(self, mode: str):
+        return PytorchSampleDataset(self, mode)
+
+class PytorchSampleDataset(PytorchDataset):
+    def __init__(self, builder, mode):
+        super().__init__(builder, mode)
+        # Load data from preprocessed files...
 ```
 
 ## Construct model
 
+Model supports loss calculation, training, predicting and outputting prediction to specified format.
+
 ```python
-from dlex.models.base import BaseModel
+from dlex.torch.models.base import BaseModel
 
 class Model(BaseModel):
      def __init__(self, params, dataset):

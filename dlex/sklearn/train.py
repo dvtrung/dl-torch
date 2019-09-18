@@ -69,7 +69,7 @@ def main(argv=None):
         logger.info("Score deviation: %f", np.var(scores))
     else:
         model.fit(dataset.X_train, dataset.y_train)
-        score = model.score(dataset.X_test, dataset.y_test)
+        score = model.score(dataset.X_test, dataset.y_test, params.test.metric or "f1")
         logger.info(score)
 
 

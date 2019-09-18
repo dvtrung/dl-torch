@@ -1,0 +1,50 @@
+model:
+  name: dlex.torch.models.attention.Attention
+  encoder:
+    rnn_type: lstm
+    bidirectional: true
+    num_layers: 3
+    subsample: [2, 2, 1]
+    hidden_size: 128
+    output_size: 128
+  decoder:
+    rnn_type: lstm
+    use_attention: true
+    num_layers: 1
+    hidden_size: 128
+    max_length: 50
+    output_size: 128
+  attention:
+    type: location
+    size: 128
+    num_channels: 3
+    filter_size: 10
+  decoding_method: greedy
+  beam_search:
+    beam_size: 4
+    penalty: 1.0
+  dropout: 0.0
+  teacher_forcing_ratio: 1.0
+dataset:
+  alias: dummy
+  sort: true
+  vocab:
+    sos_eos: true
+    blank: false
+  output_format: null
+  special_tokens: [sos, eos, pad, oov]
+train:
+  batch_size:
+    0: 64
+    50: 32
+    90: 16
+  num_epochs: 100
+  optimizer:
+    name: adam
+    lr: 0.01
+  max_grad_norm: 5.0
+  log_every: 0.1e
+  save_every: 1e
+test:
+  batch_size: 16
+  metrics: [wer]

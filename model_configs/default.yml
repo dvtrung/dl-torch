@@ -1,8 +1,0 @@
-model: None
-dataset:
-  name: None
-batch_size: 16
-num_epochs: 30
-optimizer:
-  name: sgd
-  learning_rate: 0.01
