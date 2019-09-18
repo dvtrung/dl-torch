@@ -13,7 +13,7 @@ See [here](implementations/README.md) for list of implemented models
 
 # Set up an experiment
 
-# Folder structure
+## Step 1:  Folder structure
 
 ```
 Experiment/
@@ -31,7 +31,7 @@ Experiment/
 
 Model parameters and outputs are saved to `./saved_models` and `./model_outputs` unless `DLEX_SAVED_MODELS_PATH` and `DLEX_MODEL_OUTPUTS_PATH` is specified
 
-## Define dataset
+## Step 2: Define dataset
 
 - `Dataset Builder`: handle downloading and preprocessing data. `DatasetBuilder` should be framework and config independent.
 - `PytorchDataset`, `TensorflowDataset`: handle loading dataset from the storage, shuffle, sort, batchify, etc. using concepts from each framework
@@ -63,7 +63,7 @@ class PytorchSampleDataset(PytorchDataset):
         # Load data from preprocessed files...
 ```
 
-## Construct model
+## Step 3: Construct model
 
 Model supports loss calculation, training, predicting and outputting prediction to specified format.
 
@@ -84,13 +84,13 @@ class Model(BaseModel):
         ...
 ```
 
-## Configuration
+## Step 4: Configuration
 
-### Model
+#### Model
 
-### Dataset
+#### Dataset
 
-### Train
+#### Train
 
 - `batch_size`: `int` or `dict` of `{ [progress]: [batch_size] }` (`0` as key must always be included)
 
@@ -98,7 +98,7 @@ class Model(BaseModel):
 
 - `optimizer`: `dict` of name and optimizer's arguments. Support `sgd`, `adam`, `adadelta`.
 
-### Test
+#### Test
 
 - `batch_size`: `int`. Training batch size value is used if not specified.
 
@@ -117,8 +117,7 @@ train:
     learning_rate: 0.01
     weight_decay: 1e-5
 ```
-
-## Train
+## Step 5: Train & evaluate
 
 ```bash
 dlex train <config_path>
