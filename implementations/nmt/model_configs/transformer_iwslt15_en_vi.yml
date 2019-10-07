@@ -1,10 +1,10 @@
 model:
-  name: dlex.models.transformer.NMT
+  name: dlex.torch.models.transformer.NMT
   num_layers: 6
   num_heads: 8
   key_size: 64
   value_size: 64
-  dim_model: 512
+  dim_model: 256
   dim_inner: 2048
   encoder:
     rnn_type: lstm
@@ -22,6 +22,7 @@ model:
     num_layers: 1
     hidden_size: 256
     max_length: 50
+    output_size: 256
   beam_search:
     beam_size: 16
     penalty: 0
@@ -32,11 +33,15 @@ model:
   teacher_forcing_ratio: 1.0
   decoding_method: greedy
 dataset:
-  name: src.datasets.wmt.WMT14EnglishGerman
-  source: de
+  name: src.datasets.iwslt.builder.IWSLT15
+  source: vi
   target: en
   output_format: text
   debug_size: 20
+  unit: word
+  max_target_length: 50
+  max_source_length: 50
+  special_tokens: [sos, eos, oov, pad]
 train:
   batch_size: 64
   num_epochs: 100

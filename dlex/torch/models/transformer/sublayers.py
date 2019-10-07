@@ -28,41 +28,40 @@ class ScaledDotProductAttention(nn.Module):
 
 
 class MultiHeadAttention(nn.Module):
-    ''' Multi-Head Attention module '''
+    """Multi-Head Attention module"""
 
-    def __init__(self, num_heads, d_model, dim_key, dim_value, dropout=0.1):
+    def __init__(self, num_heads, dim_model, dim_key, dim_value, dropout=0.1):
         super().__init__()
 
         self.num_heads = num_heads
         self.dim_key = dim_key
         self.dim_value = dim_value
 
-        self.w_qs = nn.Linear(d_model, num_heads * dim_key)
-        self.w_ks = nn.Linear(d_model, num_heads * dim_key)
-        self.w_vs = nn.Linear(d_model, num_heads * dim_value)
-        nn.init.normal_(self.w_qs.weight, mean=0, std=np.sqrt(2.0 / (d_model + dim_key)))
-        nn.init.normal_(self.w_ks.weight, mean=0, std=np.sqrt(2.0 / (d_model + dim_key)))
-        nn.init.normal_(self.w_vs.weight, mean=0, std=np.sqrt(2.0 / (d_model + dim_value)))
+        self.w_qs = nn.Linear(dim_model, num_heads * dim_key)
+        self.w_ks = nn.Linear(dim_model, num_heads * dim_key)
+        self.w_vs = nn.Linear(dim_model, num_heads * dim_value)
+        nn.init.normal_(self.w_qs.weight, mean=0, std=np.sqrt(2.0 / (dim_model + dim_key)))
+        nn.init.normal_(self.w_ks.weight, mean=0, std=np.sqrt(2.0 / (dim_model + dim_key)))
+        nn.init.normal_(self.w_vs.weight, mean=0, std=np.sqrt(2.0 / (dim_model + dim_value)))
 
         self.attention = ScaledDotProductAttention(temperature=np.power(dim_key, 0.5))
-        self.layer_norm = nn.LayerNorm(d_model)
+        self.layer_norm = nn.LayerNorm(dim_model)
 
-        self.fc = nn.Linear(num_heads * dim_value, d_model)
+        self.fc = nn.Linear(num_heads * dim_value, dim_model)
         nn.init.xavier_normal_(self.fc.weight)
 
         self.dropout = nn.Dropout(dropout)
 
-    def forward(self, q, k, v, mask=None):
+    def forward(self, queries, keys, values, mask=None):
+        sz_b, len_q, _ = queries.size()
+        sz_b, len_k, _ = keys.size()
+        sz_b, len_v, _ = values.size()
 
-        sz_b, len_q, _ = q.size()
-        sz_b, len_k, _ = k.size()
-        sz_b, len_v, _ = v.size()
+        residual = queries
 
-        residual = q
-
-        q = self.w_qs(q).view(sz_b, len_q, self.num_heads, self.dim_key)
-        k = self.w_ks(k).view(sz_b, len_k, self.num_heads, self.dim_key)
-        v = self.w_vs(v).view(sz_b, len_v, self.num_heads, self.dim_value)
+        q = self.w_qs(queries).view(sz_b, len_q, self.num_heads, self.dim_key)
+        k = self.w_ks(keys).view(sz_b, len_k, self.num_heads, self.dim_key)
+        v = self.w_vs(values).view(sz_b, len_v, self.num_heads, self.dim_value)
 
         q = q.permute(2, 0, 1, 3).contiguous().view(-1, len_q, self.dim_key) # (n*b) x lq x dk
         k = k.permute(2, 0, 1, 3).contiguous().view(-1, len_k, self.dim_key) # (n*b) x lk x dk

@@ -35,11 +35,12 @@ class IWSLT15EnglishVietnamese(PytorchSeq2SeqDataset):
                 os.path.join(self.builder.get_raw_data_dir(), data_file_names[self.mode][self.params.dataset.target]), "r",
                 encoding='utf-8').read().split("\n")
             for src, tgt in zip(src_data, tgt_data):
-                data.append(BatchItem(
-                    X=[self._src_vocab.get_token_id(tkn) for tkn in src.split(' ')],
-                    Y=[self.vocab.get_token_id(tkn) for tkn in tgt.split(' ')]
-                ))
-            data = list(filter(lambda it: len(it.X) < 50, data))
+                X = [self._src_vocab.get_token_id(tkn) for tkn in src.split(' ')]
+                Y = [self.vocab.get_token_id(tkn) for tkn in tgt.split(' ')]
+                if self.params.dataset.max_source_length and len(X) > self.params.dataset.max_source_length or \
+                        self.params.dataset.max_target_length and len(Y) > self.params.dataset.max_target_length:
+                    continue
+                data.append(BatchItem(X=X, Y=Y))
             logger.debug("Data sample: %s", str(random.choice(data)))
             return data
         elif self.mode == "infer":

@@ -7,7 +7,7 @@ from .sublayers import MultiHeadAttention, PositionwiseFeedForward
 
 
 class DecoderLayer(nn.Module):
-    ''' Compose with three layers '''
+    """Compose with three layers"""
 
     def __init__(self, dim_model, dim_inner, num_heads, dim_key, dim_value, dropout=0.1):
         super(DecoderLayer, self).__init__()
@@ -39,20 +39,20 @@ class Decoder(nn.Module):
             pad_idx):
 
         super().__init__()
-        n_position = len_max_seq + 1
+        num_positions = len_max_seq + 3
 
         self.tgt_word_emb = nn.Embedding(
             vocab_size, output_size, padding_idx=pad_idx)
 
         self.position_enc = nn.Embedding.from_pretrained(
-            get_sinusoid_encoding_table(n_position, output_size, padding_idx=pad_idx),
+            get_sinusoid_encoding_table(num_positions, output_size, padding_idx=0),
             freeze=True)
 
         self.layer_stack = nn.ModuleList([
             DecoderLayer(dim_model, dim_inner, num_heads, dim_key, dim_value, dropout=dropout)
             for _ in range(num_layers)])
 
-        self.tgt_word_prj = nn.Linear(dim_model, self.dataset.output_size, bias=False)
+        self.tgt_word_prj = nn.Linear(dim_model, output_size, bias=False)
         nn.init.xavier_normal_(self.tgt_word_prj.weight)
 
         if share_embeddings:
@@ -62,18 +62,18 @@ class Decoder(nn.Module):
         else:
             self.x_logit_scale = 1.
 
-    def forward(self, tgt_seq, tgt_pos, src_seq, enc_output, return_attns=False):
+    def forward(self, tgt_seq, tgt_pos, src_pos, enc_output, return_attns=False):
 
         dec_slf_attn_list, dec_enc_attn_list = [], []
 
         # -- Prepare masks
-        non_pad_mask = get_non_pad_mask(tgt_seq)
+        non_pad_mask = (tgt_pos > 0).type(torch.float).unsqueeze(-1)
 
         slf_attn_mask_subseq = get_subsequent_mask(tgt_seq)
-        slf_attn_mask_keypad = get_attn_key_pad_mask(seq_k=tgt_seq, seq_q=tgt_seq)
+        slf_attn_mask_keypad = get_attn_key_pad_mask(tgt_pos, tgt_seq)
         slf_attn_mask = (slf_attn_mask_keypad + slf_attn_mask_subseq).gt(0)
 
-        dec_enc_attn_mask = get_attn_key_pad_mask(seq_k=src_seq, seq_q=tgt_seq)
+        dec_enc_attn_mask = get_attn_key_pad_mask(src_pos, tgt_seq)
 
         # -- Forward
         dec_output = self.tgt_word_emb(tgt_seq) + self.position_enc(tgt_pos)

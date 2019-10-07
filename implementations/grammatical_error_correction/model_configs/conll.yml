@@ -23,7 +23,7 @@ model:
   teacher_forcing_ratio: 1.0
   decoding_method: greedy
 dataset:
-  name: src.datasets.nlp.conll.builder.CoNLL2014
+  name: src.datasets.conll.builder.CoNLL2014
   output_format: text
   unit: word
   sort: true
