@@ -1,8 +1,6 @@
-[!] This code is under development and mainly for my personal use. The purpose of this project is to reproduce paper results or prototype new model by writing minimal code and reusing code from related models. Some parts of the code may not be well-commented or lack of citation.
+[!] This code is under development and mainly for my personal use. This project is for fast prototyping of deep learning and machine learning model with minimal code. Some parts of the code may not be well-commented or lack of citation.
 
 # Features
-
-This project provides a codebase for deep learning experiments with Pytorch.
 
 - [ ] Writing minimal code to set up a new experiment
 - [ ] Pytorch or Tensorflow 2.0 or scikit-learn as backend with similar training flow
@@ -10,6 +8,12 @@ This project provides a codebase for deep learning experiments with Pytorch.
 - [ ] GUI for monitoring experiments, either local or remote sever
 
 See [here](implementations/README.md) for list of implemented models
+
+# Installation
+
+```
+pip install dlex
+```
 
 # Set up an experiment
 

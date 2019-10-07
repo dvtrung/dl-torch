@@ -4,5 +4,5 @@ from dlex.configs import AttrDict
 
 
 class LogisticRegression(_LogisticRegression):
-    def __init__(self, params: AttrDict):
+    def __init__(self, params: AttrDict, dataset):
         super().__init__()

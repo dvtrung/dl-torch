@@ -2,6 +2,8 @@ import os
 import abc
 import shutil
 
+from sklearn.metrics import accuracy_score
+
 from dlex.utils.logging import logger
 from dlex.utils.utils import maybe_download, maybe_unzip
 from dlex.configs import ModuleConfigs, AttrDict
@@ -73,13 +75,10 @@ class DatasetBuilder:
     @abc.abstractmethod
     def evaluate(self, pred, ref, metric: str):
         if metric == "acc":
-            if isinstance(pred, int):
-                return int(pred == ref), 1
-            elif isinstance(pred, list) and len(pred) == len(ref):
-                return len([1 for p, r in zip(pred, ref) if p == r]), len(pred)
+            return accuracy_score(pred, ref)
         elif metric == "err":
             ret = self.evaluate(pred, ref, "acc")
-            return 1 - ret[0], ret[1]
+            return 1 - ret
         else:
             raise Exception("Not implemented.")
 

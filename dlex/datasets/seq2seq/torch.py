@@ -19,7 +19,8 @@ class PytorchSeq2SeqDataset(PytorchDataset):
             mode: str,
             vocab_path: str = None):
         super().__init__(builder, mode)
-        self.vocab = Vocab(vocab_path)
+        if vocab_path:
+            self.vocab = Vocab(vocab_path)
         for token in self.params.dataset.special_tokens:
             self.vocab.add_token("<%s>" % token)
         self._output_size = len(self.vocab)

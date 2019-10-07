@@ -8,7 +8,7 @@ setuptools.setup(
     version="0.0.1",
     author="Trung V. Dang",
     author_email="trungv.dang@outlook.com",
-    description="Deep learning library for scientific experiments",
+    description="Deep learning library for research experiments",
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/trungd/dlex",

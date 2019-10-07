@@ -4,7 +4,7 @@ from dlex.configs import AttrDict
 
 
 class SVC(_SVC):
-    def __init__(self, params: AttrDict):
+    def __init__(self, params: AttrDict, dataset):
         super().__init__(
             gamma='scale',
             kernel=params.model.kernel or 'rbf')

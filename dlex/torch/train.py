@@ -135,10 +135,11 @@ def train_epoch(
             )
 
             for epoch_step, batch in enumerate(data_train):
+                loss = model.training_step(batch)
                 try:
-                    if batch is None or batch.X.shape[0] == 0:
+                    if batch is None or batch.Y.shape[0] == 0:
                         raise Exception("Batch size 0")
-                    loss = model.training_step(batch)
+                    # loss = model.training_step(batch)
                     # clean
                     torch.cuda.empty_cache()
                 except RuntimeError as e:

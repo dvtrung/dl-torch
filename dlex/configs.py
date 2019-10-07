@@ -32,6 +32,12 @@ class TrainConfig:
     cross_validation: bool = False
 
 
+@dataclass
+class TestConfig:
+    batch_size: int = None
+    metrics: list = field(default_factory=lambda: ["default"])
+
+
 class AttrDict(dict):
     """Dictionary with key as property."""
     model = None
@@ -42,17 +48,21 @@ class AttrDict(dict):
     batch_size = None
     path = None
     train: TrainConfig
+    test: TestConfig
     verbose: bool
 
     def __init__(self, *args, **kwargs):
         super(AttrDict, self).__init__(*args, **kwargs)
         self.__dict__ = self
+
         for key in self:
             if isinstance(self[key], dict):
                 self[key] = AttrDict(self[key])
 
-        if 'train' in self:
+        if "train" in self:
             self.train = TrainConfig(**self['train'])
+        if "test" in self:
+            self.test = TestConfig(**self['test'])
 
     def __getattr__(self, item: str):
         # logger.warning("Access to unset param %s", item)
@@ -202,7 +212,7 @@ class Configs:
             params.set("verbose", bool(self.args.verbose))
 
             params.dataset.num_workers = args.num_workers
-            if params.train.num_workers is None:
+            if params.train is not None and params.train.num_workers is None:
                 params.train.num_workers = args.num_workers
 
             # Some config values are overwritten by command arguments

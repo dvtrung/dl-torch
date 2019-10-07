@@ -30,10 +30,10 @@ def evaluate(
         outputs = []
         y_pred_all, y_ref_all = [], []
         for batch in tqdm(data_iter, desc="Eval"):
+            y_pred, y_ref, model_output, others = model.infer(batch)
             try:
                 if batch is None or batch.X.shape[0] == 0:
                     raise Exception("Batch size 0")
-                y_pred, y_ref, model_output, others = model.infer(batch)
                 y_pred_all += y_pred
                 y_ref_all += y_ref
                 # for metric in params.test.metrics:
@@ -55,15 +55,7 @@ def evaluate(
                         # print(outputs[-1])
                 if summary_writer is not None:
                     model.write_summary(summary_writer, batch, (y_pred, others))
-            except RuntimeError as e:
-                import gc
-                for obj in gc.get_objects():
-                    try:
-                        if torch.is_tensor(obj) or (hasattr(obj, 'data') and torch.is_tensor(obj.data)):
-                            print(type(obj), obj.size() if hasattr(obj, 'size') else "")
-                    except e:
-                        pass
-                logger.error(str(e))
+
             except Exception as e:
                 logger.error(str(e))
 

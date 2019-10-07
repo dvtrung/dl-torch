@@ -3,12 +3,15 @@ from sklearn.model_selection import train_test_split
 
 class SklearnDataset():
     def __init__(self, builder):
-        self.params = builder.params
         self.builder = builder
 
     @property
     def configs(self):
         return self.params.dataset
+
+    @property
+    def params(self):
+        return self.builder.params
 
     def init_dataset(self, X, y):
         self.X, self.y = X, y

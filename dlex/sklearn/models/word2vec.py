@@ -11,7 +11,7 @@ class Word2Vec(W2VTransformer):
             window=cfg.window_size,
             min_count=cfg.min_count or 0,
             sg=1,
-            workers=params.train.num_workers,
+            workers=params.train.num_workers or 1,
             iter=params.train.num_epochs,
             seed=cfg.seed or 1
         )
