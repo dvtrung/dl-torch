@@ -1,0 +1,245 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Configurations &mdash; dlex  documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+  <script type="text/javascript" src="_static/js/modernizr.min.js"></script>
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script type="text/javascript" src="_static/jquery.js"></script>
+        <script type="text/javascript" src="_static/underscore.js"></script>
+        <script type="text/javascript" src="_static/doctools.js"></script>
+        <script type="text/javascript" src="_static/language_data.js"></script>
+    
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+
+    
+
+  
+  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="dlex.datasets.BaseDataset" href="modules/base_dataset.html" />
+    <link rel="prev" title="Getting Started" href="getting_started.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="index.html" class="icon icon-home"> dlex
+          
+
+          
+          </a>
+
+          
+            
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="getting_started.html">Getting Started</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Configurations</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#train">Train</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="modules/base_dataset.html">dlex.datasets.BaseDataset</a></li>
+<li class="toctree-l1"><a class="reference internal" href="modules/base_model.html">dlex.torch.models.BaseModel</a></li>
+<li class="toctree-l1"><a class="reference internal" href="modules/dataset_builder.html">dlex.datasets.DatasetBuilder</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">dlex</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="index.html">Docs</a> &raquo;</li>
+        
+      <li>Configurations</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="_sources/configs.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="configurations">
+<h1>Configurations<a class="headerlink" href="#configurations" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="train">
+<h2>Train<a class="headerlink" href="#train" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="dlex.configs.TrainConfig">
+<em class="property">class </em><code class="sig-prename descclassname">dlex.configs.</code><code class="sig-name descname">TrainConfig</code><span class="sig-paren">(</span><em class="sig-param">num_epochs: int = None</em>, <em class="sig-param">num_workers: int = None</em>, <em class="sig-param">batch_size: int = None</em>, <em class="sig-param">optimizer: dlex.configs.OptimizerConfig = None</em>, <em class="sig-param">lr_scheduler: dict = None</em>, <em class="sig-param">eval: list = &lt;factory&gt;</em>, <em class="sig-param">max_grad_norm: float = 5.0</em>, <em class="sig-param">save_every: str = '1e'</em>, <em class="sig-param">log_every: str = '5s'</em>, <em class="sig-param">cross_validation: bool = False</em><span class="sig-paren">)</span><a class="headerlink" href="#dlex.configs.TrainConfig" title="Permalink to this definition">¶</a></dt>
+<dd><dl>
+<dt>Args:</dt><dd><p>num_epochs (int): Number of epochs
+batch_size (int): Batch size
+optimizer (OptimizerConfig):
+lr_scheduler (dict):
+eval (list): List of sets to be evaluated during training. Empty: no evaluation.</p>
+<blockquote>
+<div><p>Accepted values: <cite>test</cite>, <cite>dev</cite> (or <cite>valid</cite>).
+If both test and valid sets are presented, the test result for model with best valid result will also be recoreded. <cite>dev</cite> and <cite>valid</cite> can be used interchangeable</p>
+</div></blockquote>
+<p>max_grad_norm (float):
+save_every (str): Time interval for saving model. Use s, m, h for number of seconds, minutes, hours. Use e for number of epochs.</p>
+<blockquote>
+<div><p>Examples: 100s, 30m, 2h, 1e</p>
+</div></blockquote>
+<p>log_every (str): Time interval for logging to file</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="class">
+<dt id="dlex.configs.OptimizerConfig">
+<em class="property">class </em><code class="sig-prename descclassname">dlex.configs.</code><code class="sig-name descname">OptimizerConfig</code><span class="sig-paren">(</span><em class="sig-param">name: str = 'sgd'</em><span class="sig-paren">)</span><a class="headerlink" href="#dlex.configs.OptimizerConfig" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="simple">
+<dt>Args:</dt><dd><p>name (str): One of sgd, adam</p>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="modules/base_dataset.html" class="btn btn-neutral float-right" title="dlex.datasets.BaseDataset" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="getting_started.html" class="btn btn-neutral float-left" title="Getting Started" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2019, Trung V. Dang
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>

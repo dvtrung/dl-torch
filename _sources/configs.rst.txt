@@ -1,0 +1,11 @@
+Configurations
+================================
+
+Train
+-----
+
+.. autoclass:: dlex.configs.TrainConfig
+  :members:
+
+.. autoclass:: dlex.configs.OptimizerConfig
+  :members:
