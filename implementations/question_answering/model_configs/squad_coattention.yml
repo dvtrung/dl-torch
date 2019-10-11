@@ -1,0 +1,17 @@
+backend: pytorch
+model:
+  name: src.models.coattention.CoAttention
+  hidden_size: 200
+  maxout_pool_size: 16
+  max_decoder_steps: 4
+  dropout: 0.15
+  embedding_dim: 200
+dataset:
+  name: src.datasets.squad.SQuAD_V1
+train:
+  num_epochs: 100
+  batch_size: 32
+  eval: [dev]
+  optimizer:
+    name: adam
+    lr: 0.01
