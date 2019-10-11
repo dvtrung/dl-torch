@@ -1,5 +1,0 @@
-dlex.datasets.BaseDataset
-============
-
-.. autoclass:: dlex.datasets.base.BaseDataset
-  :members:
