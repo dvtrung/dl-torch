@@ -1,5 +1,0 @@
-dlex.torch.models.BaseModel
-=========================================
-
-.. autoclass:: dlex.torch.models.base.BaseModel
-  :members:
