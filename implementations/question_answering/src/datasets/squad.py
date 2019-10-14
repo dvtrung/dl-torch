@@ -1,3 +1,4 @@
+import csv
 import json
 import os
 from collections import namedtuple
@@ -7,31 +8,33 @@ from typing import List, Dict
 import nltk
 import torch
 import torch.nn as nn
+import torchtext
 from sklearn.metrics import accuracy_score
 from tqdm import tqdm
 
 from dlex.configs import AttrDict
-from dlex.datasets.builder import DatasetBuilder
-from dlex.datasets.nlp.utils import write_vocab, normalize_lower, Vocab, char_tokenize, Tokenizer
-from dlex.datasets.torch import Dataset
+from dlex.datasets import DatasetBuilder
+from dlex.datasets.nlp.torch import NLPDataset
+from dlex.datasets.nlp.utils import normalize_lower, Vocab, char_tokenize, Tokenizer, write_vocab, normalize_none
 from dlex.torch import Batch, BatchItem
-from dlex.torch.utils.ops_utils import LongTensor
+from dlex.torch.datatypes import VariableLengthTensor
+from dlex.torch.utils.ops_utils import LongTensor, maybe_cuda
 from dlex.utils import logger
 
 BatchY = namedtuple("BatchY", "answer_span")
 
 
-class QABatch(Batch):
-    @dataclass
-    class BatchX:
-        context_word: torch.Tensor
-        context_char: torch.Tensor
-        question_word: torch.Tensor
-        question_char: torch.Tensor
+@dataclass
+class BatchX:
+    context_word: VariableLengthTensor
+    context_char: torch.Tensor
+    question_word: VariableLengthTensor
+    question_char: torch.Tensor
 
+
+class QABatch(Batch):
     X: BatchX
     Y: BatchY
-    X_len: BatchX
     Y_len: BatchY
 
     def __len__(self):
@@ -85,6 +88,9 @@ def get_char_word_loc_mapping(context, context_tokens):
 class SQuAD_V1(DatasetBuilder):
     def __init__(self, params: AttrDict):
         super().__init__(params)
+
+        self._vocab_word = None
+        self._vocab_char = None
 
     def maybe_download_and_extract(self, force=False):
         super().maybe_download_and_extract(force)
@@ -177,28 +183,39 @@ class SQuAD_V1(DatasetBuilder):
                 "Number of (context, question, answer) triples discarded due character span alignment problems (usually Unicode problems): %d",
                 num_spanalignprob)
             logger.info("Processed %d examples of total %d\n" % (
-            num_exs, num_exs + num_mappingprob + num_tokenprob + num_spanalignprob))
+                num_exs, num_exs + num_mappingprob + num_tokenprob + num_spanalignprob))
 
             if mode == "train":
                 write_vocab(
                     self.get_processed_data_dir(),
-                    [s for ex in examples for s in ex[:3]],
-                    output_file_name="word.txt",
-                    normalize_fn=normalize_lower,
-                    tokenize_fn=tokenize,
-                    min_freq=2)
+                    [ex[0] for ex in examples] + [ex[1] for ex in examples],
+                    "word", min_freq=2)
                 write_vocab(
                     self.get_processed_data_dir(),
-                    [s for ex in examples for s in ex[:3]],
-                    output_file_name="char.txt",
-                    normalize_fn=normalize_lower,
-                    tokenize_fn=char_tokenize,
+                    [ex[0] for ex in examples] + [ex[1] for ex in examples],
+                    "char",
+                    Tokenizer(normalize_none, char_tokenize),
                     min_freq=5)
 
             with open(os.path.join(self.get_processed_data_dir(), mode + '.csv'), 'w') as f:
-                f.write('\n'.join([
-                    f"{context}\t{question}\t{answer}\t{answer_span}"
-                    for context, question, answer, answer_span in examples]))
+                writer = csv.writer(f)
+                for context, question, answer, answer_span in examples:
+                    writer.writerow([context, question, answer, answer_span])
+
+    def get_vocab_path(self, tag):
+        return os.path.join(self.get_processed_data_dir(), "vocab", "%s.txt" % tag)
+
+    @property
+    def vocab_word(self):
+        if self._vocab_word is None:
+            self._vocab_word = Vocab.from_file(self.get_vocab_path("word"))
+        return self._vocab_word
+
+    @property
+    def vocab_char(self):
+        if self._vocab_char is None:
+            self._vocab_char = Vocab.from_file(self.get_vocab_path("char"))
+        return self._vocab_char
 
     def get_pytorch_wrapper(self, mode: str):
         return PytorchSQuAD_V1(self, mode)
@@ -215,52 +232,51 @@ class SQuAD_V1(DatasetBuilder):
                "%s %s" % (y_pred[0], y_pred[1])
 
 
-class PytorchQADataset(Dataset):
+class QADataset(NLPDataset):
     def __init__(self, builder, mode: str):
         super().__init__(builder, mode)
-        self.vocab_word = Vocab(
-            os.path.join(builder.get_processed_data_dir(), "vocab", "word.txt"),
-            Tokenizer(normalize_lower, tokenize))
-        self.vocab_char = Vocab(
-            os.path.join(builder.get_processed_data_dir(), "vocab", "char.txt"),
-            Tokenizer(normalize_lower, char_tokenize))
-
-    @property
-    def vocab_size_word(self):
-        return len(self.vocab_word)
-
-    @property
-    def vocab_size_char(self):
-        return len(self.vocab_char)
 
 
-class PytorchSQuAD_V1(PytorchQADataset):
+class PytorchSQuAD_V1(QADataset):
     def __init__(self, builder, mode: str):
         super().__init__(builder, mode)
         data = []
         with open(os.path.join(builder.get_processed_data_dir(), mode + ".csv")) as f:
-            for line in tqdm(f.read().split("\n"), desc="Loading data (%s)" % mode):
-                line = line.split('\t')
-                context = self.vocab_word.tokenize(line[0])
-                if len(context) > self.params.dataset.paragraph_max_length:
-                    continue
-                question = self.vocab_word.tokenize(line[1])
-                if len(question) > self.params.dataset.question_max_length:
-                    continue
+            reader = csv.reader(f)
+            examples = list(reader)
+            examples = [[val.split(' ') for val in ex] for ex in examples]
+            examples = list(filter(
+                lambda ex:
+                    len(ex[0]) <= self.configs.paragraph_max_length and
+                    len(ex[1]) <= self.configs.question_max_length,
+                examples))
+
+            self.word_embedding_layer, itos = self.load_embeddings(specials=['<sos>', '<eos>', '<oov>', '<pad>'])
+            self.vocab_word = self.builder.vocab_word if itos is None else Vocab(itos)
+            self.vocab_char = self.builder.vocab_char
+
+            for context, question, answer, answer_span in tqdm(examples, desc="Loading data (%s)" % mode):
                 data.append(dict(
                     cw=self.vocab_word.encode_token_list(context),
                     qw=self.vocab_word.encode_token_list(question),
-                    cc=[self.vocab_char.encode_str(w) for w in context],
-                    qc=[self.vocab_char.encode_str(w) for w in question],
-                    answer=self.vocab_word.encode_str(line[2]),
-                    answer_span=[int(pos) for pos in line[3].split(' ')]
+                    cc=[self.vocab_char.encode_token_list(list(w)) for w in context],
+                    qc=[self.vocab_char.encode_token_list(list(w)) for w in question],
+                    answer_span=[int(pos) for pos in answer_span]
                 ))
         self._data = data
 
+    @property
+    def word_dim(self):
+        return self.configs.embeddings.dim
+
+    @property
+    def char_dim(self):
+        return self.configs.char_dim
+
     def collate_fn(self, batch: List[Dict]):
         # batch.sort(key=lambda item: len(item.X), reverse=True)
-        w_contexts = [LongTensor(item['cw']) for item in batch]
-        w_questions = [LongTensor(item['qw']) for item in batch]
+        w_contexts = [item['cw'] for item in batch]
+        w_questions = [item['qw'] for item in batch]
 
         char_max_length = max([max(len(c) for c in item['cc']) for item in batch])
         c_contexts = [LongTensor([
@@ -277,13 +293,9 @@ class PytorchSQuAD_V1(PytorchQADataset):
         # answers = [torch.LongTensor(item[2]) for item in batch]
         answer_spans = LongTensor([item['answer_span'] for item in batch])
 
-        context_word_lengths = [len(c) for c in w_contexts]
-        question_word_lengths = [len(q) for q in w_questions]
+        w_contexts = VariableLengthTensor(w_contexts, padding_value=self.vocab_word.blank_token_idx)
+        w_questions = VariableLengthTensor(w_questions, padding_value=self.vocab_word.blank_token_idx)
 
-        w_contexts = nn.utils.rnn.pad_sequence(
-            w_contexts, batch_first=True, padding_value=self.vocab_word.blank_token_idx)
-        w_questions = nn.utils.rnn.pad_sequence(
-            w_questions, batch_first=True, padding_value=self.vocab_word.blank_token_idx)
         c_contexts = nn.utils.rnn.pad_sequence(
             c_contexts, batch_first=True, padding_value=self.vocab_char.blank_token_idx)
         c_questions = nn.utils.rnn.pad_sequence(
@@ -291,6 +303,5 @@ class PytorchSQuAD_V1(PytorchQADataset):
         # answers = nn.utils.rnn.pad_sequence(answers, batch_first=True, padding_value=self.vocab.blank_token_idx)
 
         return QABatch(
-            X=QABatch.BatchX(w_contexts, c_contexts, w_questions, c_questions),
-            X_len=QABatch.BatchX(context_word_lengths, None, question_word_lengths, None),
+            X=BatchX(maybe_cuda(w_contexts), maybe_cuda(c_contexts), maybe_cuda(w_questions), maybe_cuda(c_questions)),
             Y=answer_spans, Y_len=None)

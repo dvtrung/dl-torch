@@ -9,29 +9,12 @@ from dlex.configs import AttrDict
 from dlex.torch import Batch
 from dlex.torch.models.base import BaseModel
 from dlex.torch.utils.ops_utils import maybe_cuda, LongTensor
-from ..datasets.squad import QABatch
+from ..datasets.squad import QABatch, QADataset
 
 
 def mask_logits(inputs, mask):
     mask = mask.type(torch.float32)
     return inputs + (-1e30) * (1 - mask)
-
-
-def length_to_mask(lengths: List, max_len=None, dtype=None):
-    """length: B.
-    return B x max_len.
-    If max_len is None, then max of length will be used.
-    """
-    if isinstance(lengths, list):
-        lengths = LongTensor(lengths)
-    assert len(lengths.shape) == 1, 'Length shape should be 1 dimensional.'
-    max_len = max_len or lengths.max().item()
-    mask = torch.arange(
-        max_len, device=lengths.device,
-        dtype=lengths.dtype).expand(len(lengths), max_len) < lengths.unsqueeze(1)
-    if dtype is not None:
-        mask = torch.as_tensor(mask, dtype=dtype, device=lengths.device)
-    return mask
 
 
 class InitializedConv1d(nn.Module):
@@ -322,12 +305,12 @@ class Pointer(nn.Module):
 
 
 class QANet(BaseModel):
-    def __init__(self, params: AttrDict, dataset):
+    def __init__(self, params: AttrDict, dataset: QADataset):
         super().__init__(params, dataset)
-        cfg = params.model
-        self.word_emb = nn.Embedding(dataset.vocab_size_word, cfg.word_dim)
-        self.char_emb = nn.Embedding(dataset.vocab_size_char, cfg.char_dim)
-        self.emb = Embedding(cfg.connector_dim, cfg.word_dim, cfg.char_dim, cfg.dropout, cfg.dropout_char)
+        cfg = self.configs
+        self.emb_word = dataset.word_embedding_layer
+        self.emb_char = nn.Embedding(len(dataset.vocab_char), self.configs.char_dim)
+        self.emb = Embedding(cfg.connector_dim, dataset.word_dim, self.configs.char_dim, cfg.dropout, cfg.dropout_char)
         self.emb_enc = EncoderBlock(
             conv_num=4,
             ch_num=cfg.connector_dim, k=7,
@@ -343,12 +326,12 @@ class QANet(BaseModel):
 
     def forward(self, batch: QABatch):
         cfg = self.params.model
-        maskC = length_to_mask(batch.X_len.context_word).float()
-        maskQ = length_to_mask(batch.X_len.question_word).float()
-        Cw = self.word_emb(batch.X.context_word)
-        Cc = self.char_emb(batch.X.context_char)
-        Qw = self.word_emb(batch.X.question_word)
-        Qc = self.char_emb(batch.X.question_char)
+        maskC = batch.X.context_word.get_mask().float()
+        maskQ = batch.X.question_word.get_mask().float()
+        Cw = self.emb_word(batch.X.context_word.data)
+        Cc = self.emb_char(batch.X.context_char)
+        Qw = self.emb_word(batch.X.question_word.data)
+        Qc = self.emb_char(batch.X.question_char)
         C = self.emb(Cc, Cw, Cw.shape[1])
         Q = self.emb(Qc, Qw, Qw.shape[1])
         Ce = self.emb_enc(C, maskC, 1, 1)
