@@ -3,12 +3,12 @@ from torch.utils.data import SubsetRandomSampler
 from torchvision.transforms import transforms
 from torchvision.datasets import CIFAR10
 
-from dlex.datasets.torch import PytorchDataset
+from dlex.datasets.torch import Dataset
 from dlex.torch import Batch
 from dlex.torch.utils.ops_utils import maybe_cuda
 
 
-class PytorchCIFAR10(PytorchDataset):
+class PytorchCIFAR10(Dataset):
     """CIFAR10 dataset"""
 
     def __init__(self, builder, mode):

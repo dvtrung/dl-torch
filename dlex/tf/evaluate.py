@@ -4,8 +4,8 @@ from typing import Tuple
 from tensorflow.python.keras.optimizers import SGD
 from tqdm import tqdm
 
-from dlex.configs import Configs, AttrDict, ModuleConfigs
-from dlex.datasets.torch import PytorchDataset
+from dlex.configs import Configs, MainConfig, ModuleConfigs
+from dlex.datasets.torch import Dataset
 from dlex.tf.models import BaseModel
 from dlex.utils.logging import logger
 from dlex.utils.model_utils import add_result
@@ -14,8 +14,8 @@ from dlex.tf.utils.model_utils import get_model, get_dataset
 
 def evaluate(
         model: BaseModel,
-        dataset: PytorchDataset,
-        params: AttrDict,
+        dataset: Dataset,
+        params: MainConfig,
         save_result=False,
         output=False,
         summary_writer=None) -> Tuple[dict, dict, list]:

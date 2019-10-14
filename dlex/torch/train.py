@@ -9,7 +9,7 @@ import torch.multiprocessing as mp
 # from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
 
-from dlex.configs import AttrDict
+from dlex.configs import MainConfig
 from dlex.torch.datatypes import Datasets
 from dlex.torch.evaluate import evaluate
 from dlex.torch.models.base import DataParellelModel
@@ -21,7 +21,7 @@ DEBUG_NUM_ITERATIONS = 5
 
 
 def train(
-        params: AttrDict,
+        params: MainConfig,
         args,
         model: DataParellelModel,
         datasets: Datasets,
@@ -52,26 +52,33 @@ def train(
                     logger.info("Best %s for %s set reached: %f", metric, mode, result['result'][metric])
             return result, best_result, outputs
 
-        test_result, _, test_outputs = _evaluate("test")
-        log_outputs("test", params, test_outputs)
-        log_dict['test_result'] = test_result['result']
+        if datasets.test is not None:
+            test_result, _, test_outputs = _evaluate("test")
+            log_outputs("test", params, test_outputs)
+            log_dict['test_result'] = test_result['result']
+
         if datasets.valid is not None:
             valid_result, valid_best_result, valid_outputs = _evaluate("valid")
             log_outputs("valid", params, valid_outputs)
             log_dict['valid_result'] = valid_result['result']
             for metric in valid_best_result:
                 if valid_best_result[metric] == valid_result:
-                    logger.info("Best result: %f", test_result['result'][metric])
-                    log_result(f"valid_test_{metric}", params, test_result, datasets.train.builder.is_better_result)
-                    log_outputs("valid_test", params, test_outputs)
+                    if datasets.test is not None:
+                        logger.info("Best result: %f", test_result['result'][metric])
+                        log_result(f"valid_test_{metric}", params, test_result, datasets.train.builder.is_better_result)
+                        log_outputs("valid_test", params, test_outputs)
+                    else:
+                        log_result(f"valid_{metric}", params, valid_result, datasets.train.builder.is_better_result)
+                        log_outputs("valid", params, valid_outputs)
 
-        for metric in test_result['result']:
+        for metric in params.test.metrics:
             if summary_writer is not None:
                 summary_writer.add_scalar("eval_%s" % metric, test_result['result'][metric], current_epoch)
 
-        logger.info("Random samples")
-        for output in random.choices(test_outputs, k=5):
-            logger.info(str(output))
+        if args.output_test_samples:
+            logger.info("Random samples")
+            for output in random.choices(test_outputs if datasets.test is not None else valid_outputs, k=5):
+                logger.info(str(output))
 
         epoch_info_logger.info(json_dumps(log_dict))
         logger.info(json_dumps(log_dict))
@@ -95,7 +102,7 @@ def check_interval_passed(last_done: float, interval: str, progress) -> (bool, f
 
 def train_epoch(
         current_epoch: int,
-        params: AttrDict,
+        params: MainConfig,
         args,
         model: DataParellelModel,
         datasets: Datasets,
@@ -111,8 +118,11 @@ def train_epoch(
 
     if isinstance(params.train.batch_size, int):  # fixed batch size
         batch_sizes = {0: params.train.batch_size}
-    else:
+    elif isinstance(params.train.batch_size, dict):
         batch_sizes = params.train.batch_size
+    else:
+        raise ValueError("Batch size is not valid.")
+
     for key in batch_sizes:
         batch_sizes[key] *= max(torch.cuda.device_count(), 1)
     assert 0 in batch_sizes
@@ -137,7 +147,7 @@ def train_epoch(
             for epoch_step, batch in enumerate(data_train):
                 loss = model.training_step(batch)
                 try:
-                    if batch is None or batch.Y.shape[0] == 0:
+                    if batch is None or len(batch) == 0:
                         raise Exception("Batch size 0")
                     # loss = model.training_step(batch)
                     # clean

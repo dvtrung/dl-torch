@@ -1,10 +1,10 @@
 from gensim.sklearn_api import W2VTransformer
 
-from dlex.configs import AttrDict
+from dlex.configs import MainConfig
 
 
 class Word2Vec(W2VTransformer):
-    def __init__(self, params: AttrDict):
+    def __init__(self, params: MainConfig):
         cfg = params.model
         super().__init__(
             size=cfg.dimensions,

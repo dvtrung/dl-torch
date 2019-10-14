@@ -6,10 +6,10 @@ from typing import List
 import torch.nn as nn
 from tqdm import tqdm
 
-from dlex.configs import AttrDict
+from dlex.configs import MainConfig
 from dlex.datasets.nlp.builder import NLPDataset
 from dlex.datasets.nlp.utils import write_vocab, Vocab, nltk_tokenize
-from dlex.datasets.torch import PytorchDataset
+from dlex.datasets.torch import Dataset
 from dlex.torch import Batch
 from dlex.torch import BatchItem
 from dlex.torch.utils.ops_utils import LongTensor
@@ -19,7 +19,7 @@ DOWNLOAD_URL = "http://www.cs.cmu.edu/afs/cs.cmu.edu/project/theo-20/www/data/ne
 
 
 class Newsgroup20(NLPDataset):
-    def __init__(self, params: AttrDict):
+    def __init__(self, params: MainConfig):
         super().__init__(params)
 
     @property
@@ -109,7 +109,7 @@ class Newsgroup20(NLPDataset):
         return PytorchNewsgroup20(self, mode)
 
 
-class PytorchNewsgroup20(PytorchDataset):
+class PytorchNewsgroup20(Dataset):
     def __init__(self, builder, mode):
         super().__init__(builder, mode)
         cfg = self.params.dataset

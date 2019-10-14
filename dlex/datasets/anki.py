@@ -4,8 +4,8 @@ import os
 import tensorflow as tf
 from sklearn.model_selection import train_test_split
 
-from dlex.configs import AttrDict
-from dlex.datasets.base import NLPDataset, TensorflowDataset, PytorchDataset
+from dlex.configs import MainConfig
+from dlex.datasets.base import NLPDataset, TensorflowDataset, Dataset
 from datasets.nlp.nlp import normalize_string
 from dlex.tf.models.base import Batch
 
@@ -23,8 +23,8 @@ class Anki(NLPDataset):
     def get_tensorflow_wrapper(self, mode: str) -> TensorflowDataset:
         return AnkiTensorflowDataset(self, mode)
 
-    def get_pytorch_wrapper(self, mode: str) -> PytorchDataset:
-        return AnkiPytorchDataset(mode)
+    def get_pytorch_wrapper(self, mode: str) -> Dataset:
+        return AnkiDataset(mode)
 
 
 class AnkiTensorflowDataset(TensorflowDataset):
@@ -76,7 +76,7 @@ class AnkiTensorflowDataset(TensorflowDataset):
         return [Batch(X, Y) for X, Y in self.dataset.take(self.steps_per_epoch)]
 
 
-class AnkiPytorchDataset(PytorchDataset):
+class AnkiDataset(Dataset):
     def __init__(self, mode, params):
         super().__init__(mode, params)
 

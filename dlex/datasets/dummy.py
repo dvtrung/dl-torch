@@ -27,7 +27,6 @@ class PytorchDummy(PytorchSeq2SeqDataset):
             self.vocab.add_token(str(w))
         super().__init__(builder, mode)
         self._output_size = self.input_size + len(self.params.dataset.special_tokens)
-
         labels = list(range(self.input_size))
         feats = np.eye(self.input_size)
         min_length = 10

@@ -80,7 +80,7 @@ class MultiHeadAttention(nn.Module):
 
 
 class PositionwiseFeedForward(nn.Module):
-    ''' A two-feed-forward-layer module '''
+    """A two-feed-forward-layer module"""
 
     def __init__(self, d_in, d_hid, dropout=0.1):
         super().__init__()

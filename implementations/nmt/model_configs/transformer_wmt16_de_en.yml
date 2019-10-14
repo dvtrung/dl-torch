@@ -33,7 +33,7 @@ model:
   teacher_forcing_ratio: 1.0
   decoding_method: greedy
 dataset:
-  name: src.datasets.iwslt.builder.IWSLT15
+  name: src.datasets.wmt16.WMT16
   source: vi
   target: en
   output_format: text

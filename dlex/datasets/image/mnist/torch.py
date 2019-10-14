@@ -28,10 +28,6 @@ class PytorchMNIST(PytorchImageDataset):
             train_idx, valid_idx = indices[split:], indices[:split]
             self._sampler = SubsetRandomSampler(train_idx if mode == "train" else valid_idx)
 
-    def collate_fn(self, batch) -> Batch:
-        ret = super().collate_fn(batch)
-        return Batch(X=maybe_cuda(ret[0]), Y=maybe_cuda(ret[1]))
-
     @property
     def num_classes(self):
         return 10

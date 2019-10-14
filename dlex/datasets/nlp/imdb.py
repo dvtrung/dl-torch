@@ -2,15 +2,15 @@ import os
 
 from torchtext import data, datasets
 
-from dlex.configs import AttrDict, ModuleConfigs
+from dlex.configs import MainConfig, ModuleConfigs
 from dlex.datasets.nlp.builder import NLPDataset
-from dlex.datasets.torch import PytorchDataset
+from dlex.datasets.torch import Dataset
 from dlex.torch import Batch
 from dlex.torch import BatchItem
 
 
 class IMDB(NLPDataset):
-    def __init__(self, params: AttrDict):
+    def __init__(self, params: MainConfig):
         super().__init__(params)
 
     def maybe_preprocess(self, force=False):
@@ -38,7 +38,7 @@ class IMDB(NLPDataset):
         return PytorchIMDB(self, mode)
 
 
-class PytorchIMDB(PytorchDataset):
+class PytorchIMDB(Dataset):
     def __init__(self, builder, mode):
         super().__init__(builder, mode)
 

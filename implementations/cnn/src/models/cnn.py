@@ -1,11 +1,11 @@
 import torch.nn.functional as F
 import torch.nn as nn
 
-from dlex.torch.models.base import default_params, ClassificationBaseModel
+from dlex.torch.models.base import default_params, ClassificationModel
 from dlex.torch import Batch
 
 
-class BasicModel(ClassificationBaseModel):
+class SimpleModel(ClassificationModel):
     def __init__(self, params, dataset):
         super().__init__(params, dataset)
         self.conv1 = nn.Conv2d(
@@ -36,7 +36,7 @@ class BasicModel(ClassificationBaseModel):
 @default_params(dict(
     vgg_type="VGG11"
 ))
-class VGG(ClassificationBaseModel):
+class VGG(ClassificationModel):
     LAYERS = {
         'VGG11': [64, 'M', 128, 'M', 256, 256, 'M', 512, 512, 'M', 512, 512, 'M'],
         'VGG13': [64, 64, 'M', 128, 128, 'M', 256, 256, 'M', 512, 512, 'M', 512, 512, 'M'],

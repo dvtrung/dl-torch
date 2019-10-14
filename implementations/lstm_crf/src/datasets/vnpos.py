@@ -89,7 +89,7 @@ def maybe_preprocess(path, working_dir):
 
     prepare_vocab_chars(working_dir, sentences['train'])
     write_vocab(working_dir, sentences['train'], output_file_name="word.txt", min_freq=0)
-    write_vocab(working_dir, postags['train'], output_file_name="pos_tag.txt", min_freq=0, default_tags=['<w>', '<oov>'])
+    write_vocab(working_dir, postags['train'], output_file_name="pos_tag.txt", min_freq=0, specials=['<w>', '<oov>'])
     prepare_tag_list(working_dir)
 
     word_token_to_idx = load_tkn_to_idx(os.path.join(working_dir, "vocab", "words.txt"))

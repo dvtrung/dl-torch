@@ -6,13 +6,13 @@ from torch import nn
 
 from dlex.datasets.builder import DatasetBuilder
 from dlex.datasets.nlp.utils import Vocab
-from dlex.datasets.torch import PytorchDataset
+from dlex.datasets.torch import Dataset
 from dlex.torch import Batch
 from dlex.torch import BatchItem
 from dlex.torch.utils.ops_utils import maybe_cuda
 
 
-class PytorchSeq2SeqDataset(PytorchDataset):
+class PytorchSeq2SeqDataset(Dataset):
     def __init__(
             self,
             builder: DatasetBuilder,

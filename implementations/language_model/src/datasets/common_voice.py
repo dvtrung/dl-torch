@@ -5,7 +5,7 @@ import numpy as np
 from dlex.configs import ModuleConfigs
 from dlex.datasets.builder import DatasetBuilder
 from dlex.datasets.nlp.utils import Vocab
-from dlex.datasets.torch import PytorchDataset
+from dlex.datasets.torch import Dataset
 from dlex.torch import Batch, BatchItem
 from dlex.torch.utils.ops_utils import LongTensor
 from dlex.utils import logger
@@ -26,7 +26,7 @@ class CommonVoiceLM(DatasetBuilder):
         return PytorchCommonVoiceLM(self, mode)
 
 
-class PytorchCommonVoiceLM(PytorchDataset):
+class PytorchCommonVoiceLM(Dataset):
     def __init__(self, builder, mode: str):
         super().__init__(builder, mode)
         self.vocab = Vocab(os.path.join(builder.get_processed_data_dir(), "vocab", "%s.txt" % self.params.dataset.unit))

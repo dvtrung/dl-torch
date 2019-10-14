@@ -1,18 +1,12 @@
-from dlex.datasets.torch import PytorchDataset
+from dlex.datasets.torch import Dataset
 from dlex.torch import Batch
+from dlex.torch.utils.ops_utils import maybe_cuda
 
 
-class PytorchImageDataset(PytorchDataset):
+class PytorchImageDataset(Dataset):
     def __init__(self, builder, mode):
         super().__init__(builder, mode)
 
-    def evaluate(self, y_pred, y_ref, metric: str):
-        if metric == "acc":
-            score, total = 0, 0
-            for _target, _y_pred in zip(batch.Y, y_pred):
-                s, t = self.builder.evaluate(_target.cpu().detach().numpy().tolist(), _y_pred, metric)
-                score += s
-                total += t
-            return score, total
-        else:
-            raise Exception("Unsupported metric.")
+    def collate_fn(self, batch) -> Batch:
+        ret = super().collate_fn(batch)
+        return Batch(X=maybe_cuda(ret[0]), Y=maybe_cuda(ret[1]))

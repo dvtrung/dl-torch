@@ -40,20 +40,20 @@ class Transformer(BaseModel):
     def forward(self, batch: Batch):
         # src_seq, src_pos, tgt_seq, tgt_pos
         # tgt_seq = batch.Y[:, :-1]
+        batch_y = batch.Y[:, :-1].contiguous()
         X_pos = LongTensor([[i + 1 if i < x_len else 0 for i in range(len(x))] for x, x_len in zip(batch.X, batch.X_len)])
-        Y_pos = LongTensor([[i + 1 if i < y_len else 0 for i in range(len(y))] for y, y_len in zip(batch.Y, batch.Y_len)])
+        Y_pos = LongTensor([[i + 1 if i < y_len - 1 else 0 for i in range(len(y))] for y, y_len in zip(batch_y, batch.Y_len)])
         encoder_outputs = self.encoder(batch.X, X_pos)
-        decoder_outputs = self.decoder(batch.Y, Y_pos, X_pos, encoder_outputs)
+        decoder_outputs = self.decoder(batch_y, Y_pos, X_pos, encoder_outputs)
 
         return decoder_outputs
 
     def get_loss(self, batch, output):
-        y = batch.Y
+        y = batch.Y[:, 1:].contiguous()
         loss = F.cross_entropy(
             output.view(-1, self.dataset.output_size),
             y.view(-1),
             ignore_index=self.dataset.pad_token_idx)
-        loss /= len(batch.Y)
         return loss
 
     def infer(self, batch: Batch):
@@ -73,9 +73,6 @@ class NMT(Transformer):
         super().__init__(params, dataset)
 
     def _build_encoder(self) -> Encoder:
-        """
-        :rtype: EncoderRNN
-        """
         cfg = self.params.model
 
         self.embedding = nn.Embedding(

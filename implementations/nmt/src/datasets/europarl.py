@@ -114,7 +114,7 @@ class Europarl(NLPDataset):
                         [_p[i] for _p in pairs],
                         output_file_name="%s.txt" % lang_pairs[i],
                         min_freq=0,
-                        default_tags=default_words)
+                        specials=default_words)
                     word_token_to_idx[lang_pairs[i]] = load_tkn_to_idx(
                         os.path.join(cls.get_processed_data_dir(), dataset_name, "vocab", lang_pairs[i] + ".txt"))
 

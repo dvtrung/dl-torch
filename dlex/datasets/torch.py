@@ -1,13 +1,21 @@
 import abc
 import random
 
-from torch.utils.data import Dataset
+from torch.utils.data import Dataset as PytorchDataset
 from torch.utils.data.dataloader import default_collate, DataLoader
 
 from dlex.torch import Batch
 
 
-class PytorchDataset(Dataset):
+class Dataset(PytorchDataset):
+    """Load data from pre-processed files and prepare batch for training
+
+    :param builder:
+    :type builder: DatasetBuilder
+    :param mode: one of `train` / `valid` (or `dev`) / `test`
+    :type mode: str
+    """
+
     def __init__(self, builder, mode: str):
         self.params = builder.params
         self.mode = mode
@@ -25,8 +33,13 @@ class PytorchDataset(Dataset):
     def data(self):
         return self._data
 
-    def shuffle(self):
-        random.seed = 9
+    def shuffle(self, seed=42):
+        """Shuffle
+
+        :param seed:
+        :type seed: int
+        """
+        random.seed = seed
         random.shuffle(self._data)
 
     @property

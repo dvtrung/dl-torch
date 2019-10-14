@@ -9,7 +9,7 @@ import torch
 from dlex.datasets.seq2seq.torch import PytorchSeq2SeqDataset
 from dlex.torch import Batch
 from dlex.torch.models.attention.attention import BahdanauAttention, NoAttention
-from dlex.torch.models.base import ClassificationBaseModel
+from dlex.torch.models.base import ClassificationModel
 from dlex.utils.logging import logger
 from .decoder import DecoderRNN
 from .encoder import EncoderRNN
@@ -55,7 +55,7 @@ class AttentionModelConfigDict:
         self.attention = AttentionConfigDict(**self.attention)
 
 
-class SequenceClassifier(ClassificationBaseModel):
+class SequenceClassifier(ClassificationModel):
     def __init__(self, params, dataset: PytorchSeq2SeqDataset):
         super().__init__(params, dataset)
         self.configs = AttentionModelConfigDict(**self.params.model)

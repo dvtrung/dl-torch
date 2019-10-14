@@ -27,7 +27,7 @@ def load_model(mode, argv=None):
     if not args.no_prepare:
         dataset_builder.prepare(download=args.download, preprocess=args.preprocess)
     if mode == "test":
-        datasets = Datasets(test=dataset_builder.get_pytorch_wrapper("test"))
+        datasets = Datasets(test=dataset_builder.get_pytorch_wrapper(args.eval_set))
     elif mode == "train":
         if args.debug:
             datasets = Datasets(
@@ -36,13 +36,15 @@ def load_model(mode, argv=None):
         else:
             datasets = Datasets(
                 train=dataset_builder.get_pytorch_wrapper("train"),
-                valid=dataset_builder.get_pytorch_wrapper("valid") if "valid" in params.train.eval else None,
+                valid=dataset_builder.get_pytorch_wrapper("valid") if "valid" in params.train.eval else
+                dataset_builder.get_pytorch_wrapper("dev") if "dev" in params.train.eval else
+                None,
                 test=dataset_builder.get_pytorch_wrapper("test") if "test" in params.train.eval else None)
 
     # Init model
     model_cls = get_model(params)
     assert model_cls
-    model = model_cls(params, datasets.train or datasets.test)
+    model = model_cls(params, datasets.train or datasets.test or datasets.valid)
     # model.summary()
 
     for parameter in model.parameters():

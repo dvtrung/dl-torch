@@ -97,7 +97,7 @@ class Tatoeba(NMTBaseDataset):
                         [_p[i] for _p in pairs],
                         output_file_name=lang_pairs[i],
                         min_freq=0,
-                        default_tags=default_words)
+                        specials=default_words)
                     vocab[lang_pairs[i]] = Vocab(
                         os.path.join(cls.get_processed_data_dir(), dataset_name, "vocab", lang_pairs[i] + ".txt"))
 

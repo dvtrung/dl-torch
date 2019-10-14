@@ -1,27 +1,28 @@
+backend: pytorch
 model:
   name: dlex.torch.models.transformer.Transformer
-  num_heads: 8
-  key_size: 16
-  value_size: 16
-  dim_model: 32
-  dim_inner: 32
+  num_heads: 1
+  key_size: 32
+  value_size: 32
+  dim_model: 64
+  dim_inner: 64
   encoder:
     rnn_type: lstm
     bidirectional: false
-    num_layers: 2
+    num_layers: 3
     input_size: 50
-    hidden_size: 32
-    output_size: 32
+    hidden_size: 64
+    output_size: 64
     embedding: none
     update_embedding: true
     max_length: 50
   decoder:
-    share_embeddings: true
+    share_embeddings: false
     use_attention: true
-    num_layers: 2
-    hidden_size: 32
+    num_layers: 3
+    hidden_size: 64
     max_length: 50
-    output_size: 32
+    output_size: 64
   beam_search:
     beam_size: 16
     penalty: 0
@@ -43,10 +44,10 @@ dataset:
   special_tokens: [sos, eos, oov, pad]
 train:
   batch_size: 64
-  num_epochs: 100
+  num_epochs: 1000
   optimizer:
     name: adam
-    lr: 0.1
+    lr: 0.01
   max_grad_norm: 1.0
 test:
   metrics: [wer]

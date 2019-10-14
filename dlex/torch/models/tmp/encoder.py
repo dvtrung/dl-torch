@@ -7,7 +7,7 @@ from .sublayers import MultiHeadAttention, PositionwiseFeedForward
 
 class EncoderLayer(nn.Module):
     def __init__(self, dim_model, dim_inner, num_heads, dim_key, dim_value, dropout=0.1):
-        super(EncoderLayer, self).__init__()
+        super().__init__()
         self.self_attention = MultiHeadAttention(
             num_heads,
             dim_model,

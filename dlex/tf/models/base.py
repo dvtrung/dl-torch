@@ -3,13 +3,13 @@ import os
 import tensorflow as tf
 from tensorflow.python.keras.optimizers import SGD
 
-from dlex.configs import AttrDict, ModuleConfigs
+from dlex.configs import MainConfig, ModuleConfigs
 from dlex.datasets import TensorflowDataset as Dataset
 from dlex.tf import Batch
 
 
 class BaseModel:
-    def __init__(self, params: AttrDict, dataset: Dataset):
+    def __init__(self, params: MainConfig, dataset: Dataset):
         super().__init__()
         self.params = params
         self.dataset = dataset

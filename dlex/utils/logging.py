@@ -72,7 +72,7 @@ def load_results(mode, params):
         }
 
 
-def log_result(mode, params, new_result, is_better_result):
+def log_result(mode: str, params, new_result: float, is_better_result):
     """Add a checkpoint for evaluation result.
     :return best result after adding new result
     """

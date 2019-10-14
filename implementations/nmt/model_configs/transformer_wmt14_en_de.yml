@@ -9,7 +9,6 @@ model:
   encoder:
     rnn_type: lstm
     bidirectional: false
-    num_layers: 2
     input_size: 256
     hidden_size: 256
     output_size: 256
@@ -19,7 +18,6 @@ model:
   decoder:
     share_embeddings: true
     use_attention: true
-    num_layers: 1
     hidden_size: 256
     max_length: 50
   beam_search:
@@ -39,7 +37,7 @@ dataset:
   debug_size: 20
 train:
   batch_size: 64
-  num_epochs: 100
+  num_epochs: 10
   optimizer:
     name: adam
     lr: 0.01

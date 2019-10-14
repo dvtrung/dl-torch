@@ -7,6 +7,7 @@ from typing import List
 import nltk
 import numpy as np
 import spacy as spacy
+from torchtext import data
 
 from dlex.configs import ModuleConfigs
 from dlex.utils.logging import logger
@@ -38,18 +39,6 @@ def load_tkn_to_idx(filename):
     return tkn_to_idx
 
 
-def load_idx_to_tkn(filename):
-    idx_to_tkn = []
-    fo = open(filename, encoding='utf-8')
-    for line in fo:
-        line = line.strip()
-        if line == "":
-            continue
-        idx_to_tkn.append(line)
-    fo.close()
-    return idx_to_tkn
-
-
 def normalize_lower(sentence: str):
     return sentence.strip().lower()
 
@@ -58,6 +47,7 @@ def normalize_lower_alphanumeric(sentence: str):
     s = sentence.strip().lower()
     s = re.sub("[^a-z0-9\uAC00-\uD7A3]+", " ", s)
     return s
+
 
 def normalize_string_ascii(sentence):
     """
@@ -122,6 +112,17 @@ def nltk_tokenize(s):
     return nltk.word_tokenize(s)
 
 
+class Tokenizer:
+    def __init__(self, normalize_fn=None, tokenize_fn=None):
+        self.normalize_fn = normalize_fn
+        self.tokenize_fn = tokenize_fn
+
+    def process(self, s):
+        s = self.normalize_fn(s)
+        s = self.tokenize_fn(s)
+        return s
+
+
 spacy_nlp = None
 
 
@@ -160,20 +161,23 @@ def mecab_tokenize(s):
 def write_vocab(
         working_dir,
         sentences,
-        output_file_name="word.txt",
+        output_file_name: str,
+        tokenizer: Tokenizer = None,
         min_freq=0,
-        default_tags=['<pad>', '<sos>', '<eos>', '<oov>'],
-        normalize_fn=normalize_string,
-        tokenize_fn=space_tokenize):
+        specials=None):
+    if tokenizer is None:
+        tokenizer = Tokenizer(normalize_none, space_tokenize)
+    if specials is None:
+        specials = ['<pad>', '<sos>', '<eos>', '<oov>']
     os.makedirs(os.path.join(working_dir, "vocab"), exist_ok=True)
     word_freqs = {}
     for sent in sentences:
-        if normalize_fn is not None:
-            s = normalize_fn(sent.replace('_', ' '))
-        else:
-            s = sent
+        # if normalize_fn is not None:
+        #     s = normalize_fn(sent.replace('_', ' '))
+        # else:
+        #     s = sent
         # ls = char_tokenize(s) if token == 'char' else space_tokenize(s)
-        ls = tokenize_fn(s)
+        ls = tokenizer.process(sent)
         for word in ls:
             if word.strip() == '':
                 continue
@@ -186,10 +190,10 @@ def write_vocab(
     words.sort(key=lambda word: word_freqs[word], reverse=True)
     file_path = os.path.join(working_dir, "vocab", output_file_name)
     with open(file_path, "w", encoding='utf-8') as fo:
-        fo.write('\n'.join(default_tags) + '\n')
+        fo.write('\n'.join(specials) + '\n')
         fo.write("\n".join(words))
 
-    logger.info("Vocab written to %s (%d tokens)", file_path, len(default_tags) + len(words))
+    logger.info("Vocab written to %s (%d tokens)", file_path, len(specials) + len(words))
 
 
 def get_token_id(vocab, word):
@@ -210,15 +214,27 @@ def get_token_id(vocab, word):
 
 
 class Vocab:
-    def __init__(self, file_name: str = None):
-        if file_name is not None:
-            self._token2index = load_tkn_to_idx(file_name)
-            self._index2token = load_idx_to_tkn(file_name)
-        else:
+    def __init__(self, token_list: List[str] = None):
+        if token_list is None:
             self._token2index = {}
             self._index2token = []
+        else:
+            self._index2token = token_list
+            self._token2index = {token: idx for idx, token in enumerate(token_list)}
         self.embeddings = None
         self.embedding_dim = None
+
+    @classmethod
+    def from_file(cls, file_name):
+        index2token = []
+        fo = open(file_name, encoding='utf-8')
+        for line in fo:
+            line = line.strip()
+            if line == "":
+                continue
+            index2token.append(line)
+        fo.close()
+        return cls(index2token)
 
     def __getitem__(self, token: str) -> int:
         return self._token2index[token] if token in self._token2index else self.oov_token_idx
@@ -239,6 +255,9 @@ class Vocab:
 
     def decode_idx_list(self, ls: List[int]) -> List[str]:
         return [self.get_token(idx) for idx in ls]
+
+    def encode_token_list(self, ls: List[str]) -> List[int]:
+        return [self.get_token_id(token) for token in ls]
 
     @property
     def sos_token_idx(self) -> int:

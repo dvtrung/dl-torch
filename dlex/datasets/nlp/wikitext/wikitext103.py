@@ -3,17 +3,17 @@ import os
 from sklearn.metrics import accuracy_score
 from torchtext import data, datasets
 
-from dlex.configs import AttrDict
+from dlex.configs import MainConfig
 from dlex.datasets.nlp.builder import NLPDataset
 from dlex.datasets.nlp.utils import spacy_tokenize
-from dlex.datasets.torch import PytorchDataset
+from dlex.datasets.torch import Dataset
 from dlex.torch import Batch
 from dlex.torch import BatchItem
 from dlex.utils import logger
 
 
 class WikiText103(NLPDataset):
-    def __init__(self, params: AttrDict):
+    def __init__(self, params: MainConfig):
         super().__init__(params)
 
     def maybe_download_and_extract(self, force=False):
@@ -48,7 +48,7 @@ class WikiText103(NLPDataset):
         return [self.TEXT.vocab.itos[idx] for idx in tokens]
 
 
-class PytorchWikiText103(PytorchDataset):
+class PytorchWikiText103(Dataset):
     def __init__(self, builder, mode):
         super().__init__(builder, mode)
 

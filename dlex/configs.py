@@ -19,11 +19,40 @@ class ModuleConfigs:
 
 
 @dataclass
+class OptimizerConfig:
+    """
+    Args:
+        name (str): One of sgd, adam
+    """
+    name: str = "sgd"
+
+
+@dataclass
 class TrainConfig:
+    """
+    :param num_epochs: Number of epochs
+    :type num_epochs: int
+    :param batch_size: Batch size
+    :type batch_size: int
+    :param optimizer:
+    :type optimizer: OptimizerConfig
+    :param lr_scheduler (dict):
+    :param eval: List of sets to be evaluated during training. Empty: no evaluation.
+        Accepted values: `test`, `dev` (or `valid`).
+        If both test and valid sets are presented, the test result for model with best valid result will also be recoreded. `dev` and `valid` can be used interchangeable
+    :type eval: list
+    :param max_grad_norm:
+    :type max_grad_norm: float
+    :param save_every: Time interval for saving model. Use s, m, h for number of seconds, minutes, hours. Use e for number of epochs.
+            Examples: 100s, 30m, 2h, 1e
+    :type save_every: str
+    :param log_every: Time interval for logging to file
+    :type log_every: str
+    """
     num_epochs: int = None
     num_workers: int = None
     batch_size: int = None
-    optimizer: dict = None
+    optimizer: OptimizerConfig = None
     lr_scheduler: dict = None
     eval: list = field(default_factory=lambda: ["test"])
     max_grad_norm: float = 5.0
@@ -34,23 +63,18 @@ class TrainConfig:
 
 @dataclass
 class TestConfig:
+    """
+    :param batch_size:
+    :type batch_size: int
+    :param metrics: List of metrics for evaluation.
+    :type metrics: list
+    """
     batch_size: int = None
     metrics: list = field(default_factory=lambda: ["default"])
 
 
 class AttrDict(dict):
     """Dictionary with key as property."""
-    model = None
-    dataset = None
-    training_id = None
-    seed = 1
-    shuffle = False
-    batch_size = None
-    path = None
-    train: TrainConfig
-    test: TestConfig
-    verbose: bool
-
     def __init__(self, *args, **kwargs):
         super(AttrDict, self).__init__(*args, **kwargs)
         self.__dict__ = self
@@ -58,11 +82,6 @@ class AttrDict(dict):
         for key in self:
             if isinstance(self[key], dict):
                 self[key] = AttrDict(self[key])
-
-        if "train" in self:
-            self.train = TrainConfig(**self['train'])
-        if "test" in self:
-            self.test = TestConfig(**self['test'])
 
     def __getattr__(self, item: str):
         # logger.warning("Access to unset param %s", item)
@@ -86,6 +105,34 @@ class AttrDict(dict):
             else:
                 if key not in self:
                     setattr(self, key, d[key])
+
+
+class MainConfig(AttrDict):
+    """Dictionary with key as property."""
+    model = None
+    dataset = None
+    training_id = None
+    seed = 1
+    shuffle = False
+    batch_size = None
+    path = None
+    train: TrainConfig
+    test: TestConfig
+    verbose: bool
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if "train" in self:
+            self.train = TrainConfig(**self['train'])
+        if "test" in self:
+            self.test = TestConfig(**self['test'])
+
+    def __getattr__(self, item: str):
+        # logger.warning("Access to unset param %s", item)
+        return None
+
+    def set(self, field, value):
+        setattr(self, field, value)
 
     @property
     def log_dir(self):
@@ -136,7 +183,7 @@ def str2bool(val):
 
 class Configs:
     """All configurations"""
-    params: AttrDict = None
+    params: MainConfig = None
     args = None
 
     def __init__(self, mode, argv=None):
@@ -182,12 +229,24 @@ class Configs:
                             help="Number of workers for loading data")
 
         if self.mode == "train":
-            parser.add_argument('--num-processes', type=int, default=1, metavar='N',
-                                help="how many training process to use")
-            parser.add_argument('--save-all', action='store_true', default=False,
-                                help='save every epoch')
-            parser.add_argument('--exit-on-runtime-error', action="store_true",
-                                help="Exit when encoutering rumtime error (eg: CUDA out of memery). Exit code: 2")
+            parser.add_argument(
+                '--num-processes', type=int, default=1, metavar='N',
+                help="how many training process to use")
+            parser.add_argument(
+                '--save-all', action='store_true',
+                help='save every epoch')
+            parser.add_argument(
+                '--exit-on-runtime-error', action="store_true",
+                help="Exit when encoutering rumtime error (eg: CUDA out of memery). Exit code: 2")
+            parser.add_argument(
+                '--output_test_samples', action="store_true",
+                help="Output samples after evaluation."
+            )
+        elif self.mode == "test":
+            parser.add_argument(
+                "--eval-set", default="test",
+                help="Set to evaluate on (test / valid / train)"
+            )
         elif self.mode == "infer":
             parser.add_argument(
                 '-i --input',
@@ -202,25 +261,33 @@ class Configs:
     def get_params(self):
         """Load model configs from yaml file"""
         args = self.args
-        path = os.path.join("model_configs", args.config_path + ".yml")
-        try:
-            with open(path, 'r') as stream:
-                params = yaml.load(stream, Loader=Loader)
-                params = AttrDict(params)
-            params.set("mode", self.mode)
-            params.set("path", self.args.config_path)
-            params.set("verbose", bool(self.args.verbose))
+        paths = [
+            args.config_path,
+            os.path.join("model_configs", args.config_path),
+            os.path.join("model_configs", args.config_path + ".yml")
+        ]
+        paths = [p for p in paths if os.path.exists(p)]
+        if not paths:
+            raise Exception("Config file '%s' not found." % args.config_path)
+        else:
+            path = paths[0]
+            try:
+                with open(path, 'r') as stream:
+                    params = yaml.load(stream, Loader=Loader)
+                    params = MainConfig(params)
+                params.set("mode", self.mode)
+                params.set("path", self.args.config_path)
+                params.set("verbose", bool(self.args.verbose))
 
-            params.dataset.num_workers = args.num_workers
-            if params.train is not None and params.train.num_workers is None:
-                params.train.num_workers = args.num_workers
+                params.dataset.num_workers = args.num_workers
+                if params.train is not None and params.train.num_workers is None:
+                    params.train.num_workers = args.num_workers
 
-            # Some config values are overwritten by command arguments
-            if args.batch_size is not None:
-                params.train.batch_size = args.batch_size
+                # Some config values are overwritten by command arguments
+                if args.batch_size is not None:
+                    params.train.batch_size = args.batch_size
 
-            return params
-        except yaml.YAMLError as exc:
-            raise Exception("Invalid config syntax.")
-        except FileNotFoundError:
-            raise Exception("Config file '%s' not found." % path)
+                return params
+            except yaml.YAMLError:
+                raise Exception("Invalid config syntax.")
+

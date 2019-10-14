@@ -18,3 +18,13 @@ def Tensor(*args):
 
 def maybe_cuda(x):
     return x.cuda() if CUDA else x
+
+
+class VariableSizeTensor:
+    def __init__(self, values, padding_value=0):
+        self.values = values
+        self.padding_value = padding_value
+        self.lengths = [len(v) for v in values]
+
+    def get_packed_sequence(self):
+        return torch.nn.utils.rnn.pad_packed_sequence(self.values, padding_value=self.padding_value)

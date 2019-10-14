@@ -1,3 +1,4 @@
+backend: pytorch
 model:
   name: src.models.cnn.BasicModel
 dataset:

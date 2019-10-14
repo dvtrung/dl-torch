@@ -1,5 +1,6 @@
+backend: pytorch
 model:
-  name: src.models.cnn.BasicModel
+  name: src.models.cnn.SimpleModel
 dataset:
   name: dlex.datasets.image.mnist.MNIST
   output_format: default

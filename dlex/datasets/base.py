@@ -4,7 +4,7 @@ import shutil
 
 from dlex.utils.logging import logger
 from dlex.utils.utils import maybe_download, maybe_unzip, camel2snake
-from dlex.configs import ModuleConfigs, AttrDict
+from dlex.configs import ModuleConfigs, MainConfig
 
 
 class BaseTensorflowWrapper:
@@ -37,20 +37,34 @@ class BasePytorchWrapper:
 
 
 class BaseDataset:
-    def __init__(self, params: AttrDict):
+    """This is a base class"""
+    def __init__(self, params: MainConfig):
         self.params = params
 
     def get_working_dir(self) -> str:
+        """
+        :return: Current working directory
+        """
         return os.path.join(ModuleConfigs.DATASETS_PATH, camel2snake(self.__class__.__name__))
 
     def get_raw_data_dir(self) -> str:
+        """
+        :return: Directory to store raw data set
+        """
         return os.path.join(self.get_working_dir(), "raw")
 
     def get_processed_data_dir(self) -> str:
+        """
+        :return: Directory to store pre-processed files
+        """
         return os.path.join(self.get_working_dir(), "processed")
 
     @property
-    def configs(self) -> AttrDict:
+    def configs(self) -> MainConfig:
+        """
+        :return: The `dataset` entry of configurations
+        :rtype: MainConfig
+        """
         return self.params.dataset
 
     def prepare(self, download=False, preprocess=False):
@@ -66,6 +80,10 @@ class BaseDataset:
 
     @abc.abstractmethod
     def maybe_download_and_extract(self, force=False):
+        """Download and extract data set
+
+        :param force: if True, download and extract even if files are existed.
+        """
         if force:
             if os.path.exists(self.get_working_dir()):
                 logger.info("Removing downloaded data...")

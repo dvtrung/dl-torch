@@ -39,7 +39,7 @@ class Decoder(nn.Module):
             pad_idx):
 
         super().__init__()
-        num_positions = len_max_seq + 3
+        num_positions = len_max_seq + 3  # sos, eos
 
         self.tgt_word_emb = nn.Embedding(
             vocab_size, output_size, padding_idx=pad_idx)
@@ -52,7 +52,7 @@ class Decoder(nn.Module):
             DecoderLayer(dim_model, dim_inner, num_heads, dim_key, dim_value, dropout=dropout)
             for _ in range(num_layers)])
 
-        self.tgt_word_prj = nn.Linear(dim_model, output_size, bias=False)
+        self.tgt_word_prj = nn.Linear(output_size, vocab_size, bias=False)
         nn.init.xavier_normal_(self.tgt_word_prj.weight)
 
         if share_embeddings:

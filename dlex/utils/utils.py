@@ -76,6 +76,8 @@ def maybe_unzip(file_path, folder_path):
         tar = tarfile.open(file_path)
         tar.extractall(path=_dir)
         tar.close()
+    elif ext in ['.json']:
+        pass
     else:
         raise Exception("File type is not supported (%s)" % ext)
 

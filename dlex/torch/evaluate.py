@@ -1,11 +1,12 @@
 import random
+import traceback
 from typing import Tuple
 
 import torch
 from tqdm import tqdm
 
-from dlex.configs import AttrDict
-from dlex.datasets.torch import PytorchDataset
+from dlex.configs import MainConfig
+from dlex.datasets.torch import Dataset
 from dlex.torch.models.base import BaseModel
 from dlex.torch.utils.utils import load_model
 from dlex.utils.logging import logger
@@ -13,8 +14,8 @@ from dlex.utils.logging import logger
 
 def evaluate(
         model: BaseModel,
-        dataset: PytorchDataset,
-        params: AttrDict,
+        dataset: Dataset,
+        params: MainConfig,
         output=False,
         summary_writer=None) -> Tuple[dict, list]:
     """Evaluate model and save result."""
@@ -30,9 +31,10 @@ def evaluate(
         outputs = []
         y_pred_all, y_ref_all = [], []
         for batch in tqdm(data_iter, desc="Eval"):
-            y_pred, y_ref, model_output, others = model.infer(batch)
+            inference_outputs = model.infer(batch)
+            y_pred, y_ref, others = inference_outputs[0], inference_outputs[1], inference_outputs[2:]
             try:
-                if batch is None or batch.X.shape[0] == 0:
+                if batch is None or len(batch) == 0:
                     raise Exception("Batch size 0")
                 y_pred_all += y_pred
                 y_ref_all += y_ref
@@ -55,9 +57,8 @@ def evaluate(
                         # print(outputs[-1])
                 if summary_writer is not None:
                     model.write_summary(summary_writer, batch, (y_pred, others))
-
-            except Exception as e:
-                logger.error(str(e))
+            except Exception:
+                logger.error(traceback.format_exc())
 
         for metric in params.test.metrics:
             results[metric] = dataset.evaluate(y_pred_all, y_ref_all, metric)

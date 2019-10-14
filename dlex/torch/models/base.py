@@ -6,7 +6,8 @@ import numpy as np
 import torch
 import torch.nn as nn
 
-from dlex.configs import AttrDict, ModuleConfigs
+from dlex.configs import ModuleConfigs, AttrDict, MainConfig
+from dlex.datasets.torch import PytorchDataset
 from dlex.torch import Batch
 from dlex.torch.utils.model_utils import get_optimizer, get_lr_scheduler
 from dlex.utils.logging import logger
@@ -21,16 +22,36 @@ class InferenceOutput:
 
 class BaseModel(nn.Module):
     config_class = AttrDict
+    """
+    :param params:
+    :type params: MainConfig
+    :param dataset:
+    :type dataset: PytorchDataset
+    """
 
-    def __init__(self, params: AttrDict, dataset):
+    def __init__(self, params: MainConfig, dataset: PytorchDataset):
         super().__init__()
         self.params = params
         self.dataset = dataset
 
+    @property
+    def configs(self):
+        return self.params.model
+
     @abc.abstractmethod
     def infer(self, batch: Batch):
-        """Infer"""
-        raise Exception("Inference method is not implemented")
+        """Infer from batch
+
+        :param batch:
+        :type batch: Batch
+        :return: tuple containing:
+            pred: prediction
+            ref: reference
+            model_outputs
+            others
+        :rtype: tuple
+        """
+        raise NotImplementedError()
 
     def train_log(self, batch: Batch, output, verbose):
         d = dict()
@@ -42,8 +63,16 @@ class BaseModel(nn.Module):
         return dict()
 
     @abc.abstractmethod
-    def get_loss(self, batch, output):
-        raise Exception("Loss is not implemented")
+    def get_loss(self, batch: Batch, output):
+        """Return model loss to optimize
+
+        :param batch:
+        :type batch: Batch
+        :param output: Output of model forward
+        :type output:
+        :return: A `torch.FloatTensor` with the loss value.
+        """
+        raise NotImplementedError()
 
 
 class DataParellelModel(nn.DataParallel):
@@ -65,6 +94,7 @@ class DataParellelModel(nn.DataParallel):
         self.zero_grad()
         if batch is None or len(batch.Y) == 0:
             raise Exception("Empty batch.")
+
         output = self.forward(batch)
         loss = self.get_loss(batch, output)
 
@@ -181,14 +211,14 @@ class DataParellelModel(nn.DataParallel):
             raise Exception("Checkpoint not found: %s" % file_name)
 
 
-class ClassificationBaseModel(BaseModel):
+class ClassificationModel(BaseModel):
     def __init__(self, params, dataset):
         super().__init__(params, dataset)
         self._criterion = nn.CrossEntropyLoss()
 
     def infer(self, batch):
         logits = self.forward(batch)
-        return torch.max(logits, 1)[1], logits, None
+        return torch.max(logits, 1)[1].tolist(), batch.Y.tolist()
 
     def get_loss(self, batch: Batch, output):
         return self._criterion(output, batch.Y)
