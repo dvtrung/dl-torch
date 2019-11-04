@@ -7,7 +7,7 @@
 - [ ] Efficiently log and analyze model results
 - [ ] Cross-platform GUI for monitoring experiments, either local or remote sever (Electron-based)
 
-![screenshot](./scrrenshot.png)
+![screenshot](./screenshot.png)
 
 See [here](implementations/README.md) for a list of implemented models
 
