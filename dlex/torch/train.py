@@ -53,7 +53,7 @@ def train(
             return result, best_result, outputs
 
         if datasets.test is not None:
-            test_result, _, test_outputs = _evaluate("test")
+            test_result, test_best_result, test_outputs = _evaluate("test")
             log_outputs("test", params, test_outputs)
             log_dict['test_result'] = test_result['result']
 
@@ -81,7 +81,24 @@ def train(
                 logger.info(str(output))
 
         epoch_info_logger.info(json_dumps(log_dict))
-        logger.info(json_dumps(log_dict))
+        logger.info("Epoch %d - Total Time: %s - Loss: %.4f" % (
+            current_epoch,
+            log_dict['total_time'],
+            log_dict['loss']
+        ))
+        for metric in params.test.metrics:
+            if datasets.valid:
+                logger.info("Dev Result (%s) - %.4f (best: %.4f)" % (
+                    metric,
+                    log_dict['valid_result'][metric],
+                    valid_best_result[metric]['result'][metric]
+                ))
+            if datasets.test:
+                logger.info("Test Result (%s) - %.4f (best: %.4f)" % (
+                    metric,
+                    log_dict['test_result'][metric],
+                    test_best_result[metric]['result'][metric],
+                ))
 
 
 def check_interval_passed(last_done: float, interval: str, progress) -> (bool, float):

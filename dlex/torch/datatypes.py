@@ -59,9 +59,17 @@ class Batch(dict):
         self.__dict__ = self
 
     def item(self, i: int) -> BatchItem:
-        return BatchItem(
-            X=self.X[i].cpu().detach().numpy(),
-            Y=self.Y[i].cpu().detach().numpy())
+        try:
+            X = self.X[i].cpu().detach().numpy()
+        except Exception:
+            X = None
+
+        try:
+            Y = self.Y[i].cpu().detach().numpy()
+        except Exception:
+            Y = None
+
+        return BatchItem(X=X, Y=Y)
 
     @property
     def batch_size(self):
@@ -72,9 +80,8 @@ class Batch(dict):
 
 
 class VariableLengthInputBatch(Batch):
-    X: torch.Tensor
+    X: VariableLengthTensor
     Y: torch.Tensor
-    X_len: list = None
 
     def item(self, i: int) -> BatchItem:
         return BatchItem(

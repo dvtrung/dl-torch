@@ -1,23 +1,22 @@
 backend: pytorch
 model:
   name: src.models.qanet.QANet
-  connector_dim: 96
+  connector_dim: 128
   num_heads: 8
-  answer_max_len: 30
   hidden_size: 200
   maxout_pool_size: 16
   max_decoder_steps: 4
   dropout: 0.1
   dropout_char: 0.05
-  char_dim: 64
 dataset:
   name: src.datasets.squad.SQuAD_V1
   paragraph_max_length: 400
   question_max_length: 50
-  char_dim: 64
+  answer_max_len: 30
+  char_dim: 200
   embeddings:
     pretrained: GloVe
-    name: 6B
+    name: 840B
     dim: 300
     freeze: true
 train:
@@ -26,7 +25,7 @@ train:
   eval: [dev]
   optimizer:
     name: adam
-    lr: 0.0001
+    lr: 0.001
 test:
-  batch_size: 8
+  batch_size: 16
   metrics: [acc]

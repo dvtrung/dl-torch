@@ -29,6 +29,7 @@ def main(argv=None):
         dataset_builder.prepare(download=args.download, preprocess=args.preprocess)
 
     dataset = dataset_builder.get_sklearn_wrapper("train")
+    assert dataset
 
     # Init model
     model_cls = get_model(params)

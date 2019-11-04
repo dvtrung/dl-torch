@@ -1,10 +1,9 @@
 import abc
 import random
+from typing import List
 
 from torch.utils.data import Dataset as PytorchDataset
 from torch.utils.data.dataloader import default_collate, DataLoader
-
-from dlex.torch import Batch
 
 
 class Dataset(PytorchDataset):
@@ -28,6 +27,14 @@ class Dataset(PytorchDataset):
 
     def __getitem__(self, i):
         return self._data[i]
+
+    @property
+    def input_shape(self) -> List[int]:
+        raise NotImplementedError
+
+    @property
+    def output_shape(self) -> List[int]:
+        raise NotImplementedError
 
     @property
     def data(self):

@@ -120,8 +120,7 @@ class SQuAD_V1(DatasetBuilder):
                 article_paragraphs = data['data'][articles_id]['paragraphs']
                 for pid in range(len(article_paragraphs)):
                     context = article_paragraphs[pid]['context']
-                    # The following replacements are suggested in the paper
-                    # BidAF (Seo et al., 2016)
+                    # The following replacements are suggested in the paper BidAF (Seo et al., 2016)
                     context = context.replace("''", '" ')
                     context = context.replace("``", '" ')
 
@@ -131,7 +130,8 @@ class SQuAD_V1(DatasetBuilder):
                     qas = article_paragraphs[pid]['qas']  # list of questions
 
                     charloc2wordloc = get_char_word_loc_mapping(context, context_tokens)
-                    # charloc2wordloc maps the character location (int) of a context token to a pair giving (word (string), word loc (int)) of that token
+                    # charloc2wordloc maps the character location (int) of a context token to
+                    # a pair giving (word (string), word loc (int)) of that token
                     if charloc2wordloc is None:  # there was a problem
                         num_mappingprob += len(qas)
                         continue  # skip this context example
@@ -141,35 +141,36 @@ class SQuAD_V1(DatasetBuilder):
                         question = qn['question']
                         question_tokens = tokenize(question)
 
-                        ans_text = qn['answers'][0]['text'].lower()  # get the answer text
-                        ans_start_charloc = qn['answers'][0]['answer_start']  # answer start loc (character count)
-                        ans_end_charloc = ans_start_charloc + len(
-                            ans_text)  # answer end loc (character count) (exclusive)
+                        ans_text = qn['answers'][0]['text'].lower()
+                        ans_start_char_loc = qn['answers'][0]['answer_start']
+                        ans_end_char_loc = ans_start_char_loc + len(ans_text)
 
                         # Check that the provided character spans match the provided answer text
-                        if context[ans_start_charloc:ans_end_charloc] != ans_text:
-                            # Sometimes this is misaligned, mostly because "narrow builds" of Python 2 interpret certain Unicode characters to have length 2 https://stackoverflow.com/questions/29109944/python-returns-length-of-2-for-single-unicode-character-string
-                            # We should upgrade to Python 3 next year!
+                        if context[ans_start_char_loc:ans_end_char_loc] != ans_text:
+                            print(context[ans_start_char_loc:ans_end_char_loc], ans_text)
                             num_spanalignprob += 1
                             continue
 
                         # get word locs for answer start and end (inclusive)
-                        ans_start_wordloc = charloc2wordloc[ans_start_charloc][1]  # answer start word loc
-                        ans_end_wordloc = charloc2wordloc[ans_end_charloc - 1][1]  # answer end word loc
-                        assert ans_start_wordloc <= ans_end_wordloc
+                        ans_start_word_loc = charloc2wordloc[ans_start_char_loc][1]  # answer start word loc
+                        ans_end_word_loc = charloc2wordloc[ans_end_char_loc - 1][1]  # answer end word loc
+                        assert ans_start_word_loc <= ans_end_word_loc
 
                         # Check retrieved answer tokens match the provided answer text.
                         # Sometimes they won't match, e.g. if the context contains the phrase "fifth-generation"
                         # and the answer character span is around "generation",
                         # but the tokenizer regards "fifth-generation" as a single token.
                         # Then ans_tokens has "fifth-generation" but the ans_text is "generation", which doesn't match.
-                        ans_tokens = context_tokens[ans_start_wordloc:ans_end_wordloc + 1]
+                        ans_tokens = context_tokens[ans_start_word_loc:ans_end_word_loc + 1]
                         if "".join(ans_tokens) != "".join(ans_text.split()):
                             num_tokenprob += 1
                             continue  # skip this question/answer pair
 
-                        examples.append((' '.join(context_tokens), ' '.join(question_tokens), ' '.join(ans_tokens),
-                                         ' '.join([str(ans_start_wordloc), str(ans_end_wordloc)])))
+                        examples.append((
+                            ' '.join(context_tokens),
+                            ' '.join(question_tokens),
+                            ' '.join(ans_tokens),
+                            ' '.join([str(ans_start_word_loc), str(ans_end_word_loc)])))
 
                         num_exs += 1
 
@@ -189,13 +190,13 @@ class SQuAD_V1(DatasetBuilder):
                 write_vocab(
                     self.get_processed_data_dir(),
                     [ex[0] for ex in examples] + [ex[1] for ex in examples],
-                    "word", min_freq=2)
+                    "word", min_freq=1)
                 write_vocab(
                     self.get_processed_data_dir(),
                     [ex[0] for ex in examples] + [ex[1] for ex in examples],
                     "char",
                     Tokenizer(normalize_none, char_tokenize),
-                    min_freq=5)
+                    min_freq=20)
 
             with open(os.path.join(self.get_processed_data_dir(), mode + '.csv'), 'w') as f:
                 writer = csv.writer(f)
@@ -278,9 +279,10 @@ class PytorchSQuAD_V1(QADataset):
         w_contexts = [item['cw'] for item in batch]
         w_questions = [item['qw'] for item in batch]
 
-        char_max_length = max([max(len(c) for c in item['cc']) for item in batch])
+        # char_max_length = max([max(len(c) for c in item['cc']) for item in batch])
+        char_max_length = 16
         c_contexts = [LongTensor([
-            char_idx + (char_max_length - len(char_idx)) * [self.vocab_char.blank_token_idx]
+            char_idx[:char_max_length] + max(char_max_length - len(char_idx), 0) * [self.vocab_char.blank_token_idx]
             for char_idx in item['cc']
         ]) for item in batch]
 

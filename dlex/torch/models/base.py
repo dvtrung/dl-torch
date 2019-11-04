@@ -7,7 +7,7 @@ import torch
 import torch.nn as nn
 
 from dlex.configs import ModuleConfigs, AttrDict, MainConfig
-from dlex.datasets.torch import PytorchDataset
+from dlex.datasets.torch import Dataset
 from dlex.torch import Batch
 from dlex.torch.utils.model_utils import get_optimizer, get_lr_scheduler
 from dlex.utils.logging import logger
@@ -29,7 +29,7 @@ class BaseModel(nn.Module):
     :type dataset: PytorchDataset
     """
 
-    def __init__(self, params: MainConfig, dataset: PytorchDataset):
+    def __init__(self, params: MainConfig, dataset: Dataset):
         super().__init__()
         self.params = params
         self.dataset = dataset

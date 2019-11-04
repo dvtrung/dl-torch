@@ -173,7 +173,7 @@ class SelfAttention(nn.Module):
 class Embedding(nn.Module):
     def __init__(self, connector_dim, word_dim, char_dim, dropout, dropout_char):
         super().__init__()
-        self.conv2d = nn.Conv2d(char_dim, connector_dim, kernel_size=(1, 5), padding=0, bias=True)
+        self.conv2d = nn.Conv2d(char_dim, connector_dim, kernel_size=(1, 7), padding=0, bias=True)
         nn.init.kaiming_normal_(self.conv2d.weight, nonlinearity='relu')
         self.conv1d = InitializedConv1d(word_dim + connector_dim, connector_dim, bias=False)
         self.high = Highway(2, connector_dim, dropout)
@@ -309,8 +309,8 @@ class QANet(BaseModel):
         super().__init__(params, dataset)
         cfg = self.configs
         self.emb_word = dataset.word_embedding_layer
-        self.emb_char = nn.Embedding(len(dataset.vocab_char), self.configs.char_dim)
-        self.emb = Embedding(cfg.connector_dim, dataset.word_dim, self.configs.char_dim, cfg.dropout, cfg.dropout_char)
+        self.emb_char = nn.Embedding(len(dataset.vocab_char), dataset.char_dim)
+        self.emb = Embedding(cfg.connector_dim, dataset.word_dim, dataset.char_dim, cfg.dropout, cfg.dropout_char)
         self.emb_enc = EncoderBlock(
             conv_num=4,
             ch_num=cfg.connector_dim, k=7,

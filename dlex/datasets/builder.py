@@ -1,16 +1,14 @@
-import os
 import abc
+import os
 import shutil
-from typing import Tuple, List
+from typing import Tuple
 
-import torchtext
 from sklearn.metrics import accuracy_score
 
-from dlex.datasets.nlp.utils import Tokenizer
+from dlex.configs import ModuleConfigs, MainConfig
 from dlex.torch import BatchItem
 from dlex.utils.logging import logger
 from dlex.utils.utils import maybe_download, maybe_unzip
-from dlex.configs import ModuleConfigs, MainConfig
 
 
 class DatasetBuilder:

@@ -1,11 +1,11 @@
 backend: pytorch
 model:
-  name: src.models.cnn.BasicModel
+  name: src.models.cnn.SimpleModel
 dataset:
   name: dlex.datasets.image.cifar.CIFAR10
   output_format: default
 train:
-  eval: [valid, test]
+  eval: [dev, test]
   batch_size: 256
   num_epochs: 30
   optimizer:

@@ -1,0 +1,9 @@
+backend: pytorch
+model:
+  name: src.models.DeepSets
+dataset:
+  name: src.datasets.ModelNet40
+train:
+  num_epochs: 40
+test:
+  metrics: [acc]

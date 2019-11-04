@@ -1,7 +1,7 @@
 from sklearn.model_selection import train_test_split
 
 
-class SklearnDataset():
+class SklearnDataset:
     def __init__(self, builder):
         self.builder = builder
 

@@ -5,9 +5,11 @@
 - [ ] Writing minimal code to set up a new experiment
 - [ ] Pytorch or Tensorflow 2.0 or scikit-learn as backend with similar training flow
 - [ ] Efficiently log and analyze model results
-- [ ] GUI for monitoring experiments, either local or remote sever
+- [ ] Cross-platform GUI for monitoring experiments, either local or remote sever (Electron-based)
 
-See [here](implementations/README.md) for list of implemented models
+![screenshot](./scrrenshot.png)
+
+See [here](implementations/README.md) for a list of implemented models
 
 # Installation
 
@@ -134,3 +136,7 @@ dlex infer <config_path>
 - `DLEX_TMP_PATH` (default: `~/tmp`)
 - `DLEX_DATASETS_PATH` (default: `~/tmp/dlex/datasets`)
 - `DLEX_SAVED_MODELS_PATH` (default: `./saved_models`)
+
+## Using dlex
+
+[https://github.com/trungd/ml-graph](https://github.com/trungd/ml-graph/): Implementations of machine learning algorithms for graph
