@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="dlex",
-    version="0.0.1",
+    version="0.0.2",
     author="Trung V. Dang",
     author_email="trungv.dang@outlook.com",
     description="Deep learning library for research experiments",

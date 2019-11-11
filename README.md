@@ -35,7 +35,7 @@ Experiment/
 |-- README.md
 ```
 
-Model parameters and outputs are saved to `./saved_models` and `./model_outputs` unless `DLEX_SAVED_MODELS_PATH` and `DLEX_MODEL_OUTPUTS_PATH` is specified
+Model parameters and outputs are saved to `./saved_models` and `./model_outputs` unless `DLEX_SAVED_MODELS_PATH` and `DLEX_MODEL_OUTPUTS_PATH` are specified
 
 ## Step 2: Define dataset
 
@@ -127,8 +127,16 @@ train:
 
 ```bash
 dlex train <config_path>
-dlex evaluate <config_path>
-dlex infer <config_path>
+# evaluation on best or latest model
+dlex evaluate <config_path> -l best
+dlex infer <config_path> -l latest
+```
+
+or 
+
+```bash
+python -m dlex.train -c <config_path>
+python -m dlex.evaluate -c <config_path> -l best
 ```
 
 ## Environment Variables
