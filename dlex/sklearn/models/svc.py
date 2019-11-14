@@ -9,6 +9,6 @@ class SVC(_SVC):
             gamma='scale',
             kernel=params.model.kernel or 'rbf')
 
-    def score(self, X, y, metric):
+    def score(self, X, y, metric="acc"):
         if metric == "acc":
             return super().score(X, y)

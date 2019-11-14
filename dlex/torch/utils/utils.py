@@ -12,9 +12,12 @@ from dlex.utils.model_utils import get_dataset
 DEBUG_BATCH_SIZE = 4
 
 
-def load_model(mode, argv=None):
-    configs = Configs(mode=mode, argv=argv)
-    params, args = configs.params, configs.args
+def load_model(mode, argv=None, params=None, args=None):
+    if not params and not args:
+        configs = Configs(mode=mode, argv=argv)
+        params_list, args = configs.params_list, configs.args
+
+        variables, params = params_list[0]
 
     if mode == "train":
         if args.debug:

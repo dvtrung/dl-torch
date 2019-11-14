@@ -28,6 +28,8 @@ def train(
         summary_writer):
     epoch = model.global_step // len(datasets.train)
     num_samples = model.global_step % len(datasets.train)
+    ret = {}
+
     # num_samples = 0
     for current_epoch in range(epoch + 1, epoch + params.train.num_epochs + 1):
         log_dict = dict(epoch=current_epoch)
@@ -56,6 +58,9 @@ def train(
             test_result, test_best_result, test_outputs = _evaluate("test")
             log_outputs("test", params, test_outputs)
             log_dict['test_result'] = test_result['result']
+            if datasets.valid is None:
+                for metric in test_best_result:
+                    ret[metric] = test_best_result[metric]['result'][metric]
 
         if datasets.valid is not None:
             valid_result, valid_best_result, valid_outputs = _evaluate("valid")
@@ -65,6 +70,7 @@ def train(
                 if valid_best_result[metric] == valid_result:
                     if datasets.test is not None:
                         logger.info("Best result: %f", test_result['result'][metric])
+                        ret[metric] = test_result['result'][metric]
                         log_result(f"valid_test_{metric}", params, test_result, datasets.train.builder.is_better_result)
                         log_outputs("valid_test", params, test_outputs)
                     else:
@@ -86,6 +92,7 @@ def train(
             log_dict['total_time'],
             log_dict['loss']
         ))
+
         for metric in params.test.metrics:
             if datasets.valid:
                 logger.info("Dev Result (%s) - %.4f (best: %.4f)" % (
@@ -99,6 +106,7 @@ def train(
                     log_dict['test_result'][metric],
                     test_best_result[metric]['result'][metric],
                 ))
+    return ret
 
 
 def check_interval_passed(last_done: float, interval: str, progress) -> (bool, float):
@@ -220,10 +228,10 @@ def train_epoch(
     return str(end_time - start_time), model.epoch_loss
 
 
-def main(argv=None):
+def main(argv=None, params=None, args=None, report_callback=None):
     mp.set_start_method('spawn', force=True)
     """Read config and train model."""
-    params, args, model, datasets = load_model("train", argv)
+    params, args, model, datasets = load_model("train", argv, params, args)
     torch.manual_seed(params.seed)
     if args.debug:
         logger.setLevel(logging.DEBUG)
@@ -233,7 +241,10 @@ def main(argv=None):
     summary_writer = None
 
     if args.num_processes == 1:
-        train(params, args, model, datasets, summary_writer=summary_writer)
+        res = train(params, args, model, datasets, summary_writer=summary_writer)
+        if report_callback:
+            report_callback(res)
+        return res
     else:
         model.share_memory()
         # TODO: Implement multiprocessing

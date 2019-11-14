@@ -24,7 +24,7 @@ def get_loss_fn(params):
 
 def get_optimizer(cfg, model_parameters):
     """Return the optimizer object by its type."""
-    op_params = cfg.copy()
+    op_params = cfg.to_dict()
     del op_params['name']
 
     optimizer = {
@@ -37,7 +37,7 @@ def get_optimizer(cfg, model_parameters):
 
 
 def get_lr_scheduler(cfg, optimizer):
-    scheduler_params = cfg.copy()
+    scheduler_params = cfg.to_dict()
     # del scheduler_params['name']
     scheduler = torch.optim.lr_scheduler.MultiStepLR(
         optimizer,

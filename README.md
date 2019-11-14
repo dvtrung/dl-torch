@@ -4,7 +4,7 @@
 
 - [ ] Writing minimal code to set up a new experiment
 - [ ] Pytorch or Tensorflow 2.0 or scikit-learn as backend with similar training flow
-- [ ] Efficiently log and analyze model results
+- [ ] Hyper-parameter tuning and report for multiple experiments. Efficiently log and analyze model results
 - [ ] Cross-platform GUI for monitoring experiments, either local or remote sever (Electron-based)
 
 ![screenshot](./screenshot.png)

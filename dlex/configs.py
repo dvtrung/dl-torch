@@ -1,21 +1,103 @@
 """Reading model configurations"""
 import argparse
+import itertools
 import os
 import re
 from dataclasses import dataclass, field
+from typing import List, Tuple, Dict, Any, Union
 
 import yaml
 
 DEFAULT_TMP_PATH = os.path.expanduser(os.path.join("~", "tmp"))
 DEFAULT_DATASETS_PATH = os.path.expanduser(os.path.join("~", "tmp", "datasets"))
 DEFAULT_SAVED_MODELS_PATH = "saved_models"
-args = None
 
 
 class ModuleConfigs:
     DATASETS_PATH = os.getenv("DLEX_DATASETS_PATH", DEFAULT_DATASETS_PATH)
     TMP_PATH = os.path.join(os.getenv("DLEX_TMP_PATH", DEFAULT_TMP_PATH), "dlex")
     SAVED_MODELS_PATH = os.getenv("DLEX_SAVED_MODELS_PATH", DEFAULT_SAVED_MODELS_PATH)
+
+
+class AttrDict(dict):
+    _variables = None
+
+    """Dictionary with key as property."""
+    def __init__(self, *args, **kwargs):
+        if '_variables' in kwargs:
+            variables = kwargs['_variables']
+            del kwargs['_variables']
+        else:
+            variables = {}
+
+        super(AttrDict, self).__init__(*args, **kwargs)
+        self.__dict__ = self
+
+        for key in self:
+            if isinstance(self[key], dict):
+                self[key] = AttrDict(self[key], _variables=variables)
+
+        self._variables = variables
+
+    def __getattr__(self, item: str):
+        # logger.warning("Access to unset param %s", item)
+        return None
+
+    def __getattribute__(self, item):
+        ret = super().__getattribute__(item)
+        if isinstance(ret, Placeholder):
+            return super().__getattribute__('_variables')[ret.name]
+        else:
+            return ret
+
+    def set(self, prop: Union[str, list], value):
+        """
+        :param prop:
+        :param value:
+        """
+        if isinstance(field, str):
+            setattr(self, field, value)
+        elif isinstance(field, list):
+            if len(field) == 1:
+                self.set(field, value)
+            else:
+                self[field[0]].set(field[1:], value)
+
+    def recursively_set(self, prop: str, value: Any):
+        """
+        :param prop:
+        :param value:
+        """
+        self.set(field.split('.'), value)
+
+    def extend_default_keys(self, d):
+        """
+        Add key and default values if not existed
+        :param d: default key-value pairs
+        :return:
+        """
+        for key in d:
+            if isinstance(d[key], dict):
+                if key in self:
+                    self[key].extend_default_keys(d[key])
+                else:
+                    setattr(self, key, AttrDict(d[key], variables=self.variables))
+            else:
+                if key not in self:
+                    setattr(self, key, d[key])
+
+    def to_dict(self, level=1):
+        d = {}
+        for key in self:
+            if key == '_variables':
+                continue
+            if isinstance(self[key], AttrDict) and level > 1:
+                d[key] = self[key].to_dict(level=level - 1)
+            elif isinstance(self[key], Placeholder):
+                d[key] = self._variables[self[key].name]
+            else:
+                d[key] = self[key]
+        return d
 
 
 @dataclass
@@ -73,45 +155,10 @@ class TestConfig:
     metrics: list = field(default_factory=lambda: ["default"])
 
 
-class AttrDict(dict):
-    """Dictionary with key as property."""
-    def __init__(self, *args, **kwargs):
-        super(AttrDict, self).__init__(*args, **kwargs)
-        self.__dict__ = self
-
-        for key in self:
-            if isinstance(self[key], dict):
-                self[key] = AttrDict(self[key])
-
-    def __getattr__(self, item: str):
-        # logger.warning("Access to unset param %s", item)
-        return None
-
-    def set(self, field, value):
-        setattr(self, field, value)
-
-    def extend_default_keys(self, d):
-        """
-        Add key and default values if not existed
-        :param d: default key-value pairs
-        :return:
-        """
-        for key in d:
-            if isinstance(d[key], dict):
-                if key in self:
-                    self[key].extend_default_keys(d[key])
-                else:
-                    setattr(self, key, AttrDict(d[key]))
-            else:
-                if key not in self:
-                    setattr(self, key, d[key])
-
-
 class MainConfig(AttrDict):
     """Dictionary with key as property."""
     model = None
-    dataset = None
-    training_id = None
+    training_id = "default"
     seed = 1
     shuffle = False
     batch_size = None
@@ -121,18 +168,19 @@ class MainConfig(AttrDict):
     verbose: bool
 
     def __init__(self, *args, **kwargs):
+        if "train" in args[0]:
+            train = TrainConfig(**AttrDict(args[0]['train'], _variables=self._variables).to_dict())
+        if "test" in args[0]:
+            test = TestConfig(**AttrDict(args[0]['test'], _variables=self._variables).to_dict())
+
         super().__init__(*args, **kwargs)
-        if "train" in self:
-            self.train = TrainConfig(**self['train'])
-        if "test" in self:
-            self.test = TestConfig(**self['test'])
+
+        self.train = train
+        self.test = test
 
     def __getattr__(self, item: str):
         # logger.warning("Access to unset param %s", item)
         return None
-
-    def set(self, field, value):
-        setattr(self, field, value)
 
     @property
     def log_dir(self):
@@ -167,8 +215,27 @@ Loader.add_implicit_resolver(
         |[-+]?[0-9][0-9_]*(?::[0-5]?[0-9])+\\.[0-9_]*
         |[-+]?\\.(?:inf|Inf|INF)
         |\\.(?:nan|NaN|NAN))$''', re.X),
-    list(u'-+0123456789.')
+    list('-+0123456789.')
 )
+
+
+class Placeholder:
+    def __init__(self, name):
+        self.name = name
+
+
+def add_variable_tag():
+    tag = '!variable'
+    Loader.add_implicit_resolver(tag, re.compile(u'''^~(.*)$'''), ['~'])
+
+    def constructor_variables(loader, node):
+        value = loader.construct_scalar(node)
+        return Placeholder(value[1:])
+
+    Loader.add_constructor(tag, constructor_variables)
+
+
+add_variable_tag()
 
 
 def str2bool(val):
@@ -183,13 +250,45 @@ def str2bool(val):
 
 class Configs:
     """All configurations"""
-    params: MainConfig = None
+    params_list: List[MainConfig]
     args = None
 
     def __init__(self, mode, argv=None):
         self.mode = mode
         self.parse_args(argv)
-        self.params = self.get_params()
+
+        with open(self.config_path, 'r') as stream:
+            self.yaml_params = yaml.load(stream, Loader=Loader)
+            self.backend = self.yaml_params['backend']
+            if self.args.configs:
+                overridden_values = [s.split('=') for s in self.args.configs]
+
+                def _override_value(d: dict, prop: list, val):
+                    if len(prop) == 1:
+                        d[prop[0]] = val
+                    else:
+                        _override_value(d[prop[0]], prop[1:], val)
+
+                for key, value in overridden_values:
+                    key = key.split('.')
+                    _override_value(self.yaml_params, key, value)
+
+        self.params_list = self.get_params()
+
+    @property
+    def config_path(self):
+        args = self.args
+        paths = [
+            args.config_path,
+            os.path.join("model_configs", args.config_path),
+            os.path.join("model_configs", args.config_path + ".yml")
+        ]
+        paths = [p for p in paths if os.path.exists(p)]
+        if not paths:
+            raise Exception("Config file '%s' not found." % args.config_path)
+        else:
+            assert len(paths) == 1
+            return paths[0]
 
     def parse_args(self, argv=None):
         """Parse arguments."""
@@ -200,6 +299,14 @@ class Configs:
             required=True,
             dest="config_path",
             help="path to model's configuration file")
+        parser.add_argument(
+            '--configs',
+            metavar="KEY=VALUE",
+            nargs='+',
+            required=False,
+            dest="configs",
+            help="values to override configs read from file"
+        )
         if self.mode == "train":
             parser.add_argument('--debug', action="store_true",
                                 help="train and eval on the same small data to check if the model works")
@@ -258,36 +365,31 @@ class Configs:
         else:
             self.args = parser.parse_args(argv)
 
-    def get_params(self):
+    def get_params(self) -> List[Tuple[Dict[str, Any], MainConfig]]:
         """Load model configs from yaml file"""
-        args = self.args
-        paths = [
-            args.config_path,
-            os.path.join("model_configs", args.config_path),
-            os.path.join("model_configs", args.config_path + ".yml")
-        ]
-        paths = [p for p in paths if os.path.exists(p)]
-        if not paths:
-            raise Exception("Config file '%s' not found." % args.config_path)
-        else:
-            path = paths[0]
-            try:
-                with open(path, 'r') as stream:
-                    params = yaml.load(stream, Loader=Loader)
-                    params = MainConfig(params)
-                params.set("mode", self.mode)
-                params.set("path", self.args.config_path)
-                params.set("verbose", bool(self.args.verbose))
+        try:
+            params_list = []  # there are multiple configs if variables are chosen from lists
+            variable_names = self.yaml_params['variables'].keys() if 'variables' in self.yaml_params else []
+            variable_values = self.yaml_params['variables'].values() if 'variables' in self.yaml_params else []
+            variable_values = [val if isinstance(val, list) else [val] for val in variable_values]
+            for combination in itertools.product(*variable_values):
+                variables = {name: val for name, val in zip(variable_names, combination)}
+                params = MainConfig(self.yaml_params, _variables=variables)
 
-                params.dataset.num_workers = args.num_workers
+                # Assign extra parameters from args
+                params.mode = self.mode
+                params.path = self.args.config_path
+                params.verbose = bool(self.args.verbose)
+                params.dataset.num_workers = self.args.num_workers
                 if params.train is not None and params.train.num_workers is None:
-                    params.train.num_workers = args.num_workers
+                    params.train.num_workers = self.args.num_workers
 
                 # Some config values are overwritten by command arguments
-                if args.batch_size is not None:
-                    params.train.batch_size = args.batch_size
+                if self.args.batch_size is not None:
+                    params.train.batch_size = self.args.batch_size
+                params_list.append((variables, params))
 
-                return params
-            except yaml.YAMLError:
-                raise Exception("Invalid config syntax.")
+            return params_list
+        except yaml.YAMLError:
+            raise Exception("Invalid config syntax.")
 
