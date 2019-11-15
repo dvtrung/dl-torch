@@ -222,7 +222,6 @@ def train_epoch(
                 if args.debug:
                     input("Press any key to continue...")
             model.end_training_epoch()
-
     model.save_checkpoint("epoch-latest")
     end_time = datetime.now()
     return str(end_time - start_time), model.epoch_loss

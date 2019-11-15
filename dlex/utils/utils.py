@@ -7,6 +7,7 @@ import tarfile
 import shutil
 import re
 from subprocess import call
+from typing import List
 
 from six.moves import urllib
 import requests
@@ -100,3 +101,16 @@ def run_script(name: str, args):
     import dlex
     root = os.path.dirname(inspect.getfile(dlex))
     call(["python", os.path.join(root, "scripts", name), *args])
+
+
+def table2str(table: List[List[str]]) -> str:
+    def _append_blank(s, length):
+        return " " + s + " " * (length - len(s) - 1)
+
+    num_cols = len(table[0])
+    col_sizes = [max([len(row[i]) for row in table]) + 2 for i in range(num_cols)]
+    s = "|" + "|".join([_append_blank(table[0][i], col_sizes[i]) for i in range(num_cols)]) + "|\n"
+    s += "|" + "|".join(["-" * col_sizes[i] for i in range(num_cols)]) + "|\n"
+    for row in table[1:]:
+        s += "|" + "|".join([_append_blank(cell, col_sizes[i]) for i, cell in enumerate(row)]) + "|\n"
+    return s

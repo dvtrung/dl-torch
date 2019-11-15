@@ -73,7 +73,7 @@ def load_model(mode, argv=None, params=None, args=None):
         if mode == "train":
             logger.info("Epoch: %f", model.global_step / len(datasets.train))
     else:
-        params.set('training_id', datetime.now().strftime('%Y%m%d-%H%M%S'))
+        params.training_id = datetime.now().strftime('%Y%m%d-%H%M%S')
         init_dirs(params)
 
     return params, args, model, datasets

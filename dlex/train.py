@@ -1,8 +1,9 @@
+import os
 import runpy
 from typing import Dict, Tuple, Any, List
 
-from dlex.utils import logger
-from .configs import Configs
+from dlex.utils import logger, table2str
+from .configs import Configs, Environment
 
 
 def launch_training(backend: str, params, args, report_callback=None):
@@ -24,51 +25,73 @@ def launch_training(backend: str, params, args, report_callback=None):
 
 
 def update_results(
-        variable_names: List[str],
+        env: Environment,
         variable_values: Tuple[Any],
         results,
-        all_results: Dict[Tuple, Any]):
-
-    all_results[variable_values] = results
+        all_results: Dict[str, Dict[Tuple, Any]],
+        configs):
+    all_results[env.name][variable_values] = results
     metrics = list(results.keys())
 
-    print("--------- REPORT ---------")
-    for metric in metrics:
-        print("(metric: %s)" % metric)
-        if len(variable_names) == 2 and len(results) == 1:
-            import pandas
-
-            data = {}
-            for vals, ret in all_results.items():
-                if vals[0] not in data:
-                    data[vals[0]] = {}
-                if vals[1] not in data[vals[0]]:
-                    data[vals[0]][vals[1]] = ret[metric] if ret else "-"
-            print(pandas.DataFrame(data))
-        else:
+    s = "# Report\n"
+    for env in configs.environments:
+        if env.name not in all_results:
+            continue
+        s += f"\n## {env.title or env.name}\n"
+        if env.report['type'] == 'raw':
             for vals, res in all_results.items():
-                print("Configs: ", list(zip(variable_names, vals)))
+                print("Configs: ", list(zip(env.variable_names, vals)))
                 print("Result: ", res)
+        elif env.report['type'] == 'table':
+            results = all_results[env.name]
+            val_row = env.variable_names.index(env.report['row'])
+            val_col = env.variable_names.index(env.report['col'])
+            for metric in metrics:
+                s += "\nResults (metric: %s)\n" % metric
+                data = [
+                    [None for _ in range(len(env.variable_values[val_col]))]
+                    for _ in range(len(env.variable_values[val_row]))
+                ]
+                for vals, ret in results.items():
+                    _val_row = env.variable_values[val_row].index(vals[val_row])
+                    _val_col = env.variable_values[val_col].index(vals[val_col])
+                    if data[_val_row][_val_col] is None:
+                        data[_val_row][_val_col] = "%.4f" % ret[metric] if ret else "-"
+                    else:
+                        data[_val_row][_val_col] += " / %4f" % ret[metric]
+                data = [[""] + env.variable_values[val_col]] + \
+                    [[row_header] + row for row, row_header in zip(data, env.variable_values[val_row])]
+                s += "\n" + table2str(data) + "\n"
+
+    print(s)
+    os.makedirs("model_reports", exist_ok=True)
+    with open(os.path.join("model_reports", f"{configs.config_name}.md"), "w") as f:
+        f.write(s)
 
 
 def main():
     configs = Configs(mode="train")
-
-    params_list, args = configs.params_list, configs.args
-
     all_results = {}
-    variable_names = list(params_list[0][0].keys())
 
-    for variable_values, params in params_list:
-        all_results[tuple([variable_values[name] for name in variable_names])] = None
+    if configs.args.env:
+        envs = [e for e in configs.environments if e.name in configs.args.env]
+    else:
+        envs = configs.environments
 
-    for variable_values, params in params_list:
-        launch_training(
-            configs.backend, params, args,
-            report_callback=lambda ret: update_results(
-                variable_names,
-                tuple([variable_values[name] for name in variable_names]),
-                ret, all_results))
+    for env in envs:
+        all_results[env.name] = {}
+        # init result list
+        for variable_values, params in zip(env.variables_list, env.parameters_list):
+            all_results[env.name][variable_values] = None
+
+    for env in envs:
+        for variable_values, params in zip(env.variables_list, env.parameters_list):
+            launch_training(
+                configs.backend, params, configs.args,
+                report_callback=lambda ret: update_results(
+                    env,
+                    variable_values,
+                    ret, all_results, configs))
 
 
 if __name__ == "__main__":

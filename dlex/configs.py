@@ -248,6 +248,18 @@ def str2bool(val):
         raise argparse.ArgumentTypeError('Boolean value expected.')
 
 
+@dataclass
+class Environment:
+    name: str
+    title: str
+    variable_names: List[str]
+    variable_values: List[List[Any]]
+    variables_list: List[Tuple[Any]]
+    parameters_list: List
+    report: Any
+    desc: str = None
+
+
 class Configs:
     """All configurations"""
     params_list: List[MainConfig]
@@ -258,7 +270,10 @@ class Configs:
         self.parse_args(argv)
 
         with open(self.config_path, 'r') as stream:
-            self.yaml_params = yaml.load(stream, Loader=Loader)
+            try:
+                self.yaml_params = yaml.load(stream, Loader=Loader)
+            except yaml.YAMLError:
+                raise Exception("Invalid config syntax.")
             self.backend = self.yaml_params['backend']
             if self.args.configs:
                 overridden_values = [s.split('=') for s in self.args.configs]
@@ -273,7 +288,8 @@ class Configs:
                     key = key.split('.')
                     _override_value(self.yaml_params, key, value)
 
-        self.params_list = self.get_params()
+        self._environments = []
+        self.load_configs()
 
     @property
     def config_path(self):
@@ -289,6 +305,10 @@ class Configs:
         else:
             assert len(paths) == 1
             return paths[0]
+
+    @property
+    def config_name(self):
+        return os.path.basename(self.config_path)
 
     def parse_args(self, argv=None):
         """Parse arguments."""
@@ -306,6 +326,12 @@ class Configs:
             required=False,
             dest="configs",
             help="values to override configs read from file"
+        )
+        parser.add_argument(
+            '--env',
+            nargs='+',
+            dest="env",
+            help="list of environments"
         )
         if self.mode == "train":
             parser.add_argument('--debug', action="store_true",
@@ -365,31 +391,59 @@ class Configs:
         else:
             self.args = parser.parse_args(argv)
 
-    def get_params(self) -> List[Tuple[Dict[str, Any], MainConfig]]:
-        """Load model configs from yaml file"""
-        try:
-            params_list = []  # there are multiple configs if variables are chosen from lists
-            variable_names = self.yaml_params['variables'].keys() if 'variables' in self.yaml_params else []
-            variable_values = self.yaml_params['variables'].values() if 'variables' in self.yaml_params else []
-            variable_values = [val if isinstance(val, list) else [val] for val in variable_values]
-            for combination in itertools.product(*variable_values):
-                variables = {name: val for name, val in zip(variable_names, combination)}
-                params = MainConfig(self.yaml_params, _variables=variables)
+    @property
+    def environments(self) -> List[Environment]:
+        return self._environments
 
-                # Assign extra parameters from args
-                params.mode = self.mode
-                params.path = self.args.config_path
-                params.verbose = bool(self.args.verbose)
-                params.dataset.num_workers = self.args.num_workers
-                if params.train is not None and params.train.num_workers is None:
-                    params.train.num_workers = self.args.num_workers
+    def load_configs(self) -> List[Tuple[Dict[str, Any], MainConfig]]:
+        if self.yaml_params['env']:
+            for env_name, env_prop in self.yaml_params['env'].items():
+                # Unfold params for every variable combination
+                variables_list = []
+                params_list = []  # there are multiple configs if variables are chosen from lists
+                variable_names = list(env_prop['variables'].keys()) if 'variables' in env_prop else []
+                variable_values = list(env_prop['variables'].values()) if 'variables' in env_prop else []
+                variable_values = [val if isinstance(val, list) else [val] for val in variable_values]
+                for combination in itertools.product(*variable_values):
+                    variables = {name: val for name, val in zip(variable_names, combination)}
+                    params = MainConfig(self.yaml_params, _variables=variables)
 
-                # Some config values are overwritten by command arguments
-                if self.args.batch_size is not None:
-                    params.train.batch_size = self.args.batch_size
-                params_list.append((variables, params))
+                    # Assign extra parameters from args
+                    params.mode = self.mode
+                    params.path = self.args.config_path
+                    params.verbose = bool(self.args.verbose)
+                    params.dataset.num_workers = self.args.num_workers
+                    if params.train is not None and params.train.num_workers is None:
+                        params.train.num_workers = self.args.num_workers
 
-            return params_list
-        except yaml.YAMLError:
-            raise Exception("Invalid config syntax.")
+                    # Some config values are overwritten by command arguments
+                    if self.args.batch_size is not None:
+                        params.train.batch_size = self.args.batch_size
+                    variables_list.append(tuple([variables[name] for name in variable_names]))
+                    params_list.append(params)
 
+                report = {}
+                if 'report' in env_prop:
+                    report['type'] = env_prop['report']['type']
+                    if report['type'] == 'table':
+                        report['row'] = env_prop['report']['row']
+                        report['col'] = env_prop['report']['col']
+                else:
+                    report['type'] = 'raw'
+
+                self._environments.append(Environment(
+                    name=env_name,
+                    title=env_prop['title'],
+                    desc=env_prop.get('desc', None),
+                    variable_names=variable_names,
+                    variable_values=variable_values,
+                    variables_list=variables_list,
+                    parameters_list=params_list,
+                    report=report
+                ))
+        else:
+            self._environments.append(Environment(
+                name="main",
+                variables_list=[{}],
+                parameters_list=[MainConfig(self.yaml_params)]
+            ))
