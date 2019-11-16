@@ -77,3 +77,12 @@ def load_model(mode, argv=None, params=None, args=None):
         init_dirs(params)
 
     return params, args, model, datasets
+
+
+def set_seed(seed):
+    import random
+    random.seed(seed)
+    import numpy
+    numpy.random.seed(seed)
+    import torch
+    torch.manual_seed(seed)

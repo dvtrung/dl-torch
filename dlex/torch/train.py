@@ -1,8 +1,10 @@
 """Train a model."""
+from datetime import datetime
+import os
 import random
 import sys
 import time
-from datetime import datetime
+from typing import Dict, Callable
 
 import torch
 import torch.multiprocessing as mp
@@ -13,8 +15,8 @@ from dlex.configs import MainConfig
 from dlex.torch.datatypes import Datasets
 from dlex.torch.evaluate import evaluate
 from dlex.torch.models.base import DataParellelModel
-from dlex.torch.utils.utils import load_model
-from dlex.utils.logging import logger, epoch_info_logger, epoch_step_info_logger, logging, log_result, json_dumps, \
+from dlex.torch.utils.utils import load_model, set_seed
+from dlex.utils.logging import logger, epoch_info_logger, epoch_step_info_logger, log_result, json_dumps, \
     log_outputs
 
 DEBUG_NUM_ITERATIONS = 5
@@ -25,13 +27,19 @@ def train(
         args,
         model: DataParellelModel,
         datasets: Datasets,
-        summary_writer):
+        summary_writer,
+        report_callback: Callable[[Dict[str, float], bool], None] = None):
     epoch = model.global_step // len(datasets.train)
     num_samples = model.global_step % len(datasets.train)
     ret = {}
 
     # num_samples = 0
     for current_epoch in range(epoch + 1, epoch + params.train.num_epochs + 1):
+        if args.report:
+            os.system('clear')
+            if report_callback:
+                report_callback(None, False)
+
         log_dict = dict(epoch=current_epoch)
         log_dict['total_time'], log_dict['loss'] = train_epoch(
             current_epoch, params, args,
@@ -106,6 +114,9 @@ def train(
                     log_dict['test_result'][metric],
                     test_best_result[metric]['result'][metric],
                 ))
+
+        if report_callback:  # update partial results
+            report_callback(ret, False)
     return ret
 
 
@@ -162,7 +173,7 @@ def train_epoch(
             if end / 100 < num_samples / len(datasets.train):
                 continue
             batch_size = batch_sizes[start]
-            logger.info("Batch size: %d", batch_size)
+            logger.debug("Batch size: %d", batch_size)
             data_train = datasets.train.get_iter(
                 batch_size,
                 start=max(start * len(datasets.train) // 100, num_samples),
@@ -204,7 +215,7 @@ def train_epoch(
                 # Save model
                 is_passed, last_save = check_interval_passed(last_save, params.train.save_every, progress)
                 if is_passed:
-                    logger.info("Saving checkpoint...")
+                    logger.debug("Saving checkpoint...")
                     if args.save_all:
                         model.save_checkpoint("epoch-%02d" % current_epoch)
                     else:
@@ -227,35 +238,54 @@ def train_epoch(
     return str(end_time - start_time), model.epoch_loss
 
 
-def main(argv=None, params=None, args=None, report_callback=None):
+def main(
+        argv=None,
+        params=None,
+        args=None,
+        report_callback: Callable[[Dict[str, float], bool], None] = None):
+    if args.report:
+        report_callback(None, False)
+
     mp.set_start_method('spawn', force=True)
     """Read config and train model."""
-    params, args, model, datasets = load_model("train", argv, params, args)
-    torch.manual_seed(params.seed)
-    if args.debug:
-        logger.setLevel(logging.DEBUG)
 
-    logger.info("Training started.")
+    logger.debug("Training started.")
     # summary_writer = SummaryWriter()
     summary_writer = None
 
     if args.num_processes == 1:
-        res = train(params, args, model, datasets, summary_writer=summary_writer)
+        if params.train.cross_validation:
+            set_seed(params.random_seed)
+            results = []
+            for i in range(params.train.cross_validation):
+                params.dataset.cross_validation_fold = i
+                params.dataset.cross_validation = params.train.cross_validation
+                params, args, model, datasets = load_model("train", argv, params, args)
+                res = train(params, args, model, datasets, summary_writer=summary_writer)
+                results.append(res)
+                if report_callback:
+                    report_callback({
+                        metric: sum([r[metric] for r in results]) / len(results) for metric in results[0]}, False)
+        else:
+            params, args, model, datasets = load_model("train", argv, params, args)
+            set_seed(params.random_seed)
+            res = train(params, args, model, datasets, summary_writer=summary_writer, report_callback=report_callback)
+
         if report_callback:
-            report_callback(res)
+            report_callback(res, True)
         return res
-    else:
-        model.share_memory()
-        # TODO: Implement multiprocessing
-        mp.set_start_method('spawn')
-        processes = []
-        for rank in range(args.num_processes):
-            p = mp.Process(target=train, args=(model, datasets))
-            # We first train the model across `num_processes` processes
-            p.start()
-            processes.append(p)
-        for p in processes:
-            p.join()
+    #else:
+    #    model.share_memory()
+    #    # TODO: Implement multiprocessing
+    #    mp.set_start_method('spawn')
+    #    processes = []
+    #    for rank in range(args.num_processes):
+    #        p = mp.Process(target=train, args=(model, datasets))
+    #        # We first train the model across `num_processes` processes
+    #        p.start()
+    #        processes.append(p)
+    #    for p in processes:
+    #        p.join()
 
 
 if __name__ == "__main__":

@@ -140,7 +140,7 @@ class TrainConfig:
     max_grad_norm: float = 5.0
     save_every: str = "1e"
     log_every: str = "5s"
-    cross_validation: bool = False
+    cross_validation: int = None
 
 
 @dataclass
@@ -159,7 +159,7 @@ class MainConfig(AttrDict):
     """Dictionary with key as property."""
     model = None
     training_id = "default"
-    seed = 1
+    random_seed = 1
     shuffle = False
     batch_size = None
     path = None
@@ -308,7 +308,7 @@ class Configs:
 
     @property
     def config_name(self):
-        return os.path.basename(self.config_path)
+        return os.path.splitext(os.path.basename(self.config_path))[0]
 
     def parse_args(self, argv=None):
         """Parse arguments."""
@@ -332,6 +332,11 @@ class Configs:
             nargs='+',
             dest="env",
             help="list of environments"
+        )
+        parser.add_argument(
+            '--report',
+            action="store_true",
+            help="show clean screen with report"
         )
         if self.mode == "train":
             parser.add_argument('--debug', action="store_true",
@@ -429,11 +434,16 @@ class Configs:
                         report['row'] = env_prop['report']['row']
                         report['col'] = env_prop['report']['col']
                 else:
-                    report['type'] = 'raw'
+                    if len(variable_names) == 2:
+                        report['type'] = 'table'
+                        report['row'] = variable_names[0]
+                        report['col'] = variable_names[1]
+                    else:
+                        report['type'] = 'raw'
 
                 self._environments.append(Environment(
                     name=env_name,
-                    title=env_prop['title'],
+                    title=env_prop.get('title', env_name),
                     desc=env_prop.get('desc', None),
                     variable_names=variable_names,
                     variable_values=variable_values,

@@ -11,4 +11,4 @@ class SVC(_SVC):
 
     def score(self, X, y, metric="acc"):
         if metric == "acc":
-            return super().score(X, y)
+            return super().score(X, y) * 100

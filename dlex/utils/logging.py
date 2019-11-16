@@ -14,8 +14,8 @@ colorlog.basicConfig(format=(
 ))
 
 logger = logging.getLogger('dlex')
-# logger.setLevel(logging.INFO)
-logger.setLevel(logging.DEBUG)
+logger.setLevel(logging.INFO)
+# logger.setLevel(logging.DEBUG)
 # Here we define our formatter
 # formatter = logging.Formatter(Fore.BLUE + '%(asctime)s - %(levelname)s - %(message)s' + Style.RESET_ALL)
 

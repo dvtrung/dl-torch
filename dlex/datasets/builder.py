@@ -103,10 +103,10 @@ class DatasetBuilder:
         :return:
         """
         if metric == "acc":
-            return accuracy_score(pred, ref)
+            return accuracy_score(pred, ref) * 100
         elif metric == "err":
             ret = self.evaluate(pred, ref, "acc")
-            return 1 - ret
+            return 100 - ret
         else:
             raise NotImplementedError()
 

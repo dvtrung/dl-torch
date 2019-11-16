@@ -73,9 +73,6 @@ def train(params, args, report_callback=None):
         params.set('training_id', datetime.now().strftime('%Y%m%d-%H%M%S'))
         init_dirs(params)
 
-    if args.debug:
-        logger.setLevel(logging.DEBUG)
-
     logger.info("Dataset: %s. Model: %s", str(dataset_builder), str(model_cls))
     logger.info("Training started.")
 
