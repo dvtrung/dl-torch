@@ -1,17 +1,19 @@
+.. _configs:
+
 Configurations
 ================================
 
 Top-level entries
 -----------------
 
-``backend``:
+backend:
   Must be included. The following backends are supported
 
   - pytorch / torch: use ``dlex.torch.BaseModel`` as base model and ``dlex.datasets.torch.Dataset`` as base dataset
   - tensorflow / tf: partially supported
   - sklearn: partially supported
 
-``random_seed``:
+random_seed:
   Random seed for all randomization engines (numpy, random, torch, tensorflow etc.)
 
 Environment
@@ -27,16 +29,16 @@ Each environment has a name and several entries. The argument ``--env``, if spec
 
 Entries for each variable:
 
-``variables``:
+variables:
   Each environment comes with a list of variables and values. Value of each variable can be a single value or a list. If it is a list, all possible combinations of variable values will be examined.
 
-``report``:
+report:
   When some variables are assigned multiple values, each combination of them will give one or some results. Use ``report`` to specify how these results are displayed in report.
 
   - ``type``: ``table`` or ``raw``
   - ``row`` / ``col``: when type is table, indicate name of the variable displayed as row / col
 
-``default``:
+default:
   Set to false if the env is not included in default execution. In that case, it can only be run with ``--env`` in the command. All the environments are run by default.
 
 Below is an example of a config file with environments.
@@ -70,11 +72,26 @@ Below is an example of a config file with environments.
 Model
 ------
 
+Model option is defined in ``model`` at top level, which is passed to the model class and can be accessed in ``self.configs``. Standard configs include:
+
+name:
+  relative path to model class (similar to importing a module)
+
+and model hyper-parameters (dimension, number of layers, etc.)
+
+
 Data Set
 ---------
 
+Data set option is defined in ``dataset`` at top level, which is passed to the model class and can be accessed in ``self.configs``. Standard configs include:
+
+name:
+  relative path to database class (inherited from ``dlex.datasets.DatasetBuilder``)
+
 Train
 -----
+
+train entry is mapped into ``TrainConfig`` with the following fields and methods
 
 .. autoclass:: dlex.configs.TrainConfig
   :members:
@@ -84,6 +101,8 @@ Train
 
 Test
 ----
+
+test entry is mapped into ``TrainConfig`` with the following fields and methods
 
 .. autoclass:: dlex.configs.TestConfig
   :members:

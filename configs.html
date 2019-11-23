@@ -159,18 +159,18 @@
            <div itemprop="articleBody">
             
   <div class="section" id="configurations">
-<h1>Configurations<a class="headerlink" href="#configurations" title="Permalink to this headline">¶</a></h1>
+<span id="configs"></span><h1>Configurations<a class="headerlink" href="#configurations" title="Permalink to this headline">¶</a></h1>
 <div class="section" id="top-level-entries">
 <h2>Top-level entries<a class="headerlink" href="#top-level-entries" title="Permalink to this headline">¶</a></h2>
 <dl class="simple">
-<dt><code class="docutils literal notranslate"><span class="pre">backend</span></code>:</dt><dd><p>Must be included. The following backends are supported</p>
+<dt>backend:</dt><dd><p>Must be included. The following backends are supported</p>
 <ul class="simple">
 <li><p>pytorch / torch: use <code class="docutils literal notranslate"><span class="pre">dlex.torch.BaseModel</span></code> as base model and <code class="docutils literal notranslate"><span class="pre">dlex.datasets.torch.Dataset</span></code> as base dataset</p></li>
 <li><p>tensorflow / tf: partially supported</p></li>
 <li><p>sklearn: partially supported</p></li>
 </ul>
 </dd>
-<dt><code class="docutils literal notranslate"><span class="pre">random_seed</span></code>:</dt><dd><p>Random seed for all randomization engines (numpy, random, torch, tensorflow etc.)</p>
+<dt>random_seed:</dt><dd><p>Random seed for all randomization engines (numpy, random, torch, tensorflow etc.)</p>
 </dd>
 </dl>
 </div>
@@ -183,15 +183,15 @@
 </div>
 <p>Entries for each variable:</p>
 <dl class="simple">
-<dt><code class="docutils literal notranslate"><span class="pre">variables</span></code>:</dt><dd><p>Each environment comes with a list of variables and values. Value of each variable can be a single value or a list. If it is a list, all possible combinations of variable values will be examined.</p>
+<dt>variables:</dt><dd><p>Each environment comes with a list of variables and values. Value of each variable can be a single value or a list. If it is a list, all possible combinations of variable values will be examined.</p>
 </dd>
-<dt><code class="docutils literal notranslate"><span class="pre">report</span></code>:</dt><dd><p>When some variables are assigned multiple values, each combination of them will give one or some results. Use <code class="docutils literal notranslate"><span class="pre">report</span></code> to specify how these results are displayed in report.</p>
+<dt>report:</dt><dd><p>When some variables are assigned multiple values, each combination of them will give one or some results. Use <code class="docutils literal notranslate"><span class="pre">report</span></code> to specify how these results are displayed in report.</p>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">type</span></code>: <code class="docutils literal notranslate"><span class="pre">table</span></code> or <code class="docutils literal notranslate"><span class="pre">raw</span></code></p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">row</span></code> / <code class="docutils literal notranslate"><span class="pre">col</span></code>: when type is table, indicate name of the variable displayed as row / col</p></li>
 </ul>
 </dd>
-<dt><code class="docutils literal notranslate"><span class="pre">default</span></code>:</dt><dd><p>Set to false if the env is not included in default execution. In that case, it can only be run with <code class="docutils literal notranslate"><span class="pre">--env</span></code> in the command. All the environments are run by default.</p>
+<dt>default:</dt><dd><p>Set to false if the env is not included in default execution. In that case, it can only be run with <code class="docutils literal notranslate"><span class="pre">--env</span></code> in the command. All the environments are run by default.</p>
 </dd>
 </dl>
 <p>Below is an example of a config file with environments.</p>
@@ -223,12 +223,24 @@
 </div>
 <div class="section" id="model">
 <h2>Model<a class="headerlink" href="#model" title="Permalink to this headline">¶</a></h2>
+<p>Model option is defined in <code class="docutils literal notranslate"><span class="pre">model</span></code> at top level, which is passed to the model class and can be accessed in <code class="docutils literal notranslate"><span class="pre">self.configs</span></code>. Standard configs include:</p>
+<dl class="simple">
+<dt>name:</dt><dd><p>relative path to model class (similar to importing a module)</p>
+</dd>
+</dl>
+<p>and model hyper-parameters (dimension, number of layers, etc.)</p>
 </div>
 <div class="section" id="data-set">
 <h2>Data Set<a class="headerlink" href="#data-set" title="Permalink to this headline">¶</a></h2>
+<p>Data set option is defined in <code class="docutils literal notranslate"><span class="pre">dataset</span></code> at top level, which is passed to the model class and can be accessed in <code class="docutils literal notranslate"><span class="pre">self.configs</span></code>. Standard configs include:</p>
+<dl class="simple">
+<dt>name:</dt><dd><p>relative path to database class (inherited from <code class="docutils literal notranslate"><span class="pre">dlex.datasets.DatasetBuilder</span></code>)</p>
+</dd>
+</dl>
 </div>
 <div class="section" id="train">
 <h2>Train<a class="headerlink" href="#train" title="Permalink to this headline">¶</a></h2>
+<p>train entry is mapped into <code class="docutils literal notranslate"><span class="pre">TrainConfig</span></code> with the following fields and methods</p>
 <dl class="class">
 <dt id="dlex.configs.TrainConfig">
 <em class="property">class </em><code class="sig-prename descclassname">dlex.configs.</code><code class="sig-name descname">TrainConfig</code><span class="sig-paren">(</span><em class="sig-param">num_epochs: int = None</em>, <em class="sig-param">num_workers: int = None</em>, <em class="sig-param">batch_size: int = None</em>, <em class="sig-param">optimizer: dlex.configs.OptimizerConfig = None</em>, <em class="sig-param">lr_scheduler: dict = None</em>, <em class="sig-param">eval: list = &lt;factory&gt;</em>, <em class="sig-param">max_grad_norm: float = 5.0</em>, <em class="sig-param">save_every: str = '1e'</em>, <em class="sig-param">log_every: str = '5s'</em>, <em class="sig-param">cross_validation: int = None</em><span class="sig-paren">)</span><a class="headerlink" href="#dlex.configs.TrainConfig" title="Permalink to this definition">¶</a></dt>
@@ -263,6 +275,7 @@ Examples: 100s, 30m, 2h, 1e</p></li>
 </div>
 <div class="section" id="test">
 <h2>Test<a class="headerlink" href="#test" title="Permalink to this headline">¶</a></h2>
+<p>test entry is mapped into <code class="docutils literal notranslate"><span class="pre">TrainConfig</span></code> with the following fields and methods</p>
 <dl class="class">
 <dt id="dlex.configs.TestConfig">
 <em class="property">class </em><code class="sig-prename descclassname">dlex.configs.</code><code class="sig-name descname">TestConfig</code><span class="sig-paren">(</span><em class="sig-param">batch_size: int = None</em>, <em class="sig-param">metrics: list = &lt;factory&gt;</em><span class="sig-paren">)</span><a class="headerlink" href="#dlex.configs.TestConfig" title="Permalink to this definition">¶</a></dt>
