@@ -35,7 +35,7 @@
   <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="dlex.datasets.BaseDataset" href="modules/base_dataset.html" />
+    <link rel="next" title="Data Set" href="modules/dataset.html" />
     <link rel="prev" title="Getting Started" href="getting_started.html" /> 
 </head>
 
@@ -84,12 +84,16 @@
 <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="getting_started.html">Getting Started</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Configurations</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#top-level-entries">Top-level entries</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#environment">Environment</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#model">Model</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#data-set">Data Set</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#train">Train</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#test">Test</a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="modules/base_dataset.html">dlex.datasets.BaseDataset</a></li>
-<li class="toctree-l1"><a class="reference internal" href="modules/base_model.html">dlex.torch.models.BaseModel</a></li>
-<li class="toctree-l1"><a class="reference internal" href="modules/dataset_builder.html">dlex.datasets.DatasetBuilder</a></li>
+<li class="toctree-l1"><a class="reference internal" href="modules/dataset.html">Data Set</a></li>
+<li class="toctree-l1"><a class="reference internal" href="modules/model.html">Model</a></li>
 </ul>
 
             
@@ -156,27 +160,93 @@
             
   <div class="section" id="configurations">
 <h1>Configurations<a class="headerlink" href="#configurations" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="top-level-entries">
+<h2>Top-level entries<a class="headerlink" href="#top-level-entries" title="Permalink to this headline">¶</a></h2>
+<dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">backend</span></code>:</dt><dd><p>Must be included. The following backends are supported</p>
+<ul class="simple">
+<li><p>pytorch / torch: use <code class="docutils literal notranslate"><span class="pre">dlex.torch.BaseModel</span></code> as base model and <code class="docutils literal notranslate"><span class="pre">dlex.datasets.torch.Dataset</span></code> as base dataset</p></li>
+<li><p>tensorflow / tf: partially supported</p></li>
+<li><p>sklearn: partially supported</p></li>
+</ul>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">random_seed</span></code>:</dt><dd><p>Random seed for all randomization engines (numpy, random, torch, tensorflow etc.)</p>
+</dd>
+</dl>
+</div>
+<div class="section" id="environment">
+<h2>Environment<a class="headerlink" href="#environment" title="Permalink to this headline">¶</a></h2>
+<p>Assume that you want to tune hyper-parameters or run several experiments with similar configurations (e.g. run a model on different dataset). Environment provides a convenient interface to define multiple experiments within a single configuration file.</p>
+<p>Each environment has a name and several entries. The argument <code class="docutils literal notranslate"><span class="pre">--env</span></code>, if specified, indicates which environment(s) to run.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">python</span> <span class="o">-</span><span class="n">m</span> <span class="n">dlex</span><span class="o">.</span><span class="n">train</span> <span class="o">-</span><span class="n">c</span> <span class="o">./</span><span class="n">model_configs</span><span class="o">/</span><span class="n">demo</span><span class="o">.</span><span class="n">yml</span> <span class="o">--</span><span class="n">env</span> <span class="n">small</span>
+</pre></div>
+</div>
+<p>Entries for each variable:</p>
+<dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">variables</span></code>:</dt><dd><p>Each environment comes with a list of variables and values. Value of each variable can be a single value or a list. If it is a list, all possible combinations of variable values will be examined.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">report</span></code>:</dt><dd><p>When some variables are assigned multiple values, each combination of them will give one or some results. Use <code class="docutils literal notranslate"><span class="pre">report</span></code> to specify how these results are displayed in report.</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">type</span></code>: <code class="docutils literal notranslate"><span class="pre">table</span></code> or <code class="docutils literal notranslate"><span class="pre">raw</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">row</span></code> / <code class="docutils literal notranslate"><span class="pre">col</span></code>: when type is table, indicate name of the variable displayed as row / col</p></li>
+</ul>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">default</span></code>:</dt><dd><p>Set to false if the env is not included in default execution. In that case, it can only be run with <code class="docutils literal notranslate"><span class="pre">--env</span></code> in the command. All the environments are run by default.</p>
+</dd>
+</dl>
+<p>Below is an example of a config file with environments.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">env</span><span class="p">:</span>
+  <span class="n">small</span><span class="p">:</span>
+    <span class="n">variables</span><span class="p">:</span>
+      <span class="n">dataset</span><span class="p">:</span> <span class="p">[</span><span class="nb">list</span> <span class="n">of</span> <span class="n">data</span> <span class="n">sets</span><span class="p">]</span>
+      <span class="n">num_layers</span><span class="p">:</span> <span class="p">[</span><span class="nb">list</span> <span class="n">of</span> <span class="n">model</span> <span class="n">properties</span> <span class="s1">&#39;num_layers&#39;</span><span class="p">]</span>
+      <span class="n">batch_size</span><span class="p">:</span> <span class="mi">128</span>
+    <span class="n">report</span><span class="p">:</span>
+      <span class="nb">type</span><span class="p">:</span> <span class="n">table</span>
+      <span class="n">row</span><span class="p">:</span> <span class="n">dataset</span>
+      <span class="n">col</span><span class="p">:</span> <span class="n">num_layers</span>
+  <span class="n">large</span><span class="p">:</span>
+    <span class="n">variables</span><span class="p">:</span>
+      <span class="n">dataset</span><span class="p">:</span> <span class="p">[</span><span class="nb">list</span> <span class="n">of</span> <span class="n">data</span> <span class="n">sets</span><span class="p">]</span>
+      <span class="n">batch_size</span><span class="p">:</span> <span class="mi">32</span>
+      <span class="n">num_layers</span><span class="p">:</span> <span class="mi">19</span>
+<span class="n">dataset</span><span class="p">:</span>
+  <span class="n">name</span><span class="p">:</span> <span class="o">~</span><span class="n">dataset</span>
+  <span class="o">...</span>
+<span class="n">model</span><span class="p">:</span>
+  <span class="n">num_layers</span><span class="p">:</span> <span class="o">~</span><span class="n">num_layers</span>
+  <span class="o">...</span>
+<span class="n">train</span><span class="p">:</span>
+  <span class="n">batch_size</span><span class="p">:</span> <span class="o">~</span><span class="n">batch_size</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="model">
+<h2>Model<a class="headerlink" href="#model" title="Permalink to this headline">¶</a></h2>
+</div>
+<div class="section" id="data-set">
+<h2>Data Set<a class="headerlink" href="#data-set" title="Permalink to this headline">¶</a></h2>
+</div>
 <div class="section" id="train">
 <h2>Train<a class="headerlink" href="#train" title="Permalink to this headline">¶</a></h2>
 <dl class="class">
 <dt id="dlex.configs.TrainConfig">
-<em class="property">class </em><code class="sig-prename descclassname">dlex.configs.</code><code class="sig-name descname">TrainConfig</code><span class="sig-paren">(</span><em class="sig-param">num_epochs: int = None</em>, <em class="sig-param">num_workers: int = None</em>, <em class="sig-param">batch_size: int = None</em>, <em class="sig-param">optimizer: dlex.configs.OptimizerConfig = None</em>, <em class="sig-param">lr_scheduler: dict = None</em>, <em class="sig-param">eval: list = &lt;factory&gt;</em>, <em class="sig-param">max_grad_norm: float = 5.0</em>, <em class="sig-param">save_every: str = '1e'</em>, <em class="sig-param">log_every: str = '5s'</em>, <em class="sig-param">cross_validation: bool = False</em><span class="sig-paren">)</span><a class="headerlink" href="#dlex.configs.TrainConfig" title="Permalink to this definition">¶</a></dt>
-<dd><dl>
-<dt>Args:</dt><dd><p>num_epochs (int): Number of epochs
-batch_size (int): Batch size
-optimizer (OptimizerConfig):
-lr_scheduler (dict):
-eval (list): List of sets to be evaluated during training. Empty: no evaluation.</p>
-<blockquote>
-<div><p>Accepted values: <cite>test</cite>, <cite>dev</cite> (or <cite>valid</cite>).
-If both test and valid sets are presented, the test result for model with best valid result will also be recoreded. <cite>dev</cite> and <cite>valid</cite> can be used interchangeable</p>
-</div></blockquote>
-<p>max_grad_norm (float):
-save_every (str): Time interval for saving model. Use s, m, h for number of seconds, minutes, hours. Use e for number of epochs.</p>
-<blockquote>
-<div><p>Examples: 100s, 30m, 2h, 1e</p>
-</div></blockquote>
-<p>log_every (str): Time interval for logging to file</p>
+<em class="property">class </em><code class="sig-prename descclassname">dlex.configs.</code><code class="sig-name descname">TrainConfig</code><span class="sig-paren">(</span><em class="sig-param">num_epochs: int = None</em>, <em class="sig-param">num_workers: int = None</em>, <em class="sig-param">batch_size: int = None</em>, <em class="sig-param">optimizer: dlex.configs.OptimizerConfig = None</em>, <em class="sig-param">lr_scheduler: dict = None</em>, <em class="sig-param">eval: list = &lt;factory&gt;</em>, <em class="sig-param">max_grad_norm: float = 5.0</em>, <em class="sig-param">save_every: str = '1e'</em>, <em class="sig-param">log_every: str = '5s'</em>, <em class="sig-param">cross_validation: int = None</em><span class="sig-paren">)</span><a class="headerlink" href="#dlex.configs.TrainConfig" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>num_epochs</strong> (<em>int</em>) – Number of epochs</p></li>
+<li><p><strong>batch_size</strong> (<em>int</em>) – Batch size</p></li>
+<li><p><strong>optimizer</strong> (<a class="reference internal" href="#dlex.configs.OptimizerConfig" title="dlex.configs.OptimizerConfig"><em>OptimizerConfig</em></a>) – </p></li>
+<li><p><strong>(</strong><strong>dict</strong><strong>)</strong> (<em>lr_scheduler</em>) – </p></li>
+<li><p><strong>eval</strong> (<em>list</em>) – List of sets to be evaluated during training. Empty: no evaluation.
+Accepted values: <cite>test</cite>, <cite>dev</cite> (or <cite>valid</cite>).
+If both test and valid sets are presented, the test result for model with best valid result will also be recoreded. <cite>dev</cite> and <cite>valid</cite> can be used interchangeable</p></li>
+<li><p><strong>max_grad_norm</strong> (<em>float</em>) – </p></li>
+<li><p><strong>save_every</strong> (<em>str</em>) – Time interval for saving model. Use s, m, h for number of seconds, minutes, hours. Use e for number of epochs.
+Examples: 100s, 30m, 2h, 1e</p></li>
+<li><p><strong>log_every</strong> (<em>str</em>) – Time interval for logging to file</p></li>
+</ul>
 </dd>
 </dl>
 </dd></dl>
@@ -186,6 +256,22 @@ save_every (str): Time interval for saving model. Use s, m, h for number of seco
 <em class="property">class </em><code class="sig-prename descclassname">dlex.configs.</code><code class="sig-name descname">OptimizerConfig</code><span class="sig-paren">(</span><em class="sig-param">name: str = 'sgd'</em><span class="sig-paren">)</span><a class="headerlink" href="#dlex.configs.OptimizerConfig" title="Permalink to this definition">¶</a></dt>
 <dd><dl class="simple">
 <dt>Args:</dt><dd><p>name (str): One of sgd, adam</p>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+<div class="section" id="test">
+<h2>Test<a class="headerlink" href="#test" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="dlex.configs.TestConfig">
+<em class="property">class </em><code class="sig-prename descclassname">dlex.configs.</code><code class="sig-name descname">TestConfig</code><span class="sig-paren">(</span><em class="sig-param">batch_size: int = None</em>, <em class="sig-param">metrics: list = &lt;factory&gt;</em><span class="sig-paren">)</span><a class="headerlink" href="#dlex.configs.TestConfig" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>batch_size</strong> (<em>int</em>) – </p></li>
+<li><p><strong>metrics</strong> (<em>list</em>) – List of metrics for evaluation.</p></li>
+</ul>
 </dd>
 </dl>
 </dd></dl>
@@ -201,7 +287,7 @@ save_every (str): Time interval for saving model. Use s, m, h for number of seco
   
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
       
-        <a href="modules/base_dataset.html" class="btn btn-neutral float-right" title="dlex.datasets.BaseDataset" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+        <a href="modules/dataset.html" class="btn btn-neutral float-right" title="Data Set" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
         <a href="getting_started.html" class="btn btn-neutral float-left" title="Getting Started" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>

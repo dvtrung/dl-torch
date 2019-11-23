@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>dlex.datasets.DatasetBuilder &mdash; dlex  documentation</title>
+  <title>Data Set &mdash; dlex  documentation</title>
   
 
   
@@ -35,7 +35,8 @@
   <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
-    <link rel="prev" title="dlex.torch.models.BaseModel" href="base_model.html" /> 
+    <link rel="next" title="Model" href="model.html" />
+    <link rel="prev" title="Configurations" href="../configs.html" /> 
 </head>
 
 <body class="wy-body-for-nav">
@@ -83,9 +84,8 @@
 <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="../getting_started.html">Getting Started</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../configs.html">Configurations</a></li>
-<li class="toctree-l1"><a class="reference internal" href="base_dataset.html">dlex.datasets.BaseDataset</a></li>
-<li class="toctree-l1"><a class="reference internal" href="base_model.html">dlex.torch.models.BaseModel</a></li>
-<li class="toctree-l1 current"><a class="current reference internal" href="#">dlex.datasets.DatasetBuilder</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Data Set</a></li>
+<li class="toctree-l1"><a class="reference internal" href="model.html">Model</a></li>
 </ul>
 
             
@@ -131,13 +131,13 @@
     
       <li><a href="../index.html">Docs</a> &raquo;</li>
         
-      <li>dlex.datasets.DatasetBuilder</li>
+      <li>Data Set</li>
     
     
       <li class="wy-breadcrumbs-aside">
         
             
-            <a href="../_sources/modules/dataset_builder.rst.txt" rel="nofollow"> View page source</a>
+            <a href="../_sources/modules/dataset.rst.txt" rel="nofollow"> View page source</a>
           
         
       </li>
@@ -150,16 +150,16 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
             
-  <div class="section" id="dlex-datasets-datasetbuilder">
-<h1>dlex.datasets.DatasetBuilder<a class="headerlink" href="#dlex-datasets-datasetbuilder" title="Permalink to this headline">¶</a></h1>
+  <div class="section" id="data-set">
+<h1>Data Set<a class="headerlink" href="#data-set" title="Permalink to this headline">¶</a></h1>
 <dl class="class">
-<dt id="dlex.datasets.builder.DatasetBuilder">
-<em class="property">class </em><code class="sig-prename descclassname">dlex.datasets.builder.</code><code class="sig-name descname">DatasetBuilder</code><span class="sig-paren">(</span><em class="sig-param">params: dlex.configs.AttrDict</em><span class="sig-paren">)</span><a class="headerlink" href="#dlex.datasets.builder.DatasetBuilder" title="Permalink to this definition">¶</a></dt>
+<dt id="dlex.datasets.DatasetBuilder">
+<em class="property">class </em><code class="sig-prename descclassname">dlex.datasets.</code><code class="sig-name descname">DatasetBuilder</code><span class="sig-paren">(</span><em class="sig-param">params: dlex.configs.MainConfig</em><span class="sig-paren">)</span><a class="headerlink" href="#dlex.datasets.DatasetBuilder" title="Permalink to this definition">¶</a></dt>
 <dd><p>This is a base class for preparing data. It should handle downloading the data set and creating all files
 required for training.</p>
 <dl class="method">
-<dt id="dlex.datasets.builder.DatasetBuilder.download_and_extract">
-<code class="sig-name descname">download_and_extract</code><span class="sig-paren">(</span><em class="sig-param">url: str</em>, <em class="sig-param">folder_path: str = None</em><span class="sig-paren">)</span><a class="headerlink" href="#dlex.datasets.builder.DatasetBuilder.download_and_extract" title="Permalink to this definition">¶</a></dt>
+<dt id="dlex.datasets.DatasetBuilder.download_and_extract">
+<code class="sig-name descname">download_and_extract</code><span class="sig-paren">(</span><em class="sig-param">url: str</em>, <em class="sig-param">folder_path: str = None</em>, <em class="sig-param">filename: str = None</em><span class="sig-paren">)</span><a class="headerlink" href="#dlex.datasets.DatasetBuilder.download_and_extract" title="Permalink to this definition">¶</a></dt>
 <dd><p>Download and extract from url</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
@@ -172,8 +172,8 @@ required for training.</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="dlex.datasets.builder.DatasetBuilder.evaluate">
-<em class="property">abstract </em><code class="sig-name descname">evaluate</code><span class="sig-paren">(</span><em class="sig-param">pred</em>, <em class="sig-param">ref</em>, <em class="sig-param">metric: str</em><span class="sig-paren">)</span><a class="headerlink" href="#dlex.datasets.builder.DatasetBuilder.evaluate" title="Permalink to this definition">¶</a></dt>
+<dt id="dlex.datasets.DatasetBuilder.evaluate">
+<em class="property">abstract </em><code class="sig-name descname">evaluate</code><span class="sig-paren">(</span><em class="sig-param">pred</em>, <em class="sig-param">ref</em>, <em class="sig-param">metric: str</em><span class="sig-paren">)</span><a class="headerlink" href="#dlex.datasets.DatasetBuilder.evaluate" title="Permalink to this definition">¶</a></dt>
 <dd><dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
@@ -189,8 +189,8 @@ required for training.</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="dlex.datasets.builder.DatasetBuilder.format_output">
-<em class="property">abstract </em><code class="sig-name descname">format_output</code><span class="sig-paren">(</span><em class="sig-param">y_pred</em>, <em class="sig-param">batch_item: dlex.torch.datatypes.BatchItem</em><span class="sig-paren">)</span> &#x2192; Tuple[str, str, str]<a class="headerlink" href="#dlex.datasets.builder.DatasetBuilder.format_output" title="Permalink to this definition">¶</a></dt>
+<dt id="dlex.datasets.DatasetBuilder.format_output">
+<em class="property">abstract </em><code class="sig-name descname">format_output</code><span class="sig-paren">(</span><em class="sig-param">y_pred</em>, <em class="sig-param">batch_item: dlex.torch.datatypes.BatchItem</em><span class="sig-paren">)</span> &#x2192; Tuple[str, str, str]<a class="headerlink" href="#dlex.datasets.DatasetBuilder.format_output" title="Permalink to this definition">¶</a></dt>
 <dd><p>Get representations of model inputs and results in readable format</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
@@ -206,26 +206,26 @@ required for training.</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="dlex.datasets.builder.DatasetBuilder.get_processed_data_dir">
-<code class="sig-name descname">get_processed_data_dir</code><span class="sig-paren">(</span><span class="sig-paren">)</span> &#x2192; str<a class="headerlink" href="#dlex.datasets.builder.DatasetBuilder.get_processed_data_dir" title="Permalink to this definition">¶</a></dt>
+<dt id="dlex.datasets.DatasetBuilder.get_processed_data_dir">
+<code class="sig-name descname">get_processed_data_dir</code><span class="sig-paren">(</span><span class="sig-paren">)</span> &#x2192; str<a class="headerlink" href="#dlex.datasets.DatasetBuilder.get_processed_data_dir" title="Permalink to this definition">¶</a></dt>
 <dd><p>Get the directory to store pre-processed files</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="dlex.datasets.builder.DatasetBuilder.get_raw_data_dir">
-<code class="sig-name descname">get_raw_data_dir</code><span class="sig-paren">(</span><span class="sig-paren">)</span> &#x2192; str<a class="headerlink" href="#dlex.datasets.builder.DatasetBuilder.get_raw_data_dir" title="Permalink to this definition">¶</a></dt>
+<dt id="dlex.datasets.DatasetBuilder.get_raw_data_dir">
+<code class="sig-name descname">get_raw_data_dir</code><span class="sig-paren">(</span><span class="sig-paren">)</span> &#x2192; str<a class="headerlink" href="#dlex.datasets.DatasetBuilder.get_raw_data_dir" title="Permalink to this definition">¶</a></dt>
 <dd><p>Get the directory to store raw data set</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="dlex.datasets.builder.DatasetBuilder.get_working_dir">
-<code class="sig-name descname">get_working_dir</code><span class="sig-paren">(</span><span class="sig-paren">)</span> &#x2192; str<a class="headerlink" href="#dlex.datasets.builder.DatasetBuilder.get_working_dir" title="Permalink to this definition">¶</a></dt>
+<dt id="dlex.datasets.DatasetBuilder.get_working_dir">
+<code class="sig-name descname">get_working_dir</code><span class="sig-paren">(</span><span class="sig-paren">)</span> &#x2192; str<a class="headerlink" href="#dlex.datasets.DatasetBuilder.get_working_dir" title="Permalink to this definition">¶</a></dt>
 <dd><p>Get the working directory</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="dlex.datasets.builder.DatasetBuilder.is_better_result">
-<em class="property">static </em><code class="sig-name descname">is_better_result</code><span class="sig-paren">(</span><em class="sig-param">metric: str</em>, <em class="sig-param">best_result: float</em>, <em class="sig-param">new_result: float</em><span class="sig-paren">)</span><a class="headerlink" href="#dlex.datasets.builder.DatasetBuilder.is_better_result" title="Permalink to this definition">¶</a></dt>
+<dt id="dlex.datasets.DatasetBuilder.is_better_result">
+<em class="property">static </em><code class="sig-name descname">is_better_result</code><span class="sig-paren">(</span><em class="sig-param">metric: str</em>, <em class="sig-param">best_result: float</em>, <em class="sig-param">new_result: float</em><span class="sig-paren">)</span><a class="headerlink" href="#dlex.datasets.DatasetBuilder.is_better_result" title="Permalink to this definition">¶</a></dt>
 <dd><p>Compare new result with previous best result</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
@@ -242,14 +242,39 @@ required for training.</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="dlex.datasets.builder.DatasetBuilder.maybe_download_and_extract">
-<em class="property">abstract </em><code class="sig-name descname">maybe_download_and_extract</code><span class="sig-paren">(</span><em class="sig-param">force=False</em><span class="sig-paren">)</span><a class="headerlink" href="#dlex.datasets.builder.DatasetBuilder.maybe_download_and_extract" title="Permalink to this definition">¶</a></dt>
+<dt id="dlex.datasets.DatasetBuilder.maybe_download_and_extract">
+<em class="property">abstract </em><code class="sig-name descname">maybe_download_and_extract</code><span class="sig-paren">(</span><em class="sig-param">force=False</em><span class="sig-paren">)</span><a class="headerlink" href="#dlex.datasets.DatasetBuilder.maybe_download_and_extract" title="Permalink to this definition">¶</a></dt>
 <dd><dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><p><strong>force</strong> – if True, download and extract even when files are existed</p>
 </dd>
 <dt class="field-even">Returns</dt>
 <dd class="field-even"><p></p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="dlex.datasets.torch.Dataset">
+<em class="property">class </em><code class="sig-prename descclassname">dlex.datasets.torch.</code><code class="sig-name descname">Dataset</code><span class="sig-paren">(</span><em class="sig-param">builder</em>, <em class="sig-param">mode: str</em><span class="sig-paren">)</span><a class="headerlink" href="#dlex.datasets.torch.Dataset" title="Permalink to this definition">¶</a></dt>
+<dd><p>Load data from pre-processed files and prepare batch for training</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>builder</strong> (<a class="reference internal" href="#dlex.datasets.DatasetBuilder" title="dlex.datasets.DatasetBuilder"><em>DatasetBuilder</em></a>) – </p></li>
+<li><p><strong>mode</strong> (<em>str</em>) – one of <cite>train</cite> / <cite>valid</cite> (or <cite>dev</cite>) / <cite>test</cite></p></li>
+</ul>
+</dd>
+</dl>
+<dl class="method">
+<dt id="dlex.datasets.torch.Dataset.shuffle">
+<code class="sig-name descname">shuffle</code><span class="sig-paren">(</span><em class="sig-param">seed=42</em><span class="sig-paren">)</span><a class="headerlink" href="#dlex.datasets.torch.Dataset.shuffle" title="Permalink to this definition">¶</a></dt>
+<dd><p>Shuffle</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>seed</strong> (<em>int</em>) – </p>
 </dd>
 </dl>
 </dd></dl>
@@ -266,8 +291,10 @@ required for training.</p>
   
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
       
+        <a href="model.html" class="btn btn-neutral float-right" title="Model" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
       
-        <a href="base_model.html" class="btn btn-neutral float-left" title="dlex.torch.models.BaseModel" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+        <a href="../configs.html" class="btn btn-neutral float-left" title="Configurations" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
       
     </div>
   
