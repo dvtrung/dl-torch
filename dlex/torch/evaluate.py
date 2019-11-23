@@ -30,7 +30,7 @@ def evaluate(
         results = {metric: 0. for metric in params.test.metrics}
         outputs = []
         y_pred_all, y_ref_all = [], []
-        for batch in tqdm(data_iter, desc="Eval"):
+        for batch in tqdm(data_iter, desc="Eval", leave=False):
             inference_outputs = model.infer(batch)
             y_pred, y_ref, others = inference_outputs[0], inference_outputs[1], inference_outputs[2:]
             try:

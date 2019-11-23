@@ -26,27 +26,6 @@ def main(argv=None):
     for variables, params in params_list:
         results.append(train(params, args))
 
-        print("--------- REPORT ---------")
-        variables = list(params_list[0][0].keys())
-        if len(variables) == 2 and len(results[0]) == 1:
-            import pandas
-            data = {}
-            for i in range(len(params_list)):
-                variable_values = params_list[i][0]
-                val0 = variable_values[variables[0]]
-                val1 = variable_values[variables[1]]
-                if val0 not in data:
-                    data[val0] = {}
-                if val1 not in data[val0]:
-                    if i < len(results):
-                        data[val0][val1] = list(results[i].values())[0]
-            print(pandas.DataFrame(data))
-        else:
-            for i in range(len(params_list)):
-                variable_values = params_list[i][0]
-                print("Configs: ", variable_values)
-                print("Result: ", results[i])
-
 
 def train(params, args, report_callback=None):
     # Init dataset
@@ -78,7 +57,7 @@ def train(params, args, report_callback=None):
 
     if params.train.cross_validation:
         scores = {}
-        cv = KFold(n_splits=10, random_state=42, shuffle=True)
+        cv = KFold(n_splits=params.train.cross_validation, random_state=42, shuffle=True)
         for train_index, test_index in cv.split(dataset.X):
             X_train, X_test, y_train, y_test = dataset.X[train_index], dataset.X[test_index], dataset.y[train_index], dataset.y[test_index]
             model.fit(X_train, y_train)
@@ -102,7 +81,7 @@ def train(params, args, report_callback=None):
         logger.info(ret)
 
     if report_callback:
-        report_callback(ret)
+        report_callback(ret, True)
     return ret
 
 

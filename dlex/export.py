@@ -7,7 +7,7 @@ from configs import Configs
 if __name__ == "__main__":
     configs = Configs(mode="export")
     params = configs.params
-    working_dir = os.path.join("dist", params.path)
+    working_dir = os.path.join("dist", params.config_path)
     rmtree(working_dir)
     os.makedirs(working_dir)
 

@@ -89,19 +89,19 @@ def train_keras(params, args):
     hist = History()
 
     # checkpoint
-    checkpoint_path = os.path.join(ModuleConfigs.SAVED_MODELS_PATH, params.path)
+    checkpoint_path = os.path.join(ModuleConfigs.SAVED_MODELS_PATH, params.config_path)
     os.makedirs(checkpoint_path, exist_ok=True)
     model_checkpoint_latest = ModelCheckpoint(os.path.join(checkpoint_path, "latest.h5"))
     model_checkpoint_best = ModelCheckpoint(os.path.join(checkpoint_path, "best.h5"), save_best_only=True)
 
     # tensorboard
-    log_path = os.path.join("logs", params.path)
+    log_path = os.path.join("logs", params.config_path)
     os.makedirs(log_path, exist_ok=True)
     tensorboard_callback = TensorBoard(log_dir=log_path)
 
     start_time = time.time()
 
-    checkpoint_path = os.path.join(ModuleConfigs.SAVED_MODELS_PATH, params.path, "latest.h5")
+    checkpoint_path = os.path.join(ModuleConfigs.SAVED_MODELS_PATH, params.config_path, "latest.h5")
     logger.info("Load checkpoint from %s" % checkpoint_path)
     model.load_weights(checkpoint_path)
 

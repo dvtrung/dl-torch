@@ -1,7 +1,7 @@
 Getting Started
 ================================
 
-Installation
+Install
 ------------
 
 ::
@@ -106,46 +106,22 @@ Model supports loss calculation, training, predicting and outputting prediction 
             x = self.fc2(x)
             return F.log_softmax(x, dim=1)
 
-Step 4: Configuration
+Step 4: Configurations
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-#### Model
+Lots of code can be reduced with configurations. See the complete guide in :ref:`configs`.
 
-#### Dataset
-
-#### Train
-
-- `batch_size`: `int` or `dict` of `{ [progress]: [batch_size] }` (`0` as key must always be included)
-
-- `num_epochs`
-
-- `optimizer`: `dict` of name and optimizer's arguments. Support `sgd`, `adam`, `adadelta`.
-
-#### Test
-
-- `batch_size`: `int`. Training batch size value is used if not specified.
-
-.. code-block::yaml
-
-  model:
-    name: {model import path}
-    ...{model configs}
-  dataset:
-    name: {dataset import path}
-    ...{dataset configs}
-  train:
-    batch_size: 256
-    num_epochs: 30
-    optimizer:
-      name: adam
-      learning_rate: 0.01
-      weight_decay: 1e-5
-
-## Step 5: Train & evaluate
+Step 5: Train & evaluate
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-```bash
-dlex train <config_path>
-dlex evaluate <config_path>
-dlex infer <config_path>
-```
+.. code-block:: bash
+
+  dlex train -c <config_path>
+  dlex evaluate -c <config_path>
+  dlex infer -c <config_path>
+
+or
+
+.. code-block:: bash
+
+  python -m dlex.train -c <config_path>

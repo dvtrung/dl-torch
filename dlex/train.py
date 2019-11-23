@@ -1,18 +1,18 @@
+import multiprocessing
 import os
 import runpy
-from typing import Dict, Tuple, Any, List
+import time
+from multiprocessing import Process
+from threading import Thread
+from typing import Dict, Tuple, Any
 
 from dlex.utils import logger, table2str, logging
 from .configs import Configs, Environment
 
 
 def launch_training(backend: str, params, args, report_callback=None):
-    if args.report:
-        os.system('clear')
-
     if backend is None:
         raise ValueError("No backend specified. Please add it in config file.")
-    logger.info("Backend: %s", backend)
     if backend == "sklearn":
         from dlex.sklearn.train import train
         train(params, args, report_callback)
@@ -29,7 +29,7 @@ def launch_training(backend: str, params, args, report_callback=None):
 
 def update_results(
         env: Environment,
-        params,
+        params, args,
         variable_values: Tuple[Any],
         results, finished,
         all_results: Dict[str, Dict[Tuple, Any]],
@@ -39,12 +39,15 @@ def update_results(
             metric: ("%.3f" % res) + (" (running)" if not finished else "")
             for metric, res in results.items()}
 
+    if args.report:
+        os.system('clear')
+
     s = "# Report\n"
     for env in configs.environments:
         if env.name not in all_results:
             continue
         s += f"\n## {env.title or env.name}\n"
-        if env.report['type'] == 'raw':
+        if not env.report or env.report['type'] == 'raw':
             for vals, res in all_results.items():
                 print("Configs: ", list(zip(env.variable_names, vals)))
                 print("Result: ", res)
@@ -71,39 +74,60 @@ def update_results(
 
     print(s)
     os.makedirs("model_reports", exist_ok=True)
-    with open(os.path.join("model_reports", f"{configs.config_name}.md"), "w") as f:
-        f.write(s)
+    # with open(os.path.join("model_reports", f"{configs.config_name}.md"), "w") as f:
+    #     f.write(s)
 
 
 def main():
     configs = Configs(mode="train")
     args = configs.args
+    manager = multiprocessing.Manager()
+    all_results = manager.dict()
 
     if args.debug:
         logger.setLevel(logging.DEBUG)
 
-    all_results = {}
-
     if configs.args.env:
         envs = [e for e in configs.environments if e.name in args.env]
     else:
-        envs = configs.environments
+        envs = [env for env in configs.environments if env.default]
 
     for env in envs:
-        all_results[env.name] = {}
+        all_results[env.name] = manager.dict()
         # init result list
         for variable_values, params in zip(env.variables_list, env.parameters_list):
             all_results[env.name][variable_values] = None
 
-    for env in envs:
-        for variable_values, params in zip(env.variables_list, env.parameters_list):
-            launch_training(
-                configs.backend, params, args,
-                report_callback=lambda ret, finished: update_results(
-                    env, params,
-                    variable_values,
-                    ret, finished,
-                    all_results, configs))
+    multi_processing = False
+    if multi_processing:
+        for env in envs:
+            for variable_values, params in zip(env.variables_list, env.parameters_list):
+                threads = []
+                thread = Process(target=launch_training, args=(
+                    configs.backend, params, args,
+                    lambda ret, finished: update_results(
+                        env, params, args,
+                        variable_values,
+                        ret, finished,
+                        all_results,
+                        configs)
+                ))
+                thread.start()
+                time.sleep(5)
+                threads.append(thread)
+        for thread in threads:
+            thread.join()
+    else:
+        for env in envs:
+            for variable_values, params in zip(env.variables_list, env.parameters_list):
+                launch_training(
+                    configs.backend, params, args,
+                    report_callback=lambda ret, finished: update_results(
+                        env, params, args,
+                        variable_values,
+                        ret, finished,
+                        all_results,
+                        configs))
 
 
 if __name__ == "__main__":

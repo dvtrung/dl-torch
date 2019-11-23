@@ -71,12 +71,12 @@ class BaseDataset:
         self.maybe_download_and_extract(download)
         self.maybe_preprocess(download or preprocess)
 
-    def download_and_extract(self, url: str, folder_path: str = None):
-        file_path = maybe_download(self.get_working_dir(), url)
+    def download_and_extract(self, url: str, folder_path: str = None, filename: str = None):
+        file_path = maybe_download(self.get_working_dir(), url, filename)
         maybe_unzip(file_path, folder_path or self.get_raw_data_dir())
 
-    def download(self, url: str):
-        maybe_download(self.get_raw_data_dir(), url)
+    def download(self, url: str, filename: str = None):
+        maybe_download(self.get_raw_data_dir(), url, filename)
 
     @abc.abstractmethod
     def maybe_download_and_extract(self, force=False):
@@ -103,6 +103,6 @@ class BaseDataset:
     def get_tensorflow_wrapper(self, mode: str) -> BaseTensorflowWrapper:
         return None
 
-    abc.abstractmethod
+    @abc.abstractmethod
     def get_pytorch_wrapper(self, mode: str) -> BasePytorchWrapper:
         return None

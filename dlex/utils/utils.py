@@ -80,7 +80,7 @@ def maybe_unzip(file_path, folder_path):
     elif ext in ['.json']:
         pass
     else:
-        raise Exception("File type is not supported (%s)" % ext)
+        logger.warning("File type is not supported (%s). Not a zip file?" % ext)
 
 
 def init_dirs(params):

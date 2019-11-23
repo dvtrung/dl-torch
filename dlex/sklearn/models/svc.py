@@ -8,7 +8,15 @@ class SVC(_SVC):
         super().__init__(
             gamma='scale',
             kernel=params.model.kernel or 'rbf')
+        self.params = params
 
     def score(self, X, y, metric="acc"):
         if metric == "acc":
             return super().score(X, y) * 100
+
+    def fit(self, X, y, sample_weight=None):
+        return super().fit(X, y, sample_weight)
+
+    def predict(self, X):
+        return super().predict(X)
+

@@ -20,7 +20,10 @@ class VariableLengthTensor:
         self.lengths = [len(seq) for seq in values]
 
     def cuda(self, device=None, non_blocking=False):
-        self.data = self.data.cuda(device, non_blocking)
+        if device:
+            self.data = self.data.cuda(device, non_blocking)
+        else:
+            self.data = maybe_cuda(self.data)
         return self
 
     def __len__(self):

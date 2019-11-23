@@ -4,18 +4,47 @@ import os
 
 import colorlog
 import numpy as np
+from tqdm import tqdm
+
+
+class TqdmLoggingHandler(logging.Handler):
+    def __init__(self, level=logging.NOTSET):
+        super().__init__(level)
+        self.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
+
+    def emit(self, record):
+        try:
+            msg = self.format(record)
+            tqdm.write(msg)
+            self.flush()
+        except (KeyboardInterrupt, SystemExit):
+            raise
+        except:
+            self.handleError(record)
+
 
 log_format = '%(asctime)s - %(levelname)s - %(message)s'
 bold_seq = '\033[1m'
-colorlog.basicConfig(format=(
-        f'{bold_seq} '
-        '%(log_color)s '
-        f'{log_format}'
-))
+#colorlog.basicConfig(format=(
+#    f'{bold_seq} '
+#    '%(log_color)s '
+#    f'{log_format}'
+#))
 
 logger = logging.getLogger('dlex')
-logger.setLevel(logging.INFO)
-# logger.setLevel(logging.DEBUG)
+logger.addHandler(TqdmLoggingHandler())
+
+
+def set_log_level(level: str):
+    level = dict(
+        none=logging.NOTSET,
+        info=logging.INFO,
+        warn=logging.WARN,
+        error=logging.ERROR,
+        debug=logging.DEBUG)[level]
+    logger.setLevel(level)
+
+
 # Here we define our formatter
 # formatter = logging.Formatter(Fore.BLUE + '%(asctime)s - %(levelname)s - %(message)s' + Style.RESET_ALL)
 
@@ -93,5 +122,4 @@ def log_outputs(mode, params, outputs):
 
 
 def json_dumps(obj):
-    # TODO: beautify
-    return json.dumps(obj)
+    return json.dumps(obj, indent=2)

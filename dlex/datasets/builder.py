@@ -39,7 +39,7 @@ class DatasetBuilder:
         self.maybe_download_and_extract(download)
         self.maybe_preprocess(download or preprocess)
 
-    def download_and_extract(self, url: str, folder_path: str = None):
+    def download_and_extract(self, url: str, folder_path: str = None, filename: str = None):
         """Download and extract from url
 
         :param url: url to download
@@ -47,11 +47,11 @@ class DatasetBuilder:
         :param folder_path: location for the extracted files. If None, value in `get_raw_data_dir` is used.
         :type folder_path: str, optional
         """
-        file_path = maybe_download(self.get_working_dir(), url)
+        file_path = maybe_download(self.get_working_dir(), url, filename)
         maybe_unzip(file_path, folder_path or self.get_raw_data_dir())
 
-    def download(self, url: str):
-        maybe_download(self.get_raw_data_dir(), url)
+    def download(self, url: str, filename: str = None):
+        maybe_download(self.get_raw_data_dir(), url, filename)
 
     @abc.abstractmethod
     def maybe_download_and_extract(self, force=False):
@@ -108,7 +108,7 @@ class DatasetBuilder:
             ret = self.evaluate(pred, ref, "acc")
             return 100 - ret
         else:
-            raise NotImplementedError()
+            raise NotImplementedError
 
     @staticmethod
     def is_better_result(metric: str, best_result: float, new_result: float):

@@ -35,11 +35,6 @@ def train(
 
     # num_samples = 0
     for current_epoch in range(epoch + 1, epoch + params.train.num_epochs + 1):
-        if args.report:
-            os.system('clear')
-            if report_callback:
-                report_callback(None, False)
-
         log_dict = dict(epoch=current_epoch)
         log_dict['total_time'], log_dict['loss'] = train_epoch(
             current_epoch, params, args,
@@ -148,7 +143,6 @@ def train_epoch(
     if params.dataset.shuffle:
         datasets.train.shuffle()
 
-    logger.info("EPOCH %d", current_epoch)
     model.start_calculating_loss()
     start_time = datetime.now()
 
@@ -166,7 +160,7 @@ def train_epoch(
     total = len(datasets.train)
     last_save = 0
     last_log = 0
-    with tqdm(desc="Epoch %d" % current_epoch, total=total) as t:
+    with tqdm(desc="Epoch %d" % current_epoch, total=total, leave=False) as t:
         t.update(num_samples)
         batch_size_checkpoints = sorted(batch_sizes.keys())
         for start, end in zip(batch_size_checkpoints, batch_size_checkpoints[1:] + [100]):
@@ -215,7 +209,6 @@ def train_epoch(
                 # Save model
                 is_passed, last_save = check_interval_passed(last_save, params.train.save_every, progress)
                 if is_passed:
-                    logger.debug("Saving checkpoint...")
                     if args.save_all:
                         model.save_checkpoint("epoch-%02d" % current_epoch)
                     else:
@@ -257,11 +250,14 @@ def main(
         if params.train.cross_validation:
             set_seed(params.random_seed)
             results = []
-            for i in range(params.train.cross_validation):
+            for i in tqdm(range(params.train.cross_validation), desc="Cross Validation"):
                 params.dataset.cross_validation_fold = i
                 params.dataset.cross_validation = params.train.cross_validation
                 params, args, model, datasets = load_model("train", argv, params, args)
-                res = train(params, args, model, datasets, summary_writer=summary_writer)
+                res = train(
+                    params, args, model, datasets,
+                    summary_writer=summary_writer,
+                    report_callback=None)
                 results.append(res)
                 if report_callback:
                     report_callback({

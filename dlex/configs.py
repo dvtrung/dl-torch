@@ -4,9 +4,10 @@ import itertools
 import os
 import re
 from dataclasses import dataclass, field
-from typing import List, Tuple, Dict, Any, Union
+from typing import List, Tuple, Dict, Any, Union, KeysView, Iterator
 
 import yaml
+from dlex.utils.logging import set_log_level
 
 DEFAULT_TMP_PATH = os.path.expanduser(os.path.join("~", "tmp"))
 DEFAULT_DATASETS_PATH = os.path.expanduser(os.path.join("~", "tmp", "datasets"))
@@ -99,6 +100,12 @@ class AttrDict(dict):
                 d[key] = self[key]
         return d
 
+    def keys(self):
+        return filter(lambda key: key != '_variables', super().keys())
+
+    def __iter__(self):
+        return filter(lambda key: key != '_variables', super().__iter__())
+
 
 @dataclass
 class OptimizerConfig:
@@ -162,16 +169,17 @@ class MainConfig(AttrDict):
     random_seed = 1
     shuffle = False
     batch_size = None
-    path = None
+    config_path = None
+    config_name = None
     train: TrainConfig
     test: TestConfig
     verbose: bool
 
     def __init__(self, *args, **kwargs):
-        if "train" in args[0]:
-            train = TrainConfig(**AttrDict(args[0]['train'], _variables=self._variables).to_dict())
-        if "test" in args[0]:
-            test = TestConfig(**AttrDict(args[0]['test'], _variables=self._variables).to_dict())
+        train = TrainConfig(**AttrDict(args[0]['train'], _variables=self._variables).to_dict()) \
+            if "train" in args[0] else None
+        test = TestConfig(**AttrDict(args[0]['test'], _variables=self._variables).to_dict()) \
+            if "test" in args[0] else None
 
         super().__init__(*args, **kwargs)
 
@@ -185,13 +193,13 @@ class MainConfig(AttrDict):
     @property
     def log_dir(self):
         """Get logging directory based on model configs."""
-        log_dir = os.path.join("logs", self.path)
+        log_dir = os.path.join("logs", self.config_name)
         return os.path.join(log_dir, self.training_id)
 
     @property
     def output_dir(self):
         """Get output directory based on model configs"""
-        result_dir = os.path.join(ModuleConfigs.TMP_PATH, "model_outputs", self.path)
+        result_dir = os.path.join(ModuleConfigs.TMP_PATH, "model_outputs", self.config_name)
         return result_dir
 
 
@@ -251,12 +259,13 @@ def str2bool(val):
 @dataclass
 class Environment:
     name: str
-    title: str
-    variable_names: List[str]
-    variable_values: List[List[Any]]
-    variables_list: List[Tuple[Any]]
-    parameters_list: List
-    report: Any
+    title: str = None
+    default: bool = True
+    variable_names: List[str] = None
+    variable_values: List[List[Any]] = None
+    variables_list: List[Tuple[Any]] = None
+    parameters_list: List = None
+    report: Any = None
     desc: str = None
 
 
@@ -290,6 +299,8 @@ class Configs:
 
         self._environments = []
         self.load_configs()
+
+        set_log_level(self.args.log)
 
     @property
     def config_path(self):
@@ -337,6 +348,11 @@ class Configs:
             '--report',
             action="store_true",
             help="show clean screen with report"
+        )
+        parser.add_argument(
+            '--log',
+            help="One of [none, debug, info, error, warn]",
+            default='info'
         )
         if self.mode == "train":
             parser.add_argument('--debug', action="store_true",
@@ -401,7 +417,7 @@ class Configs:
         return self._environments
 
     def load_configs(self) -> List[Tuple[Dict[str, Any], MainConfig]]:
-        if self.yaml_params['env']:
+        if 'env' in self.yaml_params:
             for env_name, env_prop in self.yaml_params['env'].items():
                 # Unfold params for every variable combination
                 variables_list = []
@@ -415,7 +431,8 @@ class Configs:
 
                     # Assign extra parameters from args
                     params.mode = self.mode
-                    params.path = self.args.config_path
+                    params.config_path = self.config_path
+                    params.config_name = self.config_name
                     params.verbose = bool(self.args.verbose)
                     params.dataset.num_workers = self.args.num_workers
                     if params.train is not None and params.train.num_workers is None:
@@ -443,6 +460,7 @@ class Configs:
 
                 self._environments.append(Environment(
                     name=env_name,
+                    default=env_prop.get('default', True),
                     title=env_prop.get('title', env_name),
                     desc=env_prop.get('desc', None),
                     variable_names=variable_names,
@@ -452,8 +470,23 @@ class Configs:
                     report=report
                 ))
         else:
+            params = MainConfig(self.yaml_params)
+            params.mode = self.mode
+            params.config_path = self.config_path
+            params.config_name = self.config_name
+            params.verbose = bool(self.args.verbose)
+            params.dataset.num_workers = self.args.num_workers
+            if params.train is not None and params.train.num_workers is None:
+                params.train.num_workers = self.args.num_workers
+
+            # Some config values are overwritten by command arguments
+            if self.args.batch_size is not None:
+                params.train.batch_size = self.args.batch_size
+
             self._environments.append(Environment(
                 name="main",
-                variables_list=[{}],
-                parameters_list=[MainConfig(self.yaml_params)]
+                variable_names=[],
+                variable_values=[],
+                variables_list=[tuple()],
+                parameters_list=[params]
             ))
