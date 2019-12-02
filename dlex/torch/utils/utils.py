@@ -1,18 +1,33 @@
 from datetime import datetime
+from typing import OrderedDict
 
 import torch
+import torch.nn as nn
+import numpy as np
 
-from dlex.configs import Configs
+from dlex.configs import Configs, MainConfig
+from dlex.datatypes import ModelReport
 from dlex.torch.datatypes import Datasets
 from dlex.torch.models.base import DataParellelModel
 from dlex.torch.utils.model_utils import get_model
-from dlex.utils import logger, init_dirs
+from dlex.utils import logger, init_dirs, table2str
 from dlex.utils.model_utils import get_dataset
 
 DEBUG_BATCH_SIZE = 4
 
 
-def load_model(mode, argv=None, params=None, args=None):
+def load_model(mode, report: ModelReport, argv=None, params: MainConfig = None, args=None):
+    """
+    Load model and dataset
+    :param mode: train, test, dev
+    :param report:
+    :param argv:
+    :param params:
+    :param args:
+    :return:
+    """
+    report.metrics = params.test.metrics
+
     if not params and not args:
         configs = Configs(mode=mode, argv=argv)
         params_list, args = configs.params_list, configs.args
@@ -26,7 +41,7 @@ def load_model(mode, argv=None, params=None, args=None):
 
     # Init dataset
     dataset_builder = get_dataset(params)
-    assert dataset_builder
+    assert dataset_builder, "Dataset not found."
     if not args.no_prepare:
         dataset_builder.prepare(download=args.download, preprocess=args.preprocess)
     if mode == "test":
@@ -46,12 +61,30 @@ def load_model(mode, argv=None, params=None, args=None):
 
     # Init model
     model_cls = get_model(params)
-    assert model_cls
-    model = model_cls(params, datasets.train or datasets.test or datasets.valid)
+    assert model_cls, "Model not found."
+    model = model_cls(params, datasets.train if datasets.train is not None else datasets.test or datasets.valid)
     # model.summary()
 
-    for parameter in model.parameters():
-        logger.debug(parameter.shape)
+    # log model summary
+    parameter_details = [["Name", "Shape", "Trainable"]]
+    num_params = 0
+    num_trainable_params = 0
+    for name, parameter in model.named_parameters():
+        parameter_details.append([
+            name,
+            str(list(parameter.shape)),
+            "✓" if parameter.requires_grad else ""])
+        num_params += np.prod(list(parameter.shape))
+        if parameter.requires_grad:
+            num_trainable_params += np.prod(list(parameter.shape))
+
+    s = table2str(parameter_details)
+    logger.debug(f"Model parameters\n{s}")
+    logger.debug(f"No. parameters: {num_params:,}")
+    logger.debug(f"No. trainable parameters: {num_trainable_params:,}")
+    report.param_details = s
+    report.num_params = num_params
+    report.num_trainable_params = num_trainable_params
 
     device_ids = [i for i in range(torch.cuda.device_count())]
     logger.info("GPUs: %s" % str(device_ids))

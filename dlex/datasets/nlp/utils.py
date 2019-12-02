@@ -239,6 +239,9 @@ class Vocab:
     def __getitem__(self, token: str) -> int:
         return self._token2index[token] if token in self._token2index else self.oov_token_idx
 
+    def tolist(self) -> List[str]:
+        return self._index2token
+
     def get_token_id(self, token):
         return self[token] or self.oov_token_idx
 

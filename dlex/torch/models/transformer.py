@@ -1,13 +1,11 @@
-import math
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-
-from dlex.torch import Batch
-from dlex.torch.utils.ops_utils import maybe_cuda
 from dlex.configs import MainConfig
-from dlex.torch.models.base import BaseModel
 from dlex.datasets.seq2seq.torch import PytorchSeq2SeqDataset
+from dlex.torch import Batch
+from dlex.torch.models.base import BaseModel
+from dlex.torch.utils.ops_utils import maybe_cuda
 
 
 def generate_key_padding_mask(seq_len, max_len):

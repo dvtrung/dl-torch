@@ -1,0 +1,25 @@
+backend: pytorch
+env:
+  cifar:
+    title: Results on CIFAR10
+    variables:
+      dataset:
+        - dlex.datasets.image.CIFAR10
+      vgg_type:
+        - VGG16
+        - VGG19
+model:
+  name: src.models.cnn.VGG
+  vgg_type: ~vgg_type
+dataset:
+  name: ~dataset
+train:
+  eval: [dev, test]
+  batch_size: 256
+  num_epochs: 30
+  optimizer:
+    name: adam
+    lr: 0.01
+  max_grad_norm: 1.0
+test:
+  metrics: [err]

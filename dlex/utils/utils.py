@@ -103,14 +103,24 @@ def run_script(name: str, args):
     call(["python", os.path.join(root, "scripts", name), *args])
 
 
-def table2str(table: List[List[str]]) -> str:
+def table2str(table: List[List[str]], padding: int = 1) -> str:
+    """
+    Convert 2D list to table in markdown format
+    :param table: list of lists
+    :param padding: left and right padding for each cell
+    :return: string containing the table
+    """
     def _append_blank(s, length):
-        return " " + s + " " * (length - len(s) - 1)
+        return " " * padding + str(s) + " " * (length - len(str(s)) - padding)
 
     num_cols = len(table[0])
-    col_sizes = [max([len(row[i]) for row in table]) + 2 for i in range(num_cols)]
+    col_sizes = [max([len(str(row[i])) for row in table]) + 2 * padding for i in range(num_cols)]
+
+    # table header
     s = "|" + "|".join([_append_blank(table[0][i], col_sizes[i]) for i in range(num_cols)]) + "|\n"
     s += "|" + "|".join(["-" * col_sizes[i] for i in range(num_cols)]) + "|\n"
+
+    # table content
     for row in table[1:]:
         s += "|" + "|".join([_append_blank(cell, col_sizes[i]) for i, cell in enumerate(row)]) + "|\n"
     return s

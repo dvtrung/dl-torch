@@ -3,10 +3,11 @@ import os
 import runpy
 import time
 from multiprocessing import Process
-from threading import Thread
 from typing import Dict, Tuple, Any
 
+from dlex.datatypes import ModelReport
 from dlex.utils import logger, table2str, logging
+
 from .configs import Configs, Environment
 
 
@@ -29,60 +30,88 @@ def launch_training(backend: str, params, args, report_callback=None):
 
 def update_results(
         env: Environment,
-        params, args,
         variable_values: Tuple[Any],
-        results, finished,
-        all_results: Dict[str, Dict[Tuple, Any]],
+        report: ModelReport,
+        all_reports: Dict[str, Dict[Tuple, ModelReport]],
         configs):
-    if results is not None:
-        all_results[env.name][variable_values] = {
-            metric: ("%.3f" % res) + (" (running)" if not finished else "")
-            for metric, res in results.items()}
+    """
+    :param env:
+    :param variable_values:
+    :param report: an instance of ModelReport
+    :param all_reports:
+    :param configs:
+    :return:
+    """
 
-    if args.report:
+    # all_reports are not always initialized
+    if report:
+        all_reports[env.name][variable_values] = report
+    write_report(all_reports, configs)
+
+
+def write_report(reports: Dict[str, Dict[Tuple, ModelReport]], configs):
+    if configs.args.report:
         os.system('clear')
 
-    s = "# Report\n"
+    s = "\n# Report\n"
+
+    #if report.param_details:
+    #    s += f"\n## Model Summary\n\n{report.param_details}\n"
+    #if report.num_params:
+    #    s += f"\nNumber of parameters: {report.num_params:,}"
+    #    s += f"\nNumber of trainable parameters: {report.num_trainable_params:,}\n"
+
+    def _format_result(r: ModelReport, m: str):
+        if r and r.results and m in r.results:
+            return ("%.3f" % r.results[m]) + ("" if r.finished else " (running)")
+        else:
+            return ""
+
     for env in configs.environments:
-        if env.name not in all_results:
+        if env.name not in reports:
             continue
         s += f"\n## {env.title or env.name}\n"
+        metrics = set.union(*[set(r.metrics or []) for r in reports[env.name].values() if r])
+        metrics = list(metrics)
         if not env.report or env.report['type'] == 'raw':
-            for vals, res in all_results.items():
-                print("Configs: ", list(zip(env.variable_names, vals)))
-                print("Result: ", res)
+            data = [env.variable_names + metrics]
+            for variable_values, report in reports[env.name].items():
+                data.append(
+                    list(variable_values) +
+                    [_format_result(report, metric) for metric in metrics])
+            s += f"\n{table2str(data)}\n"
         elif env.report['type'] == 'table':
-            results = all_results[env.name]
             val_row = env.variable_names.index(env.report['row'])
             val_col = env.variable_names.index(env.report['col'])
-            for metric in params.test.metrics:
+            for metric in metrics:
                 s += "\nResults (metric: %s)\n" % metric
                 data = [
                     [None for _ in range(len(env.variable_values[val_col]))]
                     for _ in range(len(env.variable_values[val_row]))
                 ]
-                for vals, ret in results.items():
-                    _val_row = env.variable_values[val_row].index(vals[val_row])
-                    _val_col = env.variable_values[val_col].index(vals[val_col])
+                for variable_values, report in reports[env.name].items():
+                    _val_row = env.variable_values[val_row].index(variable_values[val_row])
+                    _val_col = env.variable_values[val_col].index(variable_values[val_col])
                     if data[_val_row][_val_col] is None:
-                        data[_val_row][_val_col] = ret[metric] if ret else ""
+                        data[_val_row][_val_col] = _format_result(report, metric)
                     else:
-                        data[_val_row][_val_col] += " / " + ret[metric]
+                        data[_val_row][_val_col] += " / " + _format_result(report, metric)
                 data = [[""] + env.variable_values[val_col]] + \
                     [[row_header] + row for row, row_header in zip(data, env.variable_values[val_row])]
-                s += "\n" + table2str(data) + "\n"
+                s += f"\n{table2str(data)}\n"
 
     print(s)
-    os.makedirs("model_reports", exist_ok=True)
-    # with open(os.path.join("model_reports", f"{configs.config_name}.md"), "w") as f:
-    #     f.write(s)
+    if configs.args.report:
+        os.makedirs("model_reports", exist_ok=True)
+        with open(os.path.join("model_reports", f"{configs.config_name}.md"), "w") as f:
+            f.write(s)
 
 
 def main():
     configs = Configs(mode="train")
     args = configs.args
     manager = multiprocessing.Manager()
-    all_results = manager.dict()
+    all_reports = manager.dict()
 
     if args.debug:
         logger.setLevel(logging.DEBUG)
@@ -93,10 +122,10 @@ def main():
         envs = [env for env in configs.environments if env.default]
 
     for env in envs:
-        all_results[env.name] = manager.dict()
+        all_reports[env.name] = manager.dict()
         # init result list
         for variable_values, params in zip(env.variables_list, env.parameters_list):
-            all_results[env.name][variable_values] = None
+            all_reports[env.name][variable_values] = None
 
     multi_processing = False
     if multi_processing:
@@ -105,12 +134,8 @@ def main():
                 threads = []
                 thread = Process(target=launch_training, args=(
                     configs.backend, params, args,
-                    lambda ret, finished: update_results(
-                        env, params, args,
-                        variable_values,
-                        ret, finished,
-                        all_results,
-                        configs)
+                    lambda report: update_results(
+                        env, variable_values, report, all_reports, configs)
                 ))
                 thread.start()
                 time.sleep(5)
@@ -122,12 +147,8 @@ def main():
             for variable_values, params in zip(env.variables_list, env.parameters_list):
                 launch_training(
                     configs.backend, params, args,
-                    report_callback=lambda ret, finished: update_results(
-                        env, params, args,
-                        variable_values,
-                        ret, finished,
-                        all_results,
-                        configs))
+                    report_callback=lambda report: update_results(
+                        env, variable_values, report, all_reports, configs))
 
 
 if __name__ == "__main__":

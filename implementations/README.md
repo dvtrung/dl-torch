@@ -18,7 +18,7 @@
 
 ## Image
 
-### [Object Recognition](./cnn)
+### [Object Recognition](./image_classification)
 
 ### [GAN](./gan)
 

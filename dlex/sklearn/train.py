@@ -1,5 +1,6 @@
 """Train a model."""
 import importlib
+from collections import defaultdict
 from datetime import datetime
 
 import numpy as np
@@ -9,6 +10,7 @@ from dlex.configs import Configs
 from dlex.utils.logging import logger, logging
 from dlex.utils.model_utils import get_dataset
 from dlex.utils.utils import init_dirs
+from tqdm import tqdm
 
 
 def get_model(params):
@@ -56,18 +58,17 @@ def train(params, args, report_callback=None):
     logger.info("Training started.")
 
     if params.train.cross_validation:
-        scores = {}
+        scores = defaultdict(list)
         cv = KFold(n_splits=params.train.cross_validation, random_state=42, shuffle=True)
-        for train_index, test_index in cv.split(dataset.X):
-            X_train, X_test, y_train, y_test = dataset.X[train_index], dataset.X[test_index], dataset.y[train_index], dataset.y[test_index]
+        for train_index, test_index in tqdm(
+                cv.split(dataset.X), desc="Cross Validation", leave=True,
+                total=params.train.cross_validation):
+            X_train, X_test = dataset.X[train_index], dataset.X[test_index]
+            y_train, y_test = dataset.y[train_index], dataset.y[test_index]
             model.fit(X_train, y_train)
             for metric in params.test.metrics:
-                if metric not in scores:
-                    scores[metric] = []
                 scores[metric].append(model.score(X_test, y_test))
 
-        # model.fit(dataset.X_train, dataset.y_train)
-        # scores = cross_val_score(model, dataset.X, dataset.y, cv=10)
         ret = {}
         for metric in scores:
             ret[metric] = np.mean(scores[metric])

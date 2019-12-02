@@ -1,12 +1,11 @@
 """Model utils"""
 
 import importlib
-import os
+from collections import OrderedDict
 
+import numpy as np
 import torch
-
-from dlex.configs import ModuleConfigs
-from dlex.utils.logging import logger
+import torch.nn as nn
 
 
 def get_model(params):

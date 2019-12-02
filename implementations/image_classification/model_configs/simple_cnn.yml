@@ -1,17 +1,15 @@
 backend: pytorch
 env:
   main:
+    title: Results on image datasets
     variables:
       dataset:
-        - dlex.datasets.image.mnist.MNIST
-        - dlex.datasets.image.cifar.CIFAR10
-      test:
-        - nothing
+        - dlex.datasets.image.MNIST
+        - dlex.datasets.image.CIFAR10
 model:
   name: src.models.cnn.SimpleModel
 dataset:
   name: ~dataset
-  output_format: default
 train:
   eval: [dev, test]
   batch_size: 256

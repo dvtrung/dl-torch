@@ -1,6 +1,8 @@
 from dataclasses import dataclass
+from typing import List, Dict
 
 import torch
+import torch.nn as nn
 
 from dlex.torch.utils.ops_utils import maybe_cuda
 
@@ -12,12 +14,13 @@ class BatchItem:
 
 
 class VariableLengthTensor:
-    def __init__(self, values, padding_value):
+    def __init__(self, values: List, padding_value):
         super().__init__()
         max_len = max([len(seq) for seq in values])
+        # values.sort(key=lambda seq: len(seq), reverse=True)
         self.data = torch.tensor([seq + [padding_value] * (max_len - len(seq)) for seq in values])
         self.padding_value = padding_value
-        self.lengths = [len(seq) for seq in values]
+        self.lengths = [max(len(seq), 1) for seq in values]
 
     def cuda(self, device=None, non_blocking=False):
         if device:
@@ -28,6 +31,9 @@ class VariableLengthTensor:
 
     def __len__(self):
         return len(self.lengths)
+
+    def pack_padded_sequence(self):
+        return nn.utils.rnn.pack_padded_sequence(self.data, self.lengths, batch_first=True)
 
     def get_mask(self, max_len: int = None, dtype: str = None):
         """Get mask tensor

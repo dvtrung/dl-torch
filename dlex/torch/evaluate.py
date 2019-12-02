@@ -3,6 +3,7 @@ import traceback
 from typing import Tuple
 
 import torch
+from dlex.datatypes import ModelReport
 from tqdm import tqdm
 
 from dlex.configs import MainConfig
@@ -17,7 +18,7 @@ def evaluate(
         dataset: Dataset,
         params: MainConfig,
         output=False,
-        summary_writer=None) -> Tuple[dict, list]:
+        report: ModelReport = None) -> Tuple[dict, list]:
     """Evaluate model and save result."""
     model.module.eval()
     torch.cuda.empty_cache()
@@ -55,8 +56,8 @@ def evaluate(
                             reference=str_ground_truth,
                             hypothesis=str_predicted))
                         # print(outputs[-1])
-                if summary_writer is not None:
-                    model.write_summary(summary_writer, batch, (y_pred, others))
+                if report.summary_writer is not None:
+                    model.write_summary(report.summary_writer, batch, (y_pred, others))
             except Exception:
                 logger.error(traceback.format_exc())
 
