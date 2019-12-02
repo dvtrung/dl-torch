@@ -8,18 +8,16 @@ from typing import List, Dict
 import nltk
 import torch
 import torch.nn as nn
-import torchtext
-from sklearn.metrics import accuracy_score
-from tqdm import tqdm
-
 from dlex.configs import AttrDict
 from dlex.datasets import DatasetBuilder
 from dlex.datasets.nlp.torch import NLPDataset
-from dlex.datasets.nlp.utils import normalize_lower, Vocab, char_tokenize, Tokenizer, write_vocab, normalize_none
+from dlex.datasets.nlp.utils import Vocab, char_tokenize, Tokenizer, write_vocab, normalize_none
 from dlex.torch import Batch, BatchItem
 from dlex.torch.datatypes import VariableLengthTensor
 from dlex.torch.utils.ops_utils import LongTensor, maybe_cuda
 from dlex.utils import logger
+from sklearn.metrics import accuracy_score
+from tqdm import tqdm
 
 BatchY = namedtuple("BatchY", "answer_span")
 
@@ -207,13 +205,13 @@ class SQuAD_V1(DatasetBuilder):
         return os.path.join(self.get_processed_data_dir(), "vocab", "%s.txt" % tag)
 
     @property
-    def vocab_word(self):
+    def vocab_word(self) -> Vocab:
         if self._vocab_word is None:
             self._vocab_word = Vocab.from_file(self.get_vocab_path("word"))
         return self._vocab_word
 
     @property
-    def vocab_char(self):
+    def vocab_char(self) -> Vocab:
         if self._vocab_char is None:
             self._vocab_char = Vocab.from_file(self.get_vocab_path("char"))
         return self._vocab_char
@@ -225,7 +223,7 @@ class SQuAD_V1(DatasetBuilder):
         if metric == "acc":
             return accuracy_score(
                 ["%s-%s" % (r[0], r[1]) for r in ref],
-                ["%s-%s" % (p[0], p[1]) for p in pred])
+                ["%s-%s" % (p[0], p[1]) for p in pred]) * 100
 
     def format_output(self, y_pred, batch_item) -> (str, str, str):
         return "", \
@@ -252,11 +250,13 @@ class PytorchSQuAD_V1(QADataset):
                     len(ex[1]) <= self.configs.question_max_length,
                 examples))
 
-            self.word_embedding_layer, itos = self.load_embeddings(specials=['<sos>', '<eos>', '<oov>', '<pad>'])
+            self.word_embedding_layer, itos = self.load_embeddings(
+                tokens=self.builder.vocab_word.tolist(),
+                specials=['<sos>', '<eos>', '<oov>', '<pad>'])
             self.vocab_word = self.builder.vocab_word if itos is None else Vocab(itos)
             self.vocab_char = self.builder.vocab_char
 
-            for context, question, answer, answer_span in tqdm(examples, desc="Loading data (%s)" % mode):
+            for context, question, answer, answer_span in tqdm(examples, desc="Loading data (%s)" % mode, leave=False):
                 data.append(dict(
                     cw=self.vocab_word.encode_token_list(context),
                     qw=self.vocab_word.encode_token_list(question),
