@@ -22,17 +22,18 @@ def load_model(mode, report: ModelReport, argv=None, params: MainConfig = None, 
     :param mode: train, test, dev
     :param report:
     :param argv:
-    :param params:
+    :param params: if None, configs will be read from file
     :param args:
     :return:
     """
-    report.metrics = params.test.metrics
 
     if not params and not args:
         configs = Configs(mode=mode, argv=argv)
         params_list, args = configs.params_list, configs.args
-
+        assert len(params_list) == 1
         variables, params = params_list[0]
+
+    report.metrics = params.test.metrics
 
     if mode == "train":
         if args.debug:
@@ -86,13 +87,15 @@ def load_model(mode, report: ModelReport, argv=None, params: MainConfig = None, 
     report.num_params = num_params
     report.num_trainable_params = num_trainable_params
 
-    device_ids = [i for i in range(torch.cuda.device_count())]
-    logger.info("GPUs: %s" % str(device_ids))
-    model = DataParellelModel(model, device_ids)
-
     use_cuda = torch.cuda.is_available()
-    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    model.to(device)
+    if use_cuda and params.gpu:
+        model = DataParellelModel(model, params.gpu)
+        logger.info("Start training using %d GPU(s): %s", len(params.gpu), str(params.gpu))
+        torch.cuda.set_device(params.gpu[0])
+        # device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+        model.to(params.gpu[0])
+    else:
+        model = DataParellelModel(model, ['cpu'])
 
     logger.info("Dataset: %s. Model: %s", str(dataset_builder), str(model_cls))
     if use_cuda:
@@ -119,3 +122,4 @@ def set_seed(seed):
     numpy.random.seed(seed)
     import torch
     torch.manual_seed(seed)
+    logger.info("Seed set to %d", seed)

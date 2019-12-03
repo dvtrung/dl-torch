@@ -1,11 +1,8 @@
 import numpy as np
-from torchvision.transforms import transforms
-from torchvision.datasets import MNIST as TorchMNIST
-from torch.utils.data.sampler import SubsetRandomSampler
-
 from dlex.datasets.image.torch import PytorchImageDataset
-from dlex.torch import Batch
-from dlex.torch.utils.ops_utils import maybe_cuda
+from torch.utils.data.sampler import SubsetRandomSampler
+from torchvision.datasets import MNIST as TorchMNIST
+from torchvision.transforms import transforms
 
 
 class PytorchMNIST(PytorchImageDataset):
@@ -31,14 +28,6 @@ class PytorchMNIST(PytorchImageDataset):
     @property
     def num_classes(self):
         return 10
-
-    @property
-    def num_channels(self):
-        return 1
-
-    @property
-    def input_shape(self):
-        return 28, 28
 
     def __len__(self):
         if self.mode == "test":

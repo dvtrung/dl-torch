@@ -11,7 +11,7 @@ from dlex.utils import logger, table2str, logging
 from .configs import Configs, Environment
 
 
-def launch_training(backend: str, params, args, report_callback=None):
+def launch_evaluating(backend: str, params, args, report_callback=None):
     if backend is None:
         raise ValueError("No backend specified. Please add it in config file.")
     if backend == "sklearn":
@@ -19,9 +19,8 @@ def launch_training(backend: str, params, args, report_callback=None):
         train(params, args, report_callback)
         # runpy.run_module("dlex.sklearn.train", run_name=__name__)
     elif backend == "pytorch" or backend == "torch":
-        # runpy.run_module("dlex.torch.train", run_name=__name__)
-        from dlex.torch.train import main
-        main(None, params, args, report_callback)
+        from dlex.torch.evaluate import main
+        main(params, args, report_callback)
     elif backend == "tensorflow" or backend == "tf":
         runpy.run_module("dlex.tf.train", run_name=__name__)
     else:
@@ -100,36 +99,18 @@ def write_report(reports: Dict[str, Dict[Tuple, ModelReport]], configs):
                     [[row_header] + row for row, row_header in zip(data, env.variable_values[val_row])]
                 s += f"\n{table2str(data)}\n"
 
+    print(s)
     if configs.args.report:
-        print(s)
         os.makedirs("model_reports", exist_ok=True)
         with open(os.path.join("model_reports", f"{configs.config_name}.md"), "w") as f:
             f.write(s)
 
 
-def get_unused_gpus(args):
-    import subprocess
-    from io import StringIO
-    import pandas as pd
-
-    gpu_stats = subprocess.check_output(["nvidia-smi", "--format=csv", "--query-gpu=memory.used,memory.free"])
-    gpu_df = pd.read_csv(StringIO(gpu_stats.decode()), names=['memory.used', 'memory.free'], skiprows=1)
-    gpu_df['memory.used'] = gpu_df['memory.used'].map(lambda x: int(x.rstrip(' [MiB]')))
-    gpu_df['memory.free'] = gpu_df['memory.free'].map(lambda x: int(x.rstrip(' [MiB]')))
-    gpu_df = gpu_df[gpu_df['memory.used'] <= args.gpu_memory_max]
-    gpu_df = gpu_df[gpu_df['memory.free'] >= args.gpu_memory_min]
-    idx = gpu_df.index.tolist()[:args.num_gpus]
-    return idx
-
-
 def main():
-    configs = Configs(mode="train")
+    configs = Configs(mode="test")
     args = configs.args
     manager = multiprocessing.Manager()
     all_reports = manager.dict()
-
-    if args.debug:
-        logger.setLevel(logging.DEBUG)
 
     if configs.args.env:
         envs = [e for e in configs.environments if e.name in args.env]
@@ -147,7 +128,7 @@ def main():
         for env in envs:
             for variable_values, params in zip(env.variables_list, env.parameters_list):
                 threads = []
-                thread = Process(target=launch_training, args=(
+                thread = Process(target=launch_evaluating, args=(
                     configs.backend, params, args,
                     lambda report: update_results(
                         env, variable_values, report, all_reports, configs)
@@ -158,11 +139,9 @@ def main():
         for thread in threads:
             thread.join()
     else:
-        gpu = args.gpu or get_unused_gpus(args)
         for env in envs:
             for variable_values, params in zip(env.variables_list, env.parameters_list):
-                params.gpu = gpu
-                launch_training(
+                launch_evaluating(
                     configs.backend, params, args,
                     report_callback=lambda report: update_results(
                         env, variable_values, report, all_reports, configs))

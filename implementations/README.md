@@ -12,10 +12,6 @@
 
 ### [Grammatical Error Correction](./grammatical_error_correction)
 
-## Audio & Speech
-
-### [Speech Recognition](./speech_recognition)
-
 ## Image
 
 ### [Object Recognition](./image_classification)

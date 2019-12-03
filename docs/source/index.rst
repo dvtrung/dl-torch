@@ -1,12 +1,14 @@
 Welcome to dlex's documentation!
 ================================
 
-dlex is an open source framework for machine learning scientific experiment. Features include:
+dlex is an open-source framework for machine learning scientific experiment. Features include:
 
 - Configuration-based experiment setup. Less code for more reproducibility
 - Pytorch or Tensorflow 2.0 or scikit-learn as backend with similar training flow
 - Efficiently log, report and analyze experiment results
 - Cross-platform GUI for monitoring experiments, either local or remote sever (Electron-based)
+
+dlex is built on top of other libraries: it provides wrappers for many built-in modules, data loaders and models from other open-source projects (torchtext, torchvision, etc.) so that they can all be used the same manner.
 
 Resources
 ==========

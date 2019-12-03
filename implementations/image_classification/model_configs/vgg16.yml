@@ -9,7 +9,7 @@ env:
         - VGG16
         - VGG19
 model:
-  name: src.models.cnn.VGG
+  name: src.models.vgg.VGG
   vgg_type: ~vgg_type
 dataset:
   name: ~dataset

@@ -89,13 +89,13 @@ def train_keras(params, args):
     hist = History()
 
     # checkpoint
-    checkpoint_path = os.path.join(ModuleConfigs.SAVED_MODELS_PATH, params.config_path)
+    checkpoint_path = os.path.join(ModuleConfigs.SAVED_MODELS_PATH, params.config_path_prefix)
     os.makedirs(checkpoint_path, exist_ok=True)
     model_checkpoint_latest = ModelCheckpoint(os.path.join(checkpoint_path, "latest.h5"))
     model_checkpoint_best = ModelCheckpoint(os.path.join(checkpoint_path, "best.h5"), save_best_only=True)
 
     # tensorboard
-    log_path = os.path.join("logs", params.config_path)
+    log_path = os.path.join("logs", params.config_path_prefix)
     os.makedirs(log_path, exist_ok=True)
     tensorboard_callback = TensorBoard(log_dir=log_path)
 

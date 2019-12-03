@@ -113,10 +113,6 @@ def train(
             report.results = display_results
             report_callback(report)
 
-    if report_callback:  # update final results
-        report.results = display_results
-        report.finished = True
-        report_callback(report)
     return display_results
 
 
@@ -145,6 +141,7 @@ def train_epoch(
         report: ModelReport,
         num_samples=0):
     """Train."""
+
     if params.dataset.shuffle:
         datasets.train.shuffle()
 
@@ -270,10 +267,17 @@ def main(
                     report.results = {
                         metric: sum([r[metric] for r in results]) / len(results) for metric in results[0]}
                     report_callback(report)
+            if report_callback:
+                report.finished = True
+                report_callback(report)
         else:
-            params, args, model, datasets = load_model("train", report, argv, params, args)
             set_seed(params.random_seed)
+            params, args, model, datasets = load_model("train", report, argv, params, args)
             res = train(params, args, model, datasets, report, report_callback=report_callback)
+            if report_callback:
+                report.results = res
+                report.finished = True
+                report_callback(report)
         return res
     #else:
     #    model.share_memory()

@@ -18,3 +18,17 @@ class ImageDataset(DatasetBuilder):
             return "file: %s" % fn
         else:
             raise ValueError("Unknown output format.")
+
+    @property
+    def num_channels(self):
+        """
+        :return: number of channels in the input image
+        """
+        raise NotImplementedError
+
+    @property
+    def input_shape(self):
+        """
+        :return: shape of the input image
+        """
+        raise NotImplementedError

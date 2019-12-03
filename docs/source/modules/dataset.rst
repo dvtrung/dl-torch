@@ -1,4 +1,4 @@
-Classes
+Dataset
 =============================
 
 .. autoclass:: dlex.datasets.DatasetBuilder
@@ -7,17 +7,12 @@ Classes
 .. autoclass:: dlex.datasets.torch.Dataset
   :members:
 
-Supported Datasets
-==========================
+ImageDataset
+---------------
 
-Image Recognition
--------------------
+.. autoclass:: dlex.datasets.image.ImageDataset
+  :members:
 
-+------------+----------------------------+------------+
-|Name        | Class                      |            |
-+============+============================+============+
-| MNIST      | dlex.datasets.image.MNIST  |            |
-+------------+----------------------------+------------+
-| CIFAR10    | dlex.datasets.image.CIFAR10|            |
-+------------+----------------------------+------------+
+.. autoclass:: dlex.datasets.image.torch.PytorchImageDataset
+  :members:
 

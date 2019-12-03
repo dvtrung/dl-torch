@@ -20,7 +20,7 @@ class PytorchSeq2SeqDataset(Dataset):
             vocab_path: str = None):
         super().__init__(builder, mode)
         if vocab_path:
-            self.vocab = Vocab(vocab_path)
+            self.vocab = Vocab.from_file(vocab_path)
         for token in self.params.dataset.special_tokens:
             self.vocab.add_token("<%s>" % token)
         self._output_size = len(self.vocab)

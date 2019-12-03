@@ -1,15 +1,13 @@
 """General utils"""
 import os
+import re
 import sys
+import tarfile
 import time
 import zipfile
-import tarfile
-import shutil
-import re
 from subprocess import call
 from typing import List
 
-from six.moves import urllib
 import requests
 from tqdm import tqdm
 

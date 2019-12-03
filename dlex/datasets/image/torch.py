@@ -10,3 +10,11 @@ class PytorchImageDataset(Dataset):
     def collate_fn(self, batch) -> Batch:
         ret = super().collate_fn(batch)
         return Batch(X=maybe_cuda(ret[0]), Y=maybe_cuda(ret[1]))
+
+    @property
+    def num_channels(self):
+        return self.builder.num_channels
+
+    @property
+    def input_shape(self):
+        return self.builder.input_shape

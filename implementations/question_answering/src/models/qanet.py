@@ -100,20 +100,22 @@ class SelfAttention(nn.Module):
     def __init__(self, connector_dim, num_heads, dropout):
         super().__init__()
         self.num_heads = num_heads
-        self.key_conv = InitializedConv1d(connector_dim, connector_dim, kernel_size=1, relu=False, bias=False)
-        self.value_conv = InitializedConv1d(connector_dim, connector_dim, kernel_size=1, relu=False, bias=False)
-        self.query_conv = InitializedConv1d(connector_dim, connector_dim, kernel_size=1, relu=False, bias=False)
+        #self.key_conv = InitializedConv1d(connector_dim, connector_dim, kernel_size=1, relu=False, bias=False)
+        #self.value_conv = InitializedConv1d(connector_dim, connector_dim, kernel_size=1, relu=False, bias=False)
+        #self.query_conv = InitializedConv1d(connector_dim, connector_dim, kernel_size=1, relu=False, bias=False)
         self.attn = MultiheadAttention(
             embed_dim=connector_dim,
             num_heads=num_heads,
             dropout=dropout)
 
     def forward(self, query, mask):
-        X, _ = self.attn(
-            self.query_conv(query).permute(2, 0, 1),
-            self.key_conv(query).permute(2, 0, 1),
-            self.value_conv(query).permute(2, 0, 1),
-            key_padding_mask=mask)
+        # X, _ = self.attn(
+        #     self.query_conv(query).permute(2, 0, 1),
+        #     self.key_conv(query).permute(2, 0, 1),
+        #     self.value_conv(query).permute(2, 0, 1),
+        #     key_padding_mask=mask)
+        query = query.permute(2, 0, 1)
+        X, _ = self.attn(query, query, query, key_padding_mask=mask)
         return X.permute(1, 2, 0)
 
 

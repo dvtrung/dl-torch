@@ -32,11 +32,13 @@ def evaluate(
         outputs = []
         y_pred_all, y_ref_all = [], []
         for batch in tqdm(data_iter, desc="Eval", leave=False):
-            inference_outputs = model.infer(batch)
-            y_pred, y_ref, others = inference_outputs[0], inference_outputs[1], inference_outputs[2:]
             try:
                 if batch is None or len(batch) == 0:
                     raise Exception("Batch size 0")
+
+                inference_outputs = model.infer(batch)
+                y_pred, y_ref, others = inference_outputs[0], inference_outputs[1], inference_outputs[2:]
+
                 y_pred_all += y_pred
                 y_ref_all += y_ref
                 # for metric in params.test.metrics:
@@ -72,11 +74,11 @@ def evaluate(
     return result, outputs
 
 
-def main():
+def main(params, args, report_callback):
     """Main program."""
-    params, args, model, datasets = load_model("test")
-    #torch.manual_seed(params.seed)
-    result, outputs = evaluate(model, datasets.test, params, output=True)
+    report = ModelReport()
+    params, args, model, datasets = load_model("test", report, None, params, args)
+    result, outputs = evaluate(model, datasets.test, params, output=True, report=report)
 
     for output in random.choices(outputs, k=50):
         logger.info(str(output))
@@ -84,5 +86,5 @@ def main():
     logger.info(str(result))
 
 
-if __name__ == "__main__":
-    main()
+# if __name__ == "__main__":
+#     main(None)

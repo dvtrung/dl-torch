@@ -174,6 +174,7 @@ class MainConfig(AttrDict):
     train: TrainConfig
     test: TestConfig
     verbose: bool
+    gpu: List[int] = None
 
     def __init__(self, *args, **kwargs):
         train = TrainConfig(**AttrDict(args[0]['train'], _variables=self._variables).to_dict()) \
@@ -318,6 +319,15 @@ class Configs:
             return paths[0]
 
     @property
+    def config_path_prefix(self):
+        path = self.config_path
+        if path[-4:] == ".yml":
+            path = path[:-4]
+        if path[:13] == "model_configs":
+            path = path[14:]
+        return path
+
+    @property
     def config_name(self):
         return os.path.splitext(os.path.basename(self.config_path))[0]
 
@@ -353,6 +363,29 @@ class Configs:
             '--log',
             help="One of [none, debug, info, error, warn]",
             default='info'
+        )
+        parser.add_argument(
+            '--gpus, --gpu',
+            help="Specify GPU(s) to use",
+            nargs='+',
+            dest='gpu',
+            default=None
+        )
+        parser.add_argument(
+            '--num_gpus',
+            help="Maximum number of GPUs to assign",
+            type=int,
+            default=1
+        )
+        parser.add_argument(
+            '--gpu_memory_min',
+            help="Minimum free memory (MiB) available for the device to be used",
+            default=0
+        )
+        parser.add_argument(
+            '--gpu_memory_max',
+            help="Maximum used memory (MiB) available for the device to be used",
+            default=100
         )
         if self.mode == "train":
             parser.add_argument('--debug', action="store_true",
@@ -432,6 +465,7 @@ class Configs:
                     # Assign extra parameters from args
                     params.mode = self.mode
                     params.config_path = self.config_path
+                    params.config_path_prefix = self.config_path_prefix
                     params.config_name = self.config_name
                     params.verbose = bool(self.args.verbose)
                     params.dataset.num_workers = self.args.num_workers
@@ -473,6 +507,7 @@ class Configs:
             params = MainConfig(self.yaml_params)
             params.mode = self.mode
             params.config_path = self.config_path
+            params.config_path_prefix = self.config_path_prefix
             params.config_name = self.config_name
             params.verbose = bool(self.args.verbose)
             params.dataset.num_workers = self.args.num_workers

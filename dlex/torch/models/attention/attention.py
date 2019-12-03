@@ -74,7 +74,7 @@ class AttentionModelConfigDict:
 class Attention(BaseModel):
     def __init__(self, params, dataset: PytorchSeq2SeqDataset):
         super().__init__(params, dataset)
-        self.configs = AttentionModelConfigDict(**self.params.model)
+        # self.configs = AttentionModelConfigDict(**self.params.model)
 
         # TODO: note that sos/eos IDs are identical
         self.sos = dataset.sos_token_idx
