@@ -17,7 +17,7 @@ from dlex.torch.models.base import BaseModel
 from dlex.torch.utils.ops_utils import maybe_cuda
 from torch.nn.modules.activation import MultiheadAttention
 
-from ..datasets.squad import QABatch, QADataset
+from ..datasets import QABatch, QADataset
 
 
 def mask_logits(inputs, mask):

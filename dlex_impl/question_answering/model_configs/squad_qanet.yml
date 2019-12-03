@@ -26,10 +26,6 @@ model:
     conv_kernel_size: 5
     num_blocks: 7
     num_heads: 8
-  output:
-  hidden_size: 200
-  maxout_pool_size: 16
-  max_decoder_steps: 4
   dropout: 0.1
   dropout_char: 0.05
 dataset:
@@ -44,8 +40,8 @@ dataset:
     dim: 300
     freeze: true
 train:
-  num_epochs: 100
   batch_size: 16
+  num_epochs: 100
   eval: [dev]
   optimizer:
     name: adam
@@ -54,4 +50,4 @@ train:
     lr: 0.001
 test:
   batch_size: 16
-  metrics: [acc]
+  metrics: [em, f1]

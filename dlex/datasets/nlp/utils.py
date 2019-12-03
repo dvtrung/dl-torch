@@ -2,7 +2,7 @@
 import os
 import re
 import unicodedata
-from typing import List
+from typing import List, Union
 
 import nltk
 import numpy as np
@@ -160,25 +160,41 @@ def mecab_tokenize(s):
 
 def write_vocab(
         working_dir,
-        sentences,
+        text: Union[str, List[str], List[List[str]]],
         output_file_name: str,
         tokenizer: Tokenizer = None,
         min_freq=0,
         specials=None):
+    """
+
+    :param working_dir:
+    :param text: text or list of sentences
+    :param output_file_name:
+    :param tokenizer: if tokenizer is None, tokens are separated by space
+    :param min_freq:
+    :param specials:
+    :return:
+    """
     if tokenizer is None:
         tokenizer = Tokenizer(normalize_none, space_tokenize)
     if specials is None:
         specials = ['<pad>', '<sos>', '<eos>', '<oov>']
     os.makedirs(os.path.join(working_dir, "vocab"), exist_ok=True)
     word_freqs = {}
-    for sent in sentences:
-        # if normalize_fn is not None:
-        #     s = normalize_fn(sent.replace('_', ' '))
-        # else:
-        #     s = sent
-        # ls = char_tokenize(s) if token == 'char' else space_tokenize(s)
-        ls = tokenizer.process(sent)
-        for word in ls:
+
+    if isinstance(text, str):
+        text = [text]
+
+    for sent in text:
+        if isinstance(sent, str):
+            # if normalize_fn is not None:
+            #     s = normalize_fn(sent.replace('_', ' '))
+            # else:
+            #     s = sent
+            # ls = char_tokenize(s) if token == 'char' else space_tokenize(s)
+            sent = tokenizer.process(sent)
+        
+        for word in sent:
             if word.strip() == '':
                 continue
             if word in word_freqs:

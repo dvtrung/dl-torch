@@ -156,7 +156,7 @@ def train_epoch(
         raise ValueError("Batch size is not valid.")
 
     for key in batch_sizes:
-        batch_sizes[key] *= max(torch.cuda.device_count(), 1)
+        batch_sizes[key] *= (len(params.gpu) if params.gpu else 1) or 1
     assert 0 in batch_sizes
 
     total = len(datasets.train)
@@ -258,10 +258,7 @@ def main(
                 params.dataset.cross_validation = params.train.cross_validation
                 params, args, model, datasets = load_model("train", report, argv, params, args)
 
-                res = train(
-                    params, args, model, datasets,
-                    report=report,
-                    report_callback=None)
+                res = train(params, args, model, datasets, report=report, report_callback=None)
                 results.append(res)
                 if report_callback:
                     report.results = {

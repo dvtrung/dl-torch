@@ -30,7 +30,7 @@ def evaluate(
         # acc = {key: 0. for key in params.test.metrics}
         results = {metric: 0. for metric in params.test.metrics}
         outputs = []
-        y_pred_all, y_ref_all = [], []
+        y_pred_all, y_ref_all, extra_all = [], [], []
         for batch in tqdm(data_iter, desc="Eval", leave=False):
             try:
                 if batch is None or len(batch) == 0:
