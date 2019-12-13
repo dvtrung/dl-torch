@@ -59,6 +59,11 @@ epoch_step_info_logger.propagate = False
 
 def set_log_dir(params):
     os.makedirs(params.log_dir, exist_ok=True)
+    sym_path = os.path.abspath(os.path.join(params.log_dir, os.pardir, "latest"))
+    if os.path.exists(sym_path):
+        os.unlink(sym_path)
+    # TODO: symlink doesn't work correctly
+    # os.symlink(params.log_dir, sym_path, True)
 
     log_info_handler = logging.FileHandler(
         os.path.join(params.log_dir, "info.log"))

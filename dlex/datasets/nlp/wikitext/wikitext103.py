@@ -32,12 +32,6 @@ class WikiText103(NLPDataset):
 
         self.TEXT = TEXT
 
-    def evaluate(self, pred, ref, metric: str):
-        if metric == "acc":
-            return accuracy_score(pred, ref) * len(pred), len(pred)
-        else:
-            return super().evaluate(pred, ref, metric)
-
     def get_pytorch_wrapper(self, mode: str):
         return PytorchWikiText103(self, mode)
 

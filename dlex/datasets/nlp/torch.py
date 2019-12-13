@@ -6,7 +6,7 @@ import torch.nn as nn
 import torchtext
 
 from dlex.configs import ModuleConfigs
-from dlex.datasets.nlp.utils import Tokenizer
+from dlex.datasets.nlp.utils import Tokenizer, Vocab
 from dlex.datasets.torch import Dataset
 from dlex.utils import logger
 
@@ -19,7 +19,7 @@ class NLPDataset(Dataset):
     def vocab_size(self):
         raise NotImplementedError()
 
-    def load_embeddings(self, tokens: List[str] = None, specials: List[str] = None) -> Tuple[nn.Embedding, List[str]]:
+    def load_embeddings(self, tokens: List[str] = None, specials: List[str] = None) -> Tuple[nn.Embedding, Vocab]:
         """
         Load pretrained embedding defined in dataset.embeddings
         :param tokens: if specified, only load embeddings of these tokens
@@ -41,20 +41,39 @@ class NLPDataset(Dataset):
                 return FastText()
 
             vectors = vocab.vectors
-            itos = vocab.itos
-
+            index2token = vocab.itos
+            token2index = None
             if tokens:  # limit vocabulary to list of tokens
-                tokens = set(tokens)
-                keep = [i for i, t in enumerate(itos) if t in tokens]
+                num_oovs = 0
+                keep = []
+                index2token = []
+                token2index = {}
+                for t in tokens:
+                    _t = t.lower()
+                    if _t in token2index:
+                        if t not in token2index:
+                            token2index[t] = token2index[_t]
+                    elif _t in vocab.stoi:
+                        keep.append(vocab.stoi[_t.lower()])
+                        token2index[_t] = len(index2token)
+                        token2index[t] = len(index2token)
+                        index2token.append(_t)
+                    else:
+                        num_oovs += 1
                 vectors = vectors[keep]
-                itos = [itos[i] for i in keep]
+                if num_oovs:
+                    logger.warning(f"{num_oovs} tokens not found in pre-trained embeddings")
 
-            logger.debug(f"Load embeddings: {emb.pretrained} (no. embeddings: {len(itos):,})")
+            logger.debug(f"Load embeddings: {emb.pretrained} (no. embeddings: {len(index2token):,})")
 
             if specials is not None:
-                itos += specials
+                for s in specials:
+                    token2index[s] = len(index2token)
+                    index2token.append(s)
+                index2token += specials
                 vectors = torch.cat([vectors, torch.rand(len(specials), len(vectors[0]))])
-            return nn.Embedding.from_pretrained(vectors, freeze=emb.freeze or True), itos
+
+            return nn.Embedding.from_pretrained(vectors, freeze=emb.freeze or True), Vocab(index2token, token2index)
         else:
             raise ValueError("%s is not supported." % emb.name)
 

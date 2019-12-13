@@ -1,3 +1,4 @@
+import math
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -5,12 +6,38 @@ from dlex.configs import MainConfig
 from dlex.datasets.seq2seq.torch import PytorchSeq2SeqDataset
 from dlex.torch import Batch
 from dlex.torch.models.base import BaseModel
-from dlex.torch.utils.ops_utils import maybe_cuda
+from dlex.torch.utils.variable_length_tensor import get_mask
 
 
-def generate_key_padding_mask(seq_len, max_len):
-    ret = [[not i < l for i in range(max_len)] for l in seq_len]
-    return maybe_cuda(torch.BoolTensor(ret))
+class PositionalEncoding(nn.Module):
+    def __init__(self, d_model, dropout=0.1, max_len=5000):
+        super(PositionalEncoding, self).__init__()
+        self.dropout = nn.Dropout(p=dropout)
+
+        pe = torch.zeros(max_len, d_model)
+        position = torch.arange(0, max_len, dtype=torch.float).unsqueeze(1)
+        div_term = torch.exp(torch.arange(0, d_model, 2).float() * (-math.log(10000.0) / d_model))
+        pe[:, 0::2] = torch.sin(position * div_term)
+        pe[:, 1::2] = torch.cos(position * div_term)
+        pe = pe.unsqueeze(0).transpose(0, 1)
+        self.register_buffer('pe', pe)
+
+    def forward(self, x):
+        x = x + self.pe[:x.size(0), :]
+        return self.dropout(x)
+
+
+class Embedding(nn.Module):
+    def __init__(self, input_dim, hidden_dim, positional_encoding: bool = True):
+        super().__init__()
+        self.emb = nn.Embedding(input_dim, hidden_dim)
+        if positional_encoding:
+            self.pos_enc = PositionalEncoding(hidden_dim)
+        else:
+            self.pos_enc = nn.Sequential()
+
+    def forward(self, x):
+        return self.pos_enc(self.emb(x))
 
 
 class Transformer(BaseModel):
@@ -30,40 +57,43 @@ class Transformer(BaseModel):
         if dataset.input_size != cfg.encoder.hidden_size:
             self.encoder_linear = nn.Linear(cfg.encoder.input_size, cfg.encoder.hidden_size)
         else:
-            self.encoder_linear = None
+            self.encoder_linear = nn.Sequential()
 
-        self.decoder_emb = nn.Embedding(dataset.output_size, cfg.decoder.hidden_size)
+        self.decoder_emb = Embedding(dataset.output_size, cfg.decoder.hidden_size)
         self.decoder_projection = nn.Linear(cfg.decoder.hidden_size, dataset.output_size)
 
-    def forward(self, batch: Batch):
+    def forward(self, batch):
         batch_y = self.decoder_emb(batch.Y[:, :-1].contiguous())
         batch_y_len = [l - 1 for l in batch.Y_len]
 
-        if self.encoder_linear:
-            batch_X = self.encoder_linear(batch.X)
+        batch_X = self.encoder_linear(batch.X)
 
         output = self.transformer(
             batch_X.transpose(0, 1), batch_y.transpose(0, 1),
-            src_key_padding_mask=generate_key_padding_mask(batch.X_len, batch.X.shape[1]),
-            tgt_key_padding_mask=generate_key_padding_mask(batch_y_len, batch_y.shape[1])
+            tgt_mask=self.transformer.generate_square_subsequent_mask(batch_y.shape[1]).cuda(self.decoder_projection.weight.device),
+            src_key_padding_mask=~get_mask(batch.X_len, max_len=batch_X.shape[1]),
+            tgt_key_padding_mask=~get_mask(batch_y_len, max_len=batch_y.shape[1])
         ).transpose(0, 1)
         output = self.decoder_projection(output)
         return output
 
-    def infer(self, batch: Batch):
+    def infer(self, batch):
         batch_y = self.decoder_emb(batch.Y[:, :-1].contiguous())
+        # batch_y.rename('N', 'T', 'E')
         batch_y_len = [l - 1 for l in batch.Y_len]
 
-        if self.encoder_linear:
-            batch_X = self.encoder_linear(batch.X)
+        batch_X = self.encoder_linear(batch.X)
+        # batch_X.rename('N', 'S', 'E')
 
         output = self.transformer(
             batch_X.transpose(0, 1), batch_y.transpose(0, 1),
-            src_key_padding_mask=generate_key_padding_mask(batch.X_len, batch.X.shape[1]),
-            tgt_key_padding_mask=generate_key_padding_mask(batch_y_len, batch_y.shape[1])
+            tgt_mask=self.transformer.generate_square_subsequent_mask(batch_y.shape[1]).cuda(self.decoder_projection.weight.device),
+            src_key_padding_mask=~get_mask(batch.X_len, max_len=batch_X.shape[1]),
+            tgt_key_padding_mask=~get_mask(batch_y_len, max_len=batch_y.shape[1]),
         ).transpose(0, 1)
         output = self.decoder_projection(output)
-        output = output.max(1)[1]
+        output = F.softmax(output, dim=-1)
+        output = output.max(-1)[1]
         y_ref = [y[1:y_len - 1].tolist() for y, y_len in zip(batch.Y, batch.Y_len)]
         return [pred[:len_pred - 2].tolist() for pred, len_pred in zip(output, batch.Y_len)], y_ref, None, None
 
@@ -80,11 +110,9 @@ class NMT(Transformer):
     def __init__(self, params: MainConfig, dataset: PytorchSeq2SeqDataset):
         super().__init__(params, dataset)
         cfg = params.model
-        self.embedding = nn.Embedding(
-            num_embeddings=self.dataset.input_size,
-            embedding_dim=cfg.encoder.input_size)
+        self.embedding = Embedding(self.dataset.input_size, cfg.encoder.input_size)
 
-    def forward(self, batch: Batch):
+    def forward(self, batch):
         return super().forward(Batch(
             X=self.embedding(batch.X),
             X_len=batch.X_len,

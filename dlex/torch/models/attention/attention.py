@@ -82,9 +82,8 @@ class Attention(BaseModel):
 
         # subsample info
         # +1 means input (+1) and layers outputs (args.elayer)
-        subsample = np.ones(self.configs.encoder.num_layers + 1, dtype=np.int)
-        logger.info('subsample: ' + ' '.join([str(x) for x in subsample]))
-        self.subsample = subsample
+        self.subsample = np.ones(self.configs.encoder.num_layers + 1, dtype=np.int)
+        logger.info('subsample: ' + ' '.join([str(x) for x in self.subsample]))
 
         # encoder
         self._encoder = self._build_encoder()
@@ -217,7 +216,7 @@ class Attention(BaseModel):
         for l in range(len(self._decoder._decoder)):
             set_forget_bias_to_one(self._decoder._decoder[l].bias_ih)
 
-    def forward(self, batch: Batch):
+    def forward(self, batch):
         states = self._encoder(batch.X, batch.X_len)
         states.decoder_inputs = batch.Y
         states = self._decoder(states)
@@ -225,7 +224,7 @@ class Attention(BaseModel):
             decoder_outputs=states.decoder_outputs,
         )
 
-    def get_loss(self, batch: Batch, states) -> torch.Tensor:
+    def get_loss(self, batch, states) -> torch.Tensor:
         y = batch.Y[:, 1:].contiguous()
         batch_size = y.shape[0]
         decoder_outputs = states['decoder_outputs'].view(batch_size, -1, self.dataset.output_size)
@@ -237,7 +236,7 @@ class Attention(BaseModel):
         loss /= (np.sum(np.array(batch.Y_len)))
         return loss
 
-    def infer(self, batch: Batch):
+    def infer(self, batch):
         states = self._encoder(batch.X, batch.X_len)
         if self.params.model.decoding_method == 'greedy':
             states = self._decoder.greedy_search(states)
@@ -340,14 +339,14 @@ class Attention(BaseModel):
         # img = [attentions[0] for attentions in others.attentions]
         # logger.debug(len(others.attentions))
 
-    def train_log(self, batch: Batch, output, verbose):
+    def train_log(self, batch, output, verbose):
         d = super().train_log(batch, output, verbose)
         if verbose:
             d["input_length"] = batch.X.shape[1]
             d["output_length"] = batch.Y.shape[1]
         return d
 
-    def infer_log(self, batch: Batch, output, verbose):
+    def infer_log(self, batch, output, verbose):
         d = super().infer_log(batch, output, verbose)
         if verbose:
             d["input_length"] = batch.X.shape[1]
@@ -384,7 +383,7 @@ class NMT(Attention):
             dropout=cfg.dropout
         )
 
-    def forward(self, batch: Batch):
+    def forward(self, batch):
         return super().forward(Batch(
             X=self.embedding(batch.X.to(self.embedding.weight.device)),
             X_len=batch.X_len,
@@ -392,7 +391,7 @@ class NMT(Attention):
             Y_len=batch.Y_len
         ))
 
-    def infer(self, batch: Batch):
+    def infer(self, batch):
         return super().infer(Batch(
             X=self.embedding(batch.X),
             X_len=batch.X_len,

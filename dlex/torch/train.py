@@ -1,4 +1,5 @@
 """Train a model."""
+import os
 import random
 import sys
 import time
@@ -43,10 +44,8 @@ def train(
         def _evaluate(mode):
             # Evaluate model
             result, outputs = evaluate(
-                model,
-                getattr(datasets, mode),
-                params,
-                output=True,
+                model, getattr(datasets, mode), params,
+                output_path=os.path.join(params.log_dir, "results", "latest"),
                 report=report)
             best_result = log_result(mode, params, result, datasets.train.builder.is_better_result)
             for metric in best_result:

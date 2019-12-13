@@ -1,9 +1,11 @@
+import os
 import random
 import traceback
 from typing import Tuple
 
 import torch
 from dlex.datatypes import ModelReport
+from dlex.train import get_unused_gpus
 from tqdm import tqdm
 
 from dlex.configs import MainConfig
@@ -17,9 +19,17 @@ def evaluate(
         model: BaseModel,
         dataset: Dataset,
         params: MainConfig,
-        output=False,
+        output_path,
         report: ModelReport = None) -> Tuple[dict, list]:
-    """Evaluate model and save result."""
+    """
+    Evaluate model and save result.
+    :param model:
+    :param dataset:
+    :param params:
+    :param output_path: path without extension
+    :param report:
+    :return:
+    """
     model.module.eval()
     torch.cuda.empty_cache()
     with torch.no_grad():
@@ -49,22 +59,23 @@ def evaluate(
                 #         _acc, _total = dataset.evaluate_batch(y_pred, batch, metric=metric)
                 #     acc[metric] += _acc
                 #     total[metric] += _total
-                if output:
-                    for i, predicted in enumerate(y_pred):
-                        str_input, str_ground_truth, str_predicted = dataset.format_output(
-                            predicted, batch.item(i))
-                        outputs.append(dict(
-                            input=str_input,
-                            reference=str_ground_truth,
-                            hypothesis=str_predicted))
-                        # print(outputs[-1])
+
+                for i, predicted in enumerate(y_pred):
+                    str_input, str_ground_truth, str_predicted = dataset.format_output(
+                        predicted, batch.item(i))
+                    outputs.append(dict(
+                        input=str_input,
+                        reference=str_ground_truth,
+                        hypothesis=str_predicted))
+                    logger.info(outputs[-1])
+
                 if report.summary_writer is not None:
                     model.write_summary(report.summary_writer, batch, (y_pred, others))
             except Exception:
                 logger.error(traceback.format_exc())
 
         for metric in params.test.metrics:
-            results[metric] = dataset.evaluate(y_pred_all, y_ref_all, metric)
+            results[metric] = dataset.evaluate(y_pred_all, y_ref_all, metric, output_path)
 
     result = {
         "epoch": "%.1f" % model.current_epoch,
@@ -74,17 +85,24 @@ def evaluate(
     return result, outputs
 
 
-def main(params, args, report_callback):
+def main(params=None, args=None, report=None):
     """Main program."""
     report = ModelReport()
     params, args, model, datasets = load_model("test", report, None, params, args)
-    result, outputs = evaluate(model, datasets.test, params, output=True, report=report)
 
-    for output in random.choices(outputs, k=50):
-        logger.info(str(output))
+    gpu = args.gpu or get_unused_gpus(args)
+    params.gpu = gpu
+
+    for mode in params.train.eval:
+        result, outputs = evaluate(
+            model, datasets.get_dataset(mode), params,
+            output_path=os.path.join(params.log_dir, "results", f"{args.load}_{mode}"), report=report)
+
+        for output in random.choices(outputs, k=50):
+            logger.info(str(output))
 
     logger.info(str(result))
 
 
-# if __name__ == "__main__":
-#     main(None)
+if __name__ == "__main__":
+    main(None)

@@ -79,39 +79,40 @@ class DatasetBuilder:
 
     @abc.abstractmethod
     def get_tensorflow_wrapper(self, mode: str):
-        return None
+        raise NotImplementedError
 
     @abc.abstractmethod
     def get_pytorch_wrapper(self, mode: str):
-        return None
+        raise NotImplementedError
 
     @abc.abstractmethod
     def get_keras_wrapper(self, mode: str):
-        return None
+        raise NotImplementedError
 
     @abc.abstractmethod
     def get_sklearn_wrapper(self, mode: str):
-        return None
+        raise NotImplementedError
 
     @abc.abstractmethod
-    def evaluate(self, pred, ref, metric: str):
+    def evaluate(self, pred, ref, metric: str, output_path: str):
         """
 
         :param pred:
         :param ref:
         :param metric:
+        :param output_path:
         :return:
         """
         if metric == "acc":
             return accuracy_score(pred, ref) * 100
         elif metric == "err":
-            ret = self.evaluate(pred, ref, "acc")
+            ret = self.evaluate(pred, ref, "acc", output_path)
             return 100 - ret
         else:
             raise NotImplementedError
 
     @staticmethod
-    def is_better_result(metric: str, best_result: float, new_result: float):
+    def is_better_result(metric: str, best_result: float, new_result: float) -> bool:
         """Compare new result with previous best result
 
         :param metric: name of metric
@@ -124,7 +125,7 @@ class DatasetBuilder:
         """
         if metric in ["wer", "loss", "err"]:  # the lower the better
             return new_result < best_result
-        elif metric in ["acc", "bleu"]:
+        elif metric in ["acc", "bleu", "f1"]:
             return new_result > best_result
         else:
             raise Exception("Result comparison is not defined: %s" % metric)

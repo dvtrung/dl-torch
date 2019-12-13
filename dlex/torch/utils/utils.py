@@ -29,9 +29,10 @@ def load_model(mode, report: ModelReport, argv=None, params: MainConfig = None, 
 
     if not params and not args:
         configs = Configs(mode=mode, argv=argv)
-        params_list, args = configs.params_list, configs.args
-        assert len(params_list) == 1
-        variables, params = params_list[0]
+        envs, args = configs.environments, configs.args
+        assert len(envs) == 1
+        assert len(envs[0].parameters_list) == 1
+        params = envs[0].parameters_list[0]
 
     report.metrics = params.test.metrics
 
@@ -46,7 +47,9 @@ def load_model(mode, report: ModelReport, argv=None, params: MainConfig = None, 
     if not args.no_prepare:
         dataset_builder.prepare(download=args.download, preprocess=args.preprocess)
     if mode == "test":
-        datasets = Datasets(test=dataset_builder.get_pytorch_wrapper(args.eval_set))
+        datasets = Datasets()
+        for mode in params.train.eval:
+            datasets.load_dataset(dataset_builder, mode)
     elif mode == "train":
         if args.debug:
             datasets = Datasets(

@@ -1,13 +1,13 @@
 import os
 
-from dlex.datasets.nlp.builder import NLPDataset
+from dlex.datasets.nlp.builder import NLPDatasetBuilder
 from dlex.utils import logger
 
 
-class WMT14(NLPDataset):
+class WMT14EnglishGerman(NLPDatasetBuilder):
     def get_pytorch_wrapper(self, mode: str):
-        from .torch import WMT14EnglishGerman
-        return WMT14EnglishGerman(self, mode)
+        from .torch import PytorchWMT14EnglishGerman
+        return PytorchWMT14EnglishGerman(self, mode)
 
     def maybe_download_and_extract(self, force=False):
         super().maybe_download_and_extract(force)

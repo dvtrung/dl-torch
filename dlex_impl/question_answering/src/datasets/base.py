@@ -1,9 +1,8 @@
-from collections import namedtuple
 from dataclasses import dataclass
 
 import torch
 from dlex.datasets.nlp.torch import NLPDataset
-from dlex.torch.datatypes import VariableLengthTensor, Batch, BatchItem
+from dlex.torch.datatypes import Batch, BatchItem
 
 
 class QADataset(NLPDataset):
@@ -13,24 +12,22 @@ class QADataset(NLPDataset):
 
 @dataclass
 class BatchX:
-    context_word: VariableLengthTensor
+    context_word: torch.Tensor
+    context_word_lengths: torch.LongTensor
     context_char: torch.Tensor
-    question_word: VariableLengthTensor
+    question_word: torch.Tensor
+    question_word_lengths: torch.LongTensor
     question_char: torch.Tensor
-
-
-BatchY = namedtuple("BatchY", "answer_span")
 
 
 class QABatch(Batch):
     X: BatchX
-    Y: BatchY
-    Y_len: BatchY
+    Y = None
 
     def __len__(self):
-        return len(self.X.context_word)
+        return len(self.Y)
 
     def item(self, i: int) -> BatchItem:
         return BatchItem(
-            X=None,
+            X=[x[i] for x in self.X],
             Y=self.Y[i].cpu().detach().numpy())

@@ -6,6 +6,7 @@ from multiprocessing import Process
 from typing import Dict, Tuple, Any
 
 from dlex.datatypes import ModelReport
+from dlex.train import get_unused_gpus
 from dlex.utils import logger, table2str, logging
 
 from .configs import Configs, Environment
@@ -123,28 +124,14 @@ def main():
         for variable_values, params in zip(env.variables_list, env.parameters_list):
             all_reports[env.name][variable_values] = None
 
-    multi_processing = False
-    if multi_processing:
-        for env in envs:
-            for variable_values, params in zip(env.variables_list, env.parameters_list):
-                threads = []
-                thread = Process(target=launch_evaluating, args=(
-                    configs.backend, params, args,
-                    lambda report: update_results(
-                        env, variable_values, report, all_reports, configs)
-                ))
-                thread.start()
-                time.sleep(5)
-                threads.append(thread)
-        for thread in threads:
-            thread.join()
-    else:
-        for env in envs:
-            for variable_values, params in zip(env.variables_list, env.parameters_list):
-                launch_evaluating(
-                    configs.backend, params, args,
-                    report_callback=lambda report: update_results(
-                        env, variable_values, report, all_reports, configs))
+    gpu = [f"cuda:{g}" for g in args.gpu] or get_unused_gpus(args)
+    for env in envs:
+        for variable_values, params in zip(env.variables_list, env.parameters_list):
+            params.gpu = gpu
+            launch_evaluating(
+                configs.backend, params, args,
+                report_callback=lambda report: update_results(
+                    env, variable_values, report, all_reports, configs))
 
 
 if __name__ == "__main__":

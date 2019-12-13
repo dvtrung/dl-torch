@@ -12,9 +12,9 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from dlex.configs import AttrDict
-from dlex.torch import Batch
 from dlex.torch.models.base import BaseModel
 from dlex.torch.utils.ops_utils import maybe_cuda
+from dlex.torch.utils.variable_length_tensor import get_mask
 from torch.nn.modules.activation import MultiheadAttention
 
 from ..datasets import QABatch, QADataset
@@ -29,19 +29,17 @@ class InitializedConv1d(nn.Module):
     def __init__(self, in_channels, out_channels, kernel_size=1, relu=False, stride=1, padding=0, groups=1, bias=False):
         super().__init__()
         self.out = nn.Conv1d(
-            in_channels, out_channels, kernel_size, stride=stride, padding=padding, groups=groups,
-            bias=bias)
-        self.relu = relu
+            in_channels, out_channels, kernel_size,
+            stride=stride, padding=padding, groups=groups, bias=bias)
+
         if relu:
             nn.init.kaiming_normal_(self.out.weight, nonlinearity='relu')
         else:
             nn.init.xavier_uniform_(self.out.weight)
+        self.relu = relu
 
     def forward(self, x):
-        if self.relu:
-            return F.relu(self.out(x))
-        else:
-            return self.out(x)
+        return F.relu(self.out(x)) if self.relu else self.out(x)
 
 
 def PosEncoder(x, min_timescale=1.0, max_timescale=1.0e4):
@@ -83,16 +81,14 @@ class Highway(nn.Module):
         self.n = layer_num
         self.linear = nn.ModuleList([InitializedConv1d(size, size, relu=False, bias=True) for _ in range(self.n)])
         self.gate = nn.ModuleList([InitializedConv1d(size, size, bias=True) for _ in range(self.n)])
-        self.dropout = dropout
+        self.dropout = nn.Dropout(dropout)
 
     def forward(self, x):
-        # x: shape [batch_size, hidden_size, length]
         for i in range(self.n):
             gate = torch.sigmoid(self.gate[i](x))
             nonlinear = self.linear[i](x)
-            nonlinear = F.dropout(nonlinear, p=self.dropout, training=self.training)
+            nonlinear = self.dropout(nonlinear)
             x = gate * nonlinear + (1 - gate) * x
-            # x = F.relu(x)
         return x
 
 
@@ -316,16 +312,16 @@ class QANet(BaseModel):
 
         self.dropout = nn.Dropout(cfg.dropout)
 
-    def forward(self, batch: QABatch):
+    def forward(self, batch):
         cfg = self.params.model
-
+        context_word, context_word_lengths, context_char, question_word, question_word_lengths, question_char = batch.X
         # input embedding layer
-        maskC = batch.X.context_word.get_mask()
-        maskQ = batch.X.question_word.get_mask()
-        Cw = self.emb_word(batch.X.context_word.data)
-        Cc = self.emb_char(batch.X.context_char)
-        Qw = self.emb_word(batch.X.question_word.data)
-        Qc = self.emb_char(batch.X.question_char)
+        maskC = get_mask(context_word_lengths)
+        maskQ = get_mask(question_word_lengths)
+        Cw = self.emb_word(context_word)
+        Cc = self.emb_char(context_char)
+        Qw = self.emb_word(question_word)
+        Qc = self.emb_char(question_char)
         C = self.emb(Cc, Cw, Cw.shape[1])
         Q = self.emb(Qc, Qw, Qw.shape[1])
 
@@ -360,7 +356,7 @@ class QANet(BaseModel):
         y1, y2 = batch.Y[:, 0], batch.Y[:, 1]
         return F.cross_entropy(p1, y1) + F.cross_entropy(p2, y2)
 
-    def infer(self, batch: Batch):
+    def infer(self, batch: QABatch):
         p1, p2 = self.forward(batch)
         p1 = torch.argmax(p1, -1).tolist()
         p2 = torch.argmax(p2, -1).tolist()

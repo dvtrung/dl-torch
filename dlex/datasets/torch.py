@@ -54,8 +54,8 @@ class Dataset(PytorchDataset):
         return self.params.dataset
 
     @abc.abstractmethod
-    def evaluate(self, y_pred, y_ref, metric: str):
-        return self.builder.evaluate(y_pred, y_ref, metric)
+    def evaluate(self, y_pred, y_ref, metric: str, output_path: str):
+        return self.builder.evaluate(y_pred, y_ref, metric, output_path)
 
     def format_output(self, y_pred, batch_input) -> (str, str, str):
         return self.builder.format_output(y_pred, batch_input)

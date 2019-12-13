@@ -99,12 +99,6 @@ class Newsgroup20(NLPDataset):
                 for o in outputs:
                     f.write('\t'.join(o.values()) + '\n')
 
-    def evaluate(self, pred, ref, metric: str):
-        if metric == "acc":
-            return int(pred == ref), 1
-        else:
-            return super().evaluate(pred, ref, metric)
-
     def get_pytorch_wrapper(self, mode: str):
         return PytorchNewsgroup20(self, mode)
 

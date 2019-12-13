@@ -1,3 +1,4 @@
+backend: pytorch
 model:
   name: dlex.torch.models.attention.NMT
   encoder:
@@ -30,7 +31,7 @@ dataset:
   unit: word
   special_tokens: [sos, eos, oov, pad]
 train:
-  batch_size: 24
+  batch_size: 8
   num_epochs: 100
   optimizer:
     name: sgd

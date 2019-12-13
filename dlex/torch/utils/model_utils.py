@@ -1,5 +1,5 @@
 """Model utils"""
-
+from typing import List
 import importlib
 
 import torch
@@ -23,12 +23,18 @@ def get_optimizer(cfg, model_parameters):
     op_params = cfg.to_dict()
     del op_params['name']
 
-    optimizer = {
+    optimizer_cls = {
         'sgd': torch.optim.SGD,
         'adam': torch.optim.Adam,
         'adagrad': torch.optim.Adagrad,
         'adadelta': torch.optim.Adadelta
-    }[cfg.name]
+    }
+    if cfg.name in optimizer_cls:
+        optimizer = optimizer_cls[cfg.name]
+    else:
+        module_name, class_name = cfg.name.rsplit('.', 1)
+        i = importlib.import_module(module_name)
+        optimizer = getattr(i, class_name)
     return optimizer(model_parameters, **op_params)
 
 
@@ -46,3 +52,16 @@ def rnn_cell(cell):
         return torch.nn.LSTM
     elif cell == 'gru':
         return torch.nn.GRU
+
+
+def linear_layers(dims: List[int], batch_norm: bool = True, activation_fn="relu"):
+    linear_layers = []
+    for i, in_dim, out_dim in zip(range(len(dims) - 1), dims[:-1], dims[1:]):
+        linear_layers.append(nn.Linear(in_dim, out_dim))
+        if batch_norm:
+            linear_layers.append(nn.BatchNorm1d(out_dim))
+        if activation_fn and i != len(dims) - 1:
+            linear_layers.append(dict(
+                relu=nn.ReLU
+            )[activation_fn]())
+    self.linear = nn.Sequential(*linear_layers)

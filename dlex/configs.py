@@ -272,7 +272,6 @@ class Environment:
 
 class Configs:
     """All configurations"""
-    params_list: List[MainConfig]
     args = None
 
     def __init__(self, mode, argv=None):
@@ -346,47 +345,25 @@ class Configs:
             nargs='+',
             required=False,
             dest="configs",
-            help="values to override configs read from file"
+            help="Values to override configs read from file"
         )
         parser.add_argument(
             '--env',
-            nargs='+',
-            dest="env",
-            help="list of environments"
-        )
+            nargs='+', dest="env", help="List of environments")
         parser.add_argument(
-            '--report',
-            action="store_true",
-            help="show clean screen with report"
-        )
+            '--report', action="store_true",
+            help="Show clean screen with report")
         parser.add_argument(
             '--log',
-            help="One of [none, debug, info, error, warn]",
-            default='info'
-        )
-        parser.add_argument(
-            '--gpus, --gpu',
-            help="Specify GPU(s) to use",
-            nargs='+',
-            dest='gpu',
-            default=None
-        )
-        parser.add_argument(
-            '--num_gpus',
-            help="Maximum number of GPUs to assign",
-            type=int,
-            default=1
-        )
+            help="One of [none, debug, info, error, warn]", default='info')
+        parser.add_argument('-g, --gpus', nargs='+', help="Specify GPU(s) to use", dest='gpu')
+        parser.add_argument('--num_gpus', help="Maximum number of GPUs to assign", type=int, default=1)
         parser.add_argument(
             '--gpu_memory_min',
-            help="Minimum free memory (MiB) available for the device to be used",
-            default=0
-        )
+            help="Minimum free memory (MiB) available for the device to be used", default=0)
         parser.add_argument(
             '--gpu_memory_max',
-            help="Maximum used memory (MiB) available for the device to be used",
-            default=100
-        )
+            help="Maximum used memory (MiB) available for the device to be used", default=100)
         if self.mode == "train":
             parser.add_argument('--debug', action="store_true",
                                 help="train and eval on the same small data to check if the model works")

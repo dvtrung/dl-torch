@@ -2,7 +2,7 @@
 import os
 import re
 import unicodedata
-from typing import List, Union
+from typing import List, Union, Dict
 
 import nltk
 import numpy as np
@@ -230,13 +230,16 @@ def get_token_id(vocab, word):
 
 
 class Vocab:
-    def __init__(self, token_list: List[str] = None):
-        if token_list is None:
+    def __init__(self, index2token: List[str] = None, token2index: Dict[str, int] = None):
+        if index2token is None:
             self._token2index = {}
             self._index2token = []
         else:
-            self._index2token = token_list
-            self._token2index = {token: idx for idx, token in enumerate(token_list)}
+            self._index2token = index2token
+            if token2index:
+                self._token2index = token2index
+            else:
+                self._token2index = {token: idx for idx, token in enumerate(index2token)}
         self.embeddings = None
         self.embedding_dim = None
 
@@ -272,8 +275,16 @@ class Vocab:
     def get_token(self, idx: int) -> str:
         return self._index2token[idx]
 
-    def decode_idx_list(self, ls: List[int]) -> List[str]:
-        return [self.get_token(idx) for idx in ls]
+    def decode_idx_list(self, ls: List[int], ignore: List[int] = None, stop_at: int = None) -> List[str]:
+        ret = []
+        for idx in ls:
+            if idx == stop_at:
+                break
+            elif ignore and idx in ignore:
+                continue
+            else:
+                ret.append(self.get_token(idx))
+        return ret
 
     def encode_token_list(self, ls: List[str]) -> List[int]:
         return [self.get_token_id(token) for token in ls]
@@ -302,4 +313,5 @@ class Vocab:
             return self._token2index['<oov>']
         elif '<unk>' in self._token2index:
             return self._token2index['<unk>']
-        raise Exception("<oov> token not found.")
+        else:
+            raise Exception("<oov> token not found.")

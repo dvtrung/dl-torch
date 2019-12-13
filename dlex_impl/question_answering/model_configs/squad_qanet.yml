@@ -4,7 +4,7 @@
 #   title={Qanet: Combining local convolution with global self-attention for reading comprehension},
 #   author={Yu, Adams Wei and Dohan, David and Luong, Minh-Thang and Zhao, Rui and Chen, Kai and Norouzi, Mohammad and Le, Quoc V},
 #   journal={arXiv preprint arXiv:1804.09541},
-#   year={2018}
+#   year={2018}[
 # }
 
 backend: pytorch
@@ -29,7 +29,7 @@ model:
   dropout: 0.1
   dropout_char: 0.05
 dataset:
-  name: src.datasets.squad.SQuAD_V1
+  name: src.datasets.squad.SQuAD_v1
   paragraph_max_length: 400
   question_max_length: 50
   answer_max_len: 30
@@ -48,6 +48,9 @@ train:
     betas: [0.8, 0.999]
     eps: 1e-7
     lr: 0.001
+  lr_scheduler:
+    milestones: [5, 10, 15, 20]
+    gamma: 0.1
 test:
   batch_size: 16
   metrics: [em, f1]

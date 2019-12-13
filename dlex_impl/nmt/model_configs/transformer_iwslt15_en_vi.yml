@@ -7,8 +7,6 @@ model:
   dim_model: 256
   dim_inner: 1024
   encoder:
-    rnn_type: lstm
-    bidirectional: false
     num_layers: 3
     input_size: 256
     hidden_size: 256
@@ -17,9 +15,9 @@ model:
     update_embedding: true
     max_length: 50
   decoder:
+    num_layers: 3
     share_embeddings: true
     use_attention: true
-    num_layers: 3
     hidden_size: 256
     max_length: 50
     output_size: 256
@@ -33,7 +31,7 @@ model:
   teacher_forcing_ratio: 1.0
   decoding_method: greedy
 dataset:
-  name: src.datasets.iwslt.builder.IWSLT15
+  name: src.datasets.iwslt.IWSLT15
   source: vi
   target: en
   output_format: text
@@ -41,13 +39,16 @@ dataset:
   unit: word
   max_target_length: 50
   max_source_length: 50
-  special_tokens: [sos, eos, oov, pad]
 train:
-  batch_size: 64
+  batch_size: 256
   num_epochs: 100
   optimizer:
     name: adam
-    lr: 0.01
+    lr: 0.001
+  lr_scheduler:
+    milestones: [10, 20, 30]
+    gamma: 0.1
   max_grad_norm: 1.0
 test:
+  batch_size: 256
   metrics: [bleu]

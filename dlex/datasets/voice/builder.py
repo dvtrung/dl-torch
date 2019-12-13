@@ -196,7 +196,7 @@ class VoiceDataset(DatasetBuilder):
                         o['tokenized']
                     ]) + '\n')
 
-    def evaluate(self, pred, ref, metric: str):
+    def evaluate(self, pred, ref, metric: str, output_path):
         if metric == "wer":
             score, length = 0, 0
             for p, r in zip(pred, ref):

@@ -1,7 +1,10 @@
+import json
+import os
 from typing import List
 
 import numpy as np
 import torch
+from dlex.utils import logger
 from torch import nn
 
 from dlex.datasets.builder import DatasetBuilder
@@ -19,20 +22,18 @@ class PytorchSeq2SeqDataset(Dataset):
             mode: str,
             vocab_path: str = None):
         super().__init__(builder, mode)
+
         if vocab_path:
             self.vocab = Vocab.from_file(vocab_path)
-        for token in self.params.dataset.special_tokens:
-            self.vocab.add_token("<%s>" % token)
+            if self.params.dataset.special_tokens:
+                for token in self.params.dataset.special_tokens:
+                    self.vocab.add_token("<%s>" % token)
+
         self._output_size = len(self.vocab)
 
     @property
     def pad_token_idx(self):
-        if 'blank' in self.params.dataset.special_tokens:
-            return self.blank_token_idx
-        if 'pad' in self.params.dataset.special_tokens:
-            return self.vocab.blank_token_idx
-        else:
-            raise Exception("No padding idx.")
+        return self.vocab.blank_token_idx
 
     @property
     def output_size(self) -> int:
@@ -66,7 +67,7 @@ class PytorchSeq2SeqDataset(Dataset):
         else:
             inp = [torch.FloatTensor(item.X) for item in batch]
 
-        if 'sos' in self.params.dataset.special_tokens:
+        if self.sos_token_idx:
             tgt = [torch.LongTensor([self.sos_token_idx] + item.Y + [self.eos_token_idx]).view(-1) for item in batch]
         else:
             tgt = [torch.LongTensor(item.Y).view(-1) for item in batch]
@@ -74,11 +75,8 @@ class PytorchSeq2SeqDataset(Dataset):
                 tgt = [y[:min(len(y), self.params.dataset.max_target_length)] for y in tgt]
 
         tgt_len = [len(t) for t in tgt]
-        inp = nn.utils.rnn.pad_sequence(
-            inp, batch_first=True)
-        tgt = nn.utils.rnn.pad_sequence(
-            tgt, batch_first=True,
-            padding_value=self.pad_token_idx)
+        inp = nn.utils.rnn.pad_sequence(inp, batch_first=True, padding_value=self.pad_token_idx)
+        tgt = nn.utils.rnn.pad_sequence(tgt, batch_first=True, padding_value=self.pad_token_idx)
 
         return Batch(
             X=maybe_cuda(inp), X_len=[len(item.X) for item in batch],
@@ -86,12 +84,45 @@ class PytorchSeq2SeqDataset(Dataset):
 
     def format_output(self, y_pred, batch_item: BatchItem):
         pr = np.array(y_pred)
-        gt = batch_item.Y[1:-1] if 'sos' in self.params.dataset.special_tokens else batch_item.Y
+        gt = batch_item.Y[1:-1] if self.vocab.sos_token_idx else batch_item.Y
         if self.params.dataset.output_format is None:
             return "", str(gt), str(pr)
         elif self.params.dataset.output_format == "text":
             delimiter = ' ' if self.params.dataset.unit == "word" else ''
-            return \
-                "", \
-                delimiter.join([self.vocab.get_token(wid) for wid in gt]), \
-                delimiter.join([self.vocab.get_token(wid) for wid in pr])
+            return (
+                "",
+                delimiter.join(self.vocab.decode_idx_list(gt, stop_at=self.vocab.eos_token_idx)),
+                delimiter.join(self.vocab.decode_idx_list(pr, stop_at=self.vocab.eos_token_idx))
+            )
+
+
+class PytorchTranslationDataset(PytorchSeq2SeqDataset):
+    def __init__(self, builder, mode, src_vocab_path, tgt_vocab_path):
+        super().__init__(builder, mode, tgt_vocab_path)
+
+        if src_vocab_path:
+            self.src_vocab = Vocab.from_file(src_vocab_path)
+            if self.params.dataset.special_tokens:
+                for token in self.params.dataset.special_tokens:
+                    self.src_vocab.add_token("<%s>" % token)
+
+    @property
+    def input_size(self):
+        return len(self.src_vocab)
+
+    def evaluate(self, y_pred, y_ref, metric: str, output_path: str):
+        if metric == "bleu":
+            # use official evaluation script
+            # assert len(y_pred) == len(self.data)
+            ret = []
+            for pred, data in zip(y_pred, self.data):
+                ret.append(' '.join(self.vocab.decode_idx_list(pred)))
+
+            f_name = output_path + '.json'
+            with open(f_name, 'w') as f:
+                json.dump(ret, f, indent=2)
+                logger.debug("Results saved to %s" % f_name)
+
+            import nltk
+            score = nltk.translate.bleu_score.corpus_bleu([[ref] for ref in y_ref], y_pred)
+            return score

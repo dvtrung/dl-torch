@@ -40,11 +40,10 @@ class BaseModel(nn.Module):
         return self.params.model
 
     @abc.abstractmethod
-    def infer(self, batch: Batch):
+    def infer(self, batch):
         """Infer from batch
 
         :param batch:
-        :type batch: Batch
         :return: tuple containing:
             pred: prediction
             ref: reference
@@ -54,21 +53,20 @@ class BaseModel(nn.Module):
         """
         raise NotImplementedError()
 
-    def train_log(self, batch: Batch, output, verbose):
+    def train_log(self, batch, output, verbose):
         d = dict()
         if verbose:
             d["loss"] = self.get_loss(batch, output).item()
         return d
 
-    def infer_log(self, batch: Batch, output, verbose):
+    def infer_log(self, batch, output, verbose):
         return dict()
 
     @abc.abstractmethod
-    def get_loss(self, batch: Batch, output):
+    def get_loss(self, batch, output):
         """Return model loss to optimize
 
         :param batch:
-        :type batch: Batch
         :param output: Output of model forward
         :type output:
         :return: A `torch.FloatTensor` with the loss value.
@@ -90,10 +88,10 @@ class DataParellelModel(nn.DataParallel):
         self._lr_schedulers = None
         self._loss_fn = None
 
-    def training_step(self, batch: Batch):
+    def training_step(self, batch):
         self.module.train(True)
         self.zero_grad()
-        if batch is None or len(batch.Y) == 0:
+        if batch is None or (isinstance(batch, Batch) and len(batch.Y) == 0):
             raise Exception("Empty batch.")
 
         output = self.forward(batch)
@@ -160,7 +158,7 @@ class DataParellelModel(nn.DataParallel):
         return self.global_step / len(self.dataset)
 
     @abc.abstractmethod
-    def infer(self, batch: Batch):
+    def infer(self, batch):
         """Infer"""
         self.module.train(False)
         return self.module.infer(batch)
@@ -192,7 +190,7 @@ class DataParellelModel(nn.DataParallel):
         }
         fn = os.path.join(ModuleConfigs.SAVED_MODELS_PATH, self.params.config_path_prefix, tag + ".pt")
         torch.save(state, fn)
-        logger.debug("Checkpoint saved to %s", fn)
+        logger.info("Checkpoint saved to %s", fn)
 
     def load_checkpoint(self, tag, load_optimizers=True):
         """Load from saved state"""
@@ -222,7 +220,7 @@ class ClassificationModel(BaseModel):
         logits = self.forward(batch)
         return torch.max(logits, 1)[1].tolist(), batch.Y.tolist()
 
-    def get_loss(self, batch: Batch, output):
+    def get_loss(self, batch, output):
         return self._criterion(output, batch.Y)
 
 

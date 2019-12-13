@@ -22,11 +22,11 @@ class WikiText2(NLPDataset):
         TEXT.build_vocab(self.train_data, vectors=self.get_embedding_vectors())
         self.TEXT = TEXT
 
-    def evaluate(self, pred, ref, metric: str):
+    def evaluate(self, pred, ref, metric: str, output_path: str):
         if metric == "acc":
             return accuracy_score(pred, ref) * len(pred), len(pred)
         else:
-            return super().evaluate(pred, ref, metric)
+            return super().evaluate(pred, ref, metric, output_path)
 
     def get_pytorch_wrapper(self, mode: str):
         return PytorchWikiText2(self, mode)

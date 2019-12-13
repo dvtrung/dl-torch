@@ -1,14 +1,13 @@
+backend: pytorch
 model:
-  name: dlex.models.transformer.NMT
-  num_layers: 6
+  name: dlex.torch.models.transformer.NMT
   num_heads: 8
   key_size: 64
   value_size: 64
-  dim_model: 512
-  dim_inner: 2048
+  dim_model: 256
+  dim_inner: 1024
   encoder:
-    rnn_type: lstm
-    bidirectional: false
+    num_layers: 6
     input_size: 256
     hidden_size: 256
     output_size: 256
@@ -16,6 +15,7 @@ model:
     update_embedding: true
     max_length: 50
   decoder:
+    num_layers: 6
     share_embeddings: true
     use_attention: true
     hidden_size: 256
@@ -35,12 +35,13 @@ dataset:
   target: en
   output_format: text
   debug_size: 20
+  unit: word
 train:
   batch_size: 64
   num_epochs: 10
   optimizer:
     name: adam
-    lr: 0.01
+    lr: 0.001
   max_grad_norm: 1.0
 test:
   metrics: [bleu]
