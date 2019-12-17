@@ -27,10 +27,10 @@ class NLPDataset(Dataset):
         :return:
         """
         emb = self.configs.embeddings
-        if emb.pretrained is None:
+        if not emb.pretrained:
             assert emb.dim is not None
             return nn.Embedding(self.vocab_size, emb.dim), None
-        if emb.pretrained.lower() in ["glove", "fasttext"]:
+        elif emb.pretrained.lower() in ["glove", "fasttext"]:
             if emb.pretrained.lower() == 'glove':
                 from torchtext.vocab import GloVe
                 vocab = GloVe(

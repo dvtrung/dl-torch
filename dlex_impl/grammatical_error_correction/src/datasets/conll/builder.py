@@ -25,7 +25,7 @@ class CoNLL2014(DatasetBuilder):
     def maybe_download_and_extract(self, force=False):
         super().maybe_download_and_extract(force)
         for url in DOWNLOAD_URLS:
-            self.download_and_extract(url, self.get_raw_data_dir())
+            self._download_and_extract(url, self.get_raw_data_dir())
 
     def maybe_preprocess(self, force=False):
         super().maybe_preprocess(force)

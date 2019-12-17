@@ -1,3 +1,6 @@
-[submodule "implementations/ml-graph"]
-	path = implementations/ml-graph
-	url = https://github.com/trungd/ml-graph.git
+[submodule "dlex_impl/ml-graph"]
+	path = dlex_impl/ml-graph
+	url = git@github.com:trungd/ml-graph.git
+[submodule "dlex_impl/question_answering"]
+	path = dlex_impl/question_answering
+	url = git@github.com:trungd/question_answering.git

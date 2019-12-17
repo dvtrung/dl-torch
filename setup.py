@@ -13,8 +13,16 @@ setuptools.setup(
     long_description_content_type="text/markdown",
     url="https://github.com/trungd/dlex",
     packages=setuptools.find_packages(),
+    python_requires='>=2.6',
+    install_requires=[
+        'tqdm',
+        'colorlog',
+        'numpy',
+        'scikit-learn',
+        'pyyaml'
+    ],
     classifiers=[
-        "Programming Language :: Python :: 3",
+        "Programming Language :: Python :: 3.6",
         "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
     ],

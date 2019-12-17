@@ -50,30 +50,24 @@ class Transformer(BaseModel):
             nhead=cfg.num_heads,
             num_encoder_layers=cfg.encoder.num_layers or cfg.num_layers,
             num_decoder_layers=cfg.decoder.num_layers or cfg.num_layers,
-            dim_feedforward=cfg.dim_model,
+            dim_feedforward=cfg.dim_feedforward,
             dropout=cfg.dropout
         )
 
-        if dataset.input_size != cfg.encoder.hidden_size:
-            self.encoder_linear = nn.Linear(cfg.encoder.input_size, cfg.encoder.hidden_size)
-        else:
-            self.encoder_linear = nn.Sequential()
-
-        self.decoder_emb = Embedding(dataset.output_size, cfg.decoder.hidden_size)
+        self.decoder_emb = Embedding(dataset.output_size, cfg.dim_model)
         self.decoder_projection = nn.Linear(cfg.decoder.hidden_size, dataset.output_size)
 
     def forward(self, batch):
         batch_y = self.decoder_emb(batch.Y[:, :-1].contiguous())
         batch_y_len = [l - 1 for l in batch.Y_len]
 
-        batch_X = self.encoder_linear(batch.X)
-
         output = self.transformer(
-            batch_X.transpose(0, 1), batch_y.transpose(0, 1),
+            batch.X.transpose(0, 1), batch_y.transpose(0, 1),
             tgt_mask=self.transformer.generate_square_subsequent_mask(batch_y.shape[1]).cuda(self.decoder_projection.weight.device),
-            src_key_padding_mask=~get_mask(batch.X_len, max_len=batch_X.shape[1]),
+            src_key_padding_mask=~get_mask(batch.X_len, max_len=batch.X.shape[1]),
             tgt_key_padding_mask=~get_mask(batch_y_len, max_len=batch_y.shape[1])
         ).transpose(0, 1)
+
         output = self.decoder_projection(output)
         return output
 
@@ -81,14 +75,12 @@ class Transformer(BaseModel):
         batch_y = self.decoder_emb(batch.Y[:, :-1].contiguous())
         # batch_y.rename('N', 'T', 'E')
         batch_y_len = [l - 1 for l in batch.Y_len]
-
-        batch_X = self.encoder_linear(batch.X)
         # batch_X.rename('N', 'S', 'E')
 
         output = self.transformer(
-            batch_X.transpose(0, 1), batch_y.transpose(0, 1),
+            batch.X.transpose(0, 1), batch_y.transpose(0, 1),
             tgt_mask=self.transformer.generate_square_subsequent_mask(batch_y.shape[1]).cuda(self.decoder_projection.weight.device),
-            src_key_padding_mask=~get_mask(batch.X_len, max_len=batch_X.shape[1]),
+            src_key_padding_mask=~get_mask(batch.X_len, max_len=batch.X.shape[1]),
             tgt_key_padding_mask=~get_mask(batch_y_len, max_len=batch_y.shape[1]),
         ).transpose(0, 1)
         output = self.decoder_projection(output)
@@ -110,7 +102,7 @@ class NMT(Transformer):
     def __init__(self, params: MainConfig, dataset: PytorchSeq2SeqDataset):
         super().__init__(params, dataset)
         cfg = params.model
-        self.embedding = Embedding(self.dataset.input_size, cfg.encoder.input_size)
+        self.embedding = Embedding(self.dataset.input_size, cfg.dim_model)
 
     def forward(self, batch):
         return super().forward(Batch(

@@ -159,17 +159,15 @@ def mecab_tokenize(s):
 
 
 def write_vocab(
-        working_dir,
         text: Union[str, List[str], List[List[str]]],
-        output_file_name: str,
+        output_path: str,
         tokenizer: Tokenizer = None,
         min_freq=0,
         specials=None):
     """
 
-    :param working_dir:
     :param text: text or list of sentences
-    :param output_file_name:
+    :param output_path:
     :param tokenizer: if tokenizer is None, tokens are separated by space
     :param min_freq:
     :param specials:
@@ -179,7 +177,6 @@ def write_vocab(
         tokenizer = Tokenizer(normalize_none, space_tokenize)
     if specials is None:
         specials = ['<pad>', '<sos>', '<eos>', '<oov>']
-    os.makedirs(os.path.join(working_dir, "vocab"), exist_ok=True)
     word_freqs = {}
 
     if isinstance(text, str):
@@ -204,12 +201,11 @@ def write_vocab(
 
     words = list([word for word in word_freqs if word_freqs[word] > min_freq])
     words.sort(key=lambda word: word_freqs[word], reverse=True)
-    file_path = os.path.join(working_dir, "vocab", output_file_name)
-    with open(file_path, "w", encoding='utf-8') as fo:
+    with open(output_path, "w", encoding='utf-8') as fo:
         fo.write('\n'.join(specials) + '\n')
         fo.write("\n".join(words))
 
-    logger.info("Vocab written to %s (%d tokens)", file_path, len(specials) + len(words))
+    logger.info("Vocab written to %s (%d tokens)", output_path, len(specials) + len(words))
 
 
 def get_token_id(vocab, word):
@@ -278,7 +274,7 @@ class Vocab:
     def decode_idx_list(self, ls: List[int], ignore: List[int] = None, stop_at: int = None) -> List[str]:
         ret = []
         for idx in ls:
-            if idx == stop_at:
+            if stop_at and idx == stop_at:
                 break
             elif ignore and idx in ignore:
                 continue

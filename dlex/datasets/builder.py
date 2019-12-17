@@ -1,7 +1,7 @@
 import abc
 import os
 import shutil
-from typing import Tuple
+from typing import Tuple, List
 
 from sklearn.metrics import accuracy_score
 
@@ -16,8 +16,10 @@ class DatasetBuilder:
     required for training.
     """
 
-    def __init__(self, params: MainConfig):
+    def __init__(self, params: MainConfig, downloads: List[str] = None):
         self.params = params
+
+        self.downloads = downloads
 
     def get_working_dir(self) -> str:
         """Get the working directory"""
@@ -39,7 +41,7 @@ class DatasetBuilder:
         self.maybe_download_and_extract(download)
         self.maybe_preprocess(download or preprocess)
 
-    def download_and_extract(self, url: str, folder_path: str = None, filename: str = None):
+    def _download_and_extract(self, url: str, folder_path: str = None, filename: str = None):
         """Download and extract from url
 
         :param url: url to download
@@ -56,7 +58,6 @@ class DatasetBuilder:
     @abc.abstractmethod
     def maybe_download_and_extract(self, force=False):
         """
-
         :param force: if True, download and extract even when files are existed
         :return:
         """
@@ -66,6 +67,10 @@ class DatasetBuilder:
                 shutil.rmtree(self.get_working_dir(), ignore_errors=True)
                 while os.path.exists(self.get_working_dir()):
                     pass
+
+        if self.downloads:
+            for url in self.downloads:
+                self._download_and_extract(url, self.get_raw_data_dir())
 
     @abc.abstractmethod
     def maybe_preprocess(self, force=False):

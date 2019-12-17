@@ -28,7 +28,7 @@ class Newsgroup20(NLPDataset):
 
     def maybe_download_and_extract(self, force=False):
         super().maybe_download_and_extract(force)
-        self.download_and_extract(DOWNLOAD_URL, self.get_raw_data_dir())
+        self._download_and_extract(DOWNLOAD_URL, self.get_raw_data_dir())
 
     def maybe_preprocess(self, force=False):
         super().maybe_preprocess(force)
@@ -63,7 +63,7 @@ class Newsgroup20(NLPDataset):
         if self.params.dataset.pretrained_embeddings is None:
             write_vocab(
                 self.get_processed_data_dir(), texts['train'],
-                output_file_name="word.txt",
+                output_path=self.get_vocab_path("word"),
                 normalize_fn=lambda s: s.lower(),
                 tokenize_fn=nltk_tokenize)
             vocab = Vocab(os.path.join(self.get_processed_data_dir(), "vocab", "word.txt"))
@@ -78,7 +78,7 @@ class Newsgroup20(NLPDataset):
             tokenize_fn=nltk_tokenize)
 
     def get_vocab_path(self, unit):
-        return os.path.join(self.get_processed_data_dir(), "vocab", "%s.txt" % unit)
+        return os.path.join(self.get_processed_data_dir(), "vocab_%s.txt" % unit)
 
     def write_dataset(self, output_prefix, texts, labels, vocab: Vocab, normalize_fn, tokenize_fn):
         for mode in texts.keys():

@@ -28,9 +28,18 @@ def pad_sequence(data: List[List[Any]], padding_value, output_tensor=False):
         return maybe_cuda(torch.tensor(data)), maybe_cuda(LongTensor(lengths))
 
 
-def get_mask(lengths: Union[List[int], LongTensor], max_len: int = None, dtype: str = None):
+def get_mask(
+        lengths: Union[List[int], LongTensor],
+        max_len: int = None,
+        masked_value=True,
+        unmasked_value=False,
+        device=None) -> torch.Tensor:
     """Get mask tensor
 
+    :param device:
+    :param unmasked_value:
+    :param masked_value:
+    :param lengths:
     :param max_len: if None, max of lengths is used
     :type max_len: int
     :param dtype:
@@ -39,11 +48,20 @@ def get_mask(lengths: Union[List[int], LongTensor], max_len: int = None, dtype: 
     """
     if isinstance(lengths, list):
         lengths = maybe_cuda(LongTensor(lengths))
+    if isinstance(lengths, torch.Tensor):
+        if not device:
+            device = lengths.device
+
     assert len(lengths.shape) == 1, 'Length shape should be 1 dimensional.'
+    assert masked_value != unmasked_value
+
     max_len = max_len or torch.max(lengths).item()
     mask = torch.arange(
         max_len, device=lengths.device,
         dtype=lengths.dtype).expand(len(lengths), max_len) < lengths.unsqueeze(1)
-    if dtype is not None:
-        mask = torch.as_tensor(mask, dtype=dtype, device=lengths.device)
-    return mask
+
+    if isinstance(masked_value, bool):
+        return mask if masked_value else ~mask
+    else:
+        mask = masked_value * mask.int() + unmasked_value * (~mask.int())
+    return mask if not device else mask.cuda(device)

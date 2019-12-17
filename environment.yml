@@ -1,0 +1,17 @@
+name: dlex
+dependencies:
+  - python=3.8
+  - numpy
+  - pandas
+  - pytorch
+  - torchvision
+  - cudatoolkit=10.1
+  - pyyaml
+  - requests
+  - tqdm
+  - colorlog
+  - pip:
+      - scikit-learn
+      - torchtext
+      - nltk
+      - spacy

@@ -1,50 +1,57 @@
 backend: pytorch
+env:
+  en-vi:
+    variables:
+      source: en
+      target: vi
+  vi-en:
+    variables:
+      source: vi
+      target: en
 model:
   name: dlex.torch.models.transformer.NMT
   num_heads: 8
   key_size: 64
   value_size: 64
-  dim_model: 256
-  dim_inner: 1024
+  dim_model: 512
+  dim_feedforward: 2048
   encoder:
-    num_layers: 3
-    input_size: 256
-    hidden_size: 256
-    output_size: 256
+    num_layers: 6
+    hidden_size: 512
+    output_size: 512
     embedding: none
     update_embedding: true
     max_length: 50
   decoder:
-    num_layers: 3
+    num_layers: 6
     share_embeddings: true
-    use_attention: true
-    hidden_size: 256
+    hidden_size: 512
     max_length: 50
-    output_size: 256
+    output_size: 512
   beam_search:
     beam_size: 16
     penalty: 0
   attention:
     type: bahdanau
-    size: 256
+    size: 512
   dropout: 0.01
   teacher_forcing_ratio: 1.0
   decoding_method: greedy
 dataset:
   name: src.datasets.iwslt.IWSLT15
-  source: vi
-  target: en
+  source: ~source
+  target: ~target
   output_format: text
   debug_size: 20
   unit: word
   max_target_length: 50
   max_source_length: 50
 train:
-  batch_size: 256
+  batch_size: 128
   num_epochs: 100
   optimizer:
     name: adam
-    lr: 0.001
+    lr: 0.002
   lr_scheduler:
     milestones: [10, 20, 30]
     gamma: 0.1

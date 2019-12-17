@@ -4,12 +4,13 @@ model:
   num_heads: 8
   key_size: 64
   value_size: 64
-  dim_model: 512
-  dim_inner: 2048
+  dim_model: 256
+  dim_inner: 1024
   encoder:
     num_layers: 6
-    hidden_size: 512
-    output_size: 512
+    input_size: 256
+    hidden_size: 256
+    output_size: 256
     embedding: none
     update_embedding: true
     max_length: 50
@@ -17,32 +18,32 @@ model:
     num_layers: 6
     share_embeddings: true
     use_attention: true
-    hidden_size: 512
+    hidden_size: 256
     max_length: 50
   beam_search:
     beam_size: 16
     penalty: 0
   attention:
     type: bahdanau
-    size: 512
+    size: 256
   dropout: 0.1
   teacher_forcing_ratio: 1.0
   decoding_method: greedy
 dataset:
   name: src.datasets.wmt.WMT14EnglishGerman
-  source: en
-  target: de
+  source: de
+  target: en
   output_format: text
   debug_size: 20
   unit: word
 train:
-  batch_size: 256
-  num_epochs: 20
+  batch_size: 64
+  num_epochs: 10
   optimizer:
     name: adam
     lr: 0.001
   lr_scheduler:
-    milestones: [5, 10, 15]
+    milestones: [10, 20, 30]
     gamma: 0.1
   max_grad_norm: 1.0
 test:

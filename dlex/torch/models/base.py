@@ -1,6 +1,7 @@
 import abc
 import os
 from dataclasses import dataclass
+from typing import List
 
 import numpy as np
 import torch
@@ -125,7 +126,7 @@ class DataParellelModel(nn.DataParallel):
                 lr_scheduler.step(self.epoch)
 
     @property
-    def optimizers(self):
+    def optimizers(self) -> List[torch.optim.Optimizer]:
         if self._optimizers is None:
             self._optimizers = [get_optimizer(self.params.train.optimizer, self.parameters())]
             if self.params.train.lr_scheduler:
@@ -137,6 +138,9 @@ class DataParellelModel(nn.DataParallel):
     @property
     def lr_schedulers(self):
         return self._lr_schedulers
+
+    def learning_rates(self) -> List[int]:
+        return [opt.param_groups[0]['lr'] for opt in self.optimizers]
 
     @property
     def loss_fn(self):

@@ -15,7 +15,7 @@ class Anki(NLPDataset):
         pass
 
     def maybe_download_and_extract(self, force=False):
-        self.download_and_extract(
+        self._download_and_extract(
             'http://storage.googleapis.com/download.tensorflow.org/data/spa-eng.zip',
             self.get_raw_data_dir()
         )

@@ -2,6 +2,7 @@ import abc
 import random
 from typing import List
 
+from dlex.utils import logger
 from torch.utils.data import Dataset as PytorchDataset
 from torch.utils.data.dataloader import default_collate, DataLoader
 
@@ -40,13 +41,8 @@ class Dataset(PytorchDataset):
     def data(self):
         return self._data
 
-    def shuffle(self, seed=42):
-        """Shuffle
-
-        :param seed:
-        :type seed: int
-        """
-        random.seed = seed
+    def shuffle(self):
+        logger.debug(f"Dataset {self.mode} shuffled.")
         random.shuffle(self._data)
 
     @property

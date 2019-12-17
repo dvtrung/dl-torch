@@ -4,6 +4,7 @@ import random
 import sys
 import time
 from datetime import datetime
+from statistics import mean
 from typing import Dict, Callable
 
 import torch
@@ -193,7 +194,7 @@ def train_epoch(
                     logger.error(str(e))
                     continue
                 else:
-                    t.set_postfix(loss=loss, epoch_loss=model.epoch_loss)
+                    t.set_postfix(loss=loss, epoch_loss=model.epoch_loss, lr=mean(model.learning_rates()))
 
                 # if args.debug and epoch_step > DEBUG_NUM_ITERATIONS:
                 #    break
