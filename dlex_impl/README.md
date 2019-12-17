@@ -12,6 +12,8 @@
 
 ### [Grammatical Error Correction](./grammatical_error_correction)
 
+### [Question Answering](./question_answering)
+
 ## Image
 
 ### [Object Recognition](./image_classification)
