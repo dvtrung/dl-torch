@@ -4,6 +4,7 @@ from collections import defaultdict
 from datetime import datetime
 
 import numpy as np
+from dlex.torch.utils.utils import set_seed
 from sklearn.model_selection import KFold
 
 from dlex.configs import Configs
@@ -35,6 +36,9 @@ def train(params, args, report_callback=None):
     assert dataset_builder
     if not args.no_prepare:
         dataset_builder.prepare(download=args.download, preprocess=args.preprocess)
+
+    if params.random_seed:
+        set_seed(params.random_seed)
 
     dataset = dataset_builder.get_sklearn_wrapper("train")
     assert dataset
@@ -81,8 +85,8 @@ def train(params, args, report_callback=None):
             ret[metric] = model.score(dataset.X_test, dataset.y_test, metric or "f1")
         logger.info(ret)
 
-    if report_callback:
-        report_callback(ret, True)
+    # if report_callback:
+    #     report_callback(ret)
     return ret
 
 

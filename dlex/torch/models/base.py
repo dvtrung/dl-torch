@@ -194,7 +194,7 @@ class DataParellelModel(nn.DataParallel):
         }
         fn = os.path.join(ModuleConfigs.SAVED_MODELS_PATH, self.params.config_path_prefix, tag + ".pt")
         torch.save(state, fn)
-        logger.info("Checkpoint saved to %s", fn)
+        logger.debug("Checkpoint saved to %s", fn)
 
     def load_checkpoint(self, tag, load_optimizers=True):
         """Load from saved state"""

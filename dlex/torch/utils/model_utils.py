@@ -3,6 +3,7 @@ from typing import List
 import importlib
 
 import torch
+import torch.nn as nn
 
 
 def get_model(params):
@@ -64,4 +65,4 @@ def linear_layers(dims: List[int], batch_norm: bool = True, activation_fn="relu"
             linear_layers.append(dict(
                 relu=nn.ReLU
             )[activation_fn]())
-    self.linear = nn.Sequential(*linear_layers)
+    return nn.Sequential(*linear_layers)

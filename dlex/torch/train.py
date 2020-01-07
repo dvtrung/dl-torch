@@ -34,8 +34,12 @@ def train(
     num_samples = model.global_step % len(datasets.train)
     display_results = {}
 
+    report.num_epochs = params.train.num_epochs
+    report.epoch_valid_results = []
+    report.epoch_test_results = []
+
     # num_samples = 0
-    for current_epoch in range(epoch + 1, epoch + params.train.num_epochs + 1):
+    for current_epoch in range(epoch + 1, params.train.num_epochs + 1):
         log_dict = dict(epoch=current_epoch)
         log_dict['total_time'], log_dict['loss'] = train_epoch(
             current_epoch, params, args,
@@ -58,6 +62,7 @@ def train(
 
         if datasets.test is not None:
             test_result, test_best_result, test_outputs = _evaluate("test")
+            report.epoch_test_results.append(test_result['result'])
             log_outputs("test", params, test_outputs)
             log_dict['test_result'] = test_result['result']
             if datasets.valid is None:
@@ -66,6 +71,7 @@ def train(
 
         if datasets.valid is not None:
             valid_result, valid_best_result, valid_outputs = _evaluate("valid")
+            report.epoch_valid_results.append(valid_result['result'])
             log_outputs("valid", params, valid_outputs)
             log_dict['valid_result'] = valid_result['result']
             for metric in valid_best_result:
@@ -109,6 +115,20 @@ def train(
                     test_best_result[metric]['result'][metric],
                 ))
 
+        # Early stop
+        if params.train.early_stop:
+            if datasets.valid is not None:
+                last_results = report.epoch_valid_results
+            else:
+                last_results = report.epoch_test_results
+            if len(last_results) > params.train.early_stop:
+                if all(
+                        max([r[metric] for r in last_results[-params.train.early_stop:]]) <=
+                        max([r[metric] for r in last_results[:-params.train.early_stop]])
+                        for metric in params.test.metrics):
+                    logger.info("Early stop at epoch %s", current_epoch)
+                    break
+
         if report_callback:  # update partial results
             report.results = display_results
             report_callback(report)
@@ -141,6 +161,7 @@ def train_epoch(
         report: ModelReport,
         num_samples=0):
     """Train."""
+    report.current_epoch = current_epoch
 
     if params.dataset.shuffle:
         datasets.train.shuffle()
@@ -252,9 +273,9 @@ def main(
             set_seed(params.random_seed)
             results = []
             for i in tqdm(range(params.train.cross_validation), desc="Cross Validation"):
-                report.cross_validation_fold = i
-                report.cross_validation_total = params.train.cross_validation
-                params.dataset.cross_validation_fold = i
+                report.cross_validation_current_fold = i + 1
+                report.cross_validation_num_folds = params.train.cross_validation
+                params.dataset.cross_validation_current_fold = i + 1
                 params.dataset.cross_validation = params.train.cross_validation
                 params, args, model, datasets = load_model("train", report, argv, params, args)
 

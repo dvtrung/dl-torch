@@ -9,7 +9,12 @@ from dlex.datasets.builder import DatasetBuilder
 def get_dataset(params) -> DatasetBuilder:
     """Return the dataset class by its name."""
     if params.dataset.name:
-        module_name, class_name = params.dataset.name.rsplit('.', 1)
+        if '.' in params.dataset.name:
+            module_name, class_name = params.dataset.name.rsplit('.', 1)
+        else:
+            module_name = f"src.datasets.{params.dataset.name.lower()}"
+            class_name = params.dataset.name
+
     elif params.dataset.alias:
         from dlex.datasets.aliases import dataset_aliases
         module_name, class_name = dataset_aliases[params.dataset.alias].rsplit('.', 1)

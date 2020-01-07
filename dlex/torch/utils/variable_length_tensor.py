@@ -19,12 +19,12 @@ def pad_sequence(data: List[List[Any]], padding_value, output_tensor=False):
         padding_value = [padding_value for _ in range(len(data[i][0]))]
 
     if not output_tensor:
-        data = [torch.tensor(seq + [padding_value] * (max_len - len(seq))) for seq in data]
         lengths = [max(len(seq), 1) for seq in data]
+        data = [torch.tensor(seq + [padding_value] * (max_len - len(seq))) for seq in data]
         return data, lengths
     else:
-        data = [seq + [padding_value] * (max_len - len(seq)) for seq in data]
         lengths = [max(len(seq), 1) for seq in data]
+        data = [seq + [padding_value] * (max_len - len(seq)) for seq in data]
         return maybe_cuda(torch.tensor(data)), maybe_cuda(LongTensor(lengths))
 
 

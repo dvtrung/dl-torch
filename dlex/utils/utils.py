@@ -1,6 +1,7 @@
 """General utils"""
 import os
 import re
+import subprocess
 import sys
 import tarfile
 import time
@@ -77,6 +78,10 @@ def maybe_unzip(file_path, folder_path):
         tar.close()
     elif ext in ['.json']:
         pass
+    elif ext == '.rar':
+        os.makedirs(folder_path, exist_ok=True)
+        process = subprocess.Popen(['unrar', 'x', file_path, folder_path])
+        process.communicate()
     else:
         logger.warning("File type is not supported (%s). Not a zip file?" % ext)
 

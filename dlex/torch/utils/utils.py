@@ -31,8 +31,8 @@ def load_model(mode, report: ModelReport, argv=None, params: MainConfig = None, 
         configs = Configs(mode=mode, argv=argv)
         envs, args = configs.environments, configs.args
         assert len(envs) == 1
-        assert len(envs[0].parameters_list) == 1
-        params = envs[0].parameters_list[0]
+        assert len(envs[0].configs_list) == 1
+        params = envs[0].configs_list[0]
 
     report.metrics = params.test.metrics
 
@@ -92,11 +92,12 @@ def load_model(mode, report: ModelReport, argv=None, params: MainConfig = None, 
 
     use_cuda = torch.cuda.is_available()
     if use_cuda and params.gpu:
-        model = DataParellelModel(model, params.gpu)
+        gpus = [f"cuda:{g}" for g in params.gpu]
+        model = DataParellelModel(model, gpus)
         logger.info("Start training using %d GPU(s): %s", len(params.gpu), str(params.gpu))
-        torch.cuda.set_device(params.gpu[0])
+        torch.cuda.set_device(torch.device(gpus[0]))
         # device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-        model.to(params.gpu[0])
+        model.to(gpus[0])
     else:
         model = DataParellelModel(model, ['cpu'])
 

@@ -121,12 +121,12 @@ def main():
     for env in envs:
         all_reports[env.name] = manager.dict()
         # init result list
-        for variable_values, params in zip(env.variables_list, env.parameters_list):
+        for variable_values, params in zip(env.variables_list, env.configs_list):
             all_reports[env.name][variable_values] = None
 
-    gpu = [f"cuda:{g}" for g in args.gpu] or get_unused_gpus(args)
+    gpu = [f"cuda:{g}" for g in args.gpu] if args.gpu else get_unused_gpus(args)
     for env in envs:
-        for variable_values, params in zip(env.variables_list, env.parameters_list):
+        for variable_values, params in zip(env.variables_list, env.configs_list):
             params.gpu = gpu
             launch_evaluating(
                 configs.backend, params, args,

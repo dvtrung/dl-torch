@@ -1,12 +1,11 @@
 """Model utils"""
 
 import importlib
-import os
 import json
-from dlex.datasets.builder import DatasetBuilder
-from dlex.configs import MainConfig
+import os
 
-from dlex.utils.logging import logger
+from dlex.configs import MainConfig
+from dlex.datasets.builder import DatasetBuilder
 
 
 def get_model(params: MainConfig):
@@ -18,7 +17,12 @@ def get_model(params: MainConfig):
 
 def get_dataset(params: MainConfig) -> DatasetBuilder:
     """Return the dataset class by its name."""
-    module_name, class_name = params.dataset.name.rsplit('.', 1)
+    if '.' in params.dataset.name:
+        module_name, class_name = params.dataset.name.rsplit('.', 1)
+    else:
+        module_name = f"src.datasets.{params.dataset.name.lower()}"
+        class_name = params.dataset.name
+
     i = importlib.import_module(module_name)
     return getattr(i, class_name)(params)
 

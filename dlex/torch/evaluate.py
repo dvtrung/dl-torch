@@ -67,7 +67,7 @@ def evaluate(
                         input=str_input,
                         reference=str_ground_truth,
                         hypothesis=str_predicted))
-                    logger.info(outputs[-1])
+                    # logger.info(outputs[-1])
 
                 if report.summary_writer is not None:
                     model.write_summary(report.summary_writer, batch, (y_pred, others))

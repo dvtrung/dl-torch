@@ -2,11 +2,13 @@ import multiprocessing
 import os
 import runpy
 import time
+from collections import defaultdict
 from multiprocessing import Process
-from typing import Dict, Tuple, Any
+from typing import Dict, Tuple, Any, Set, List
 
 from dlex.datatypes import ModelReport
-from dlex.utils import logger, table2str, logging
+from dlex.utils import logger, table2str
+import logging
 
 from .configs import Configs, Environment
 
@@ -37,6 +39,7 @@ def update_results(
     """
     :param env:
     :param variable_values:
+    :param hyperparam_values:
     :param report: an instance of ModelReport
     :param all_reports:
     :param configs:
@@ -49,8 +52,46 @@ def update_results(
     write_report(all_reports, configs)
 
 
+def _gather_metrics(report: Dict[Tuple, ModelReport]) -> List[str]:
+    s = set()
+    for r in report.values():
+        if r and r.metrics:
+            s |= set(r.metrics)
+    return list(s)
+
+
+def _format_result(r: ModelReport, m: str):
+    if r and r.results and m in r.results:
+        if r.finished:
+            status = ""
+        elif r.cross_validation_num_folds:
+            status = f" (cross validation {r.cross_validation_current_fold}/{r.cross_validation_num_folds})"
+        else:
+            status = f" (epoch {r.current_epoch}/{r.num_epochs})"
+        return f"%.3f{status}" % r.results[m]
+    else:
+        return ""
+
+
+def _reduce_results(
+        env: Environment,
+        reports: Dict[Tuple, ModelReport],
+        reduced_variable_names: List[str],
+        metrics: List[str]):
+    variable_names = [name for name in env.variable_names if name not in reduced_variable_names]
+    results = defaultdict(lambda: [])
+    for v_vals, report in reports.items():
+        reduced_v_vals = tuple([v_vals[i] for i, name in enumerate(env.variable_names) if name not in reduced_variable_names])
+        results[reduced_v_vals].append(report)
+
+    for v_vals in results:
+        results[v_vals] = [" ~ ".join([_format_result(report, m) for report in results[v_vals]]) for m in metrics]
+    return variable_names, results
+
+
 def write_report(reports: Dict[str, Dict[Tuple, ModelReport]], configs):
     if configs.args.report:
+        logger.setLevel(logging.NOTSET)
         os.system('clear')
 
     s = "\n# Report\n"
@@ -61,24 +102,21 @@ def write_report(reports: Dict[str, Dict[Tuple, ModelReport]], configs):
     #    s += f"\nNumber of parameters: {report.num_params:,}"
     #    s += f"\nNumber of trainable parameters: {report.num_trainable_params:,}\n"
 
-    def _format_result(r: ModelReport, m: str):
-        if r and r.results and m in r.results:
-            return ("%.3f" % r.results[m]) + ("" if r.finished else " (running)")
-        else:
-            return ""
-
     for env in configs.environments:
         if env.name not in reports:
             continue
         s += f"\n## {env.title or env.name}\n"
-        metrics = set.union(*[set(r.metrics or []) for r in reports[env.name].values() if r])
-        metrics = list(metrics)
+        metrics = _gather_metrics(reports[env.name])
         if not env.report or env.report['type'] == 'raw':
-            data = [env.variable_names + metrics]
-            for variable_values, report in reports[env.name].items():
-                data.append(
-                    list(variable_values) +
-                    [_format_result(report, metric) for metric in metrics])
+            variable_names, results = _reduce_results(
+                env,
+                reports=reports[env.name],
+                reduced_variable_names=env.report['reduce'] or [],
+                metrics=metrics)
+
+            data = [variable_names + metrics]  # table headers
+            for v_vals in results:
+                data.append(list(v_vals) + results[v_vals])
             s += f"\n{table2str(data)}\n"
         elif env.report['type'] == 'table':
             val_row = env.variable_names.index(env.report['row'])
@@ -108,18 +146,22 @@ def write_report(reports: Dict[str, Dict[Tuple, ModelReport]], configs):
 
 
 def get_unused_gpus(args):
-    import subprocess
-    from io import StringIO
-    import pandas as pd
+    try:
+        logger.info("Searching for unused GPUs...")
+        import subprocess
+        from io import StringIO
+        import pandas as pd
 
-    gpu_stats = subprocess.check_output(["nvidia-smi", "--format=csv", "--query-gpu=memory.used,memory.free"])
-    gpu_df = pd.read_csv(StringIO(gpu_stats.decode()), names=['memory.used', 'memory.free'], skiprows=1)
-    gpu_df['memory.used'] = gpu_df['memory.used'].map(lambda x: int(x.rstrip(' [MiB]')))
-    gpu_df['memory.free'] = gpu_df['memory.free'].map(lambda x: int(x.rstrip(' [MiB]')))
-    gpu_df = gpu_df[gpu_df['memory.used'] <= args.gpu_memory_max]
-    gpu_df = gpu_df[gpu_df['memory.free'] >= args.gpu_memory_min]
-    idx = gpu_df.index.tolist()[:args.num_gpus]
-    return idx
+        gpu_stats = subprocess.check_output(["nvidia-smi", "--format=csv", "--query-gpu=memory.used,memory.free"])
+        gpu_df = pd.read_csv(StringIO(gpu_stats.decode()), names=['memory.used', 'memory.free'], skiprows=1)
+        gpu_df['memory.used'] = gpu_df['memory.used'].map(lambda x: int(x.rstrip(' [MiB]')))
+        gpu_df['memory.free'] = gpu_df['memory.free'].map(lambda x: int(x.rstrip(' [MiB]')))
+        gpu_df = gpu_df[gpu_df['memory.used'] <= args.gpu_memory_max]
+        gpu_df = gpu_df[gpu_df['memory.free'] >= args.gpu_memory_min]
+        idx = gpu_df.index.tolist()[:args.num_gpus]
+        return idx
+    except Exception:
+        return []
 
 
 def main():
@@ -139,13 +181,14 @@ def main():
     for env in envs:
         all_reports[env.name] = manager.dict()
         # init result list
-        for variable_values, params in zip(env.variables_list, env.parameters_list):
-            all_reports[env.name][variable_values] = None
+        for variable_values, params in zip(env.variables_list, env.configs_list):
+            all_reports[env.name][variable_values] = manager.dict()
 
     multi_processing = False
     if multi_processing:
         for env in envs:
-            for variable_values, params in zip(env.variables_list, env.parameters_list):
+            for variable_values, params in \
+                    zip(env.variables_list, env.configs_list):
                 threads = []
                 thread = Process(target=launch_training, args=(
                     configs.backend, params, args,
@@ -160,7 +203,7 @@ def main():
     else:
         gpu = args.gpu or get_unused_gpus(args)
         for env in envs:
-            for variable_values, params in zip(env.variables_list, env.parameters_list):
+            for variable_values, params in zip(env.variables_list, env.configs_list):
                 params.gpu = gpu
                 launch_training(
                     configs.backend, params, args,

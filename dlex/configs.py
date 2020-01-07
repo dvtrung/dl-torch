@@ -137,6 +137,8 @@ class TrainConfig:
     :type save_every: str
     :param log_every: Time interval for logging to file
     :type log_every: str
+    :param early_stop: Number of epochs to stop of results are not improving
+    :type early_stop: int
     """
     num_epochs: int = None
     num_workers: int = None
@@ -148,6 +150,7 @@ class TrainConfig:
     save_every: str = "1e"
     log_every: str = "5s"
     cross_validation: int = None
+    early_stop: int = None
 
 
 @dataclass
@@ -262,10 +265,13 @@ class Environment:
     name: str
     title: str = None
     default: bool = True
+
+    # variables
     variable_names: List[str] = None
     variable_values: List[List[Any]] = None
     variables_list: List[Tuple[Any]] = None
-    parameters_list: List = None
+
+    configs_list: List = None
     report: Any = None
     desc: str = None
 
@@ -430,39 +436,45 @@ class Configs:
         if 'env' in self.yaml_params:
             for env_name, env_prop in self.yaml_params['env'].items():
                 # Unfold params for every variable combination
+                configs_list = []  # there are multiple configs if variables are chosen from lists
+
                 variables_list = []
-                params_list = []  # there are multiple configs if variables are chosen from lists
                 variable_names = list(env_prop['variables'].keys()) if 'variables' in env_prop else []
                 variable_values = list(env_prop['variables'].values()) if 'variables' in env_prop else []
                 variable_values = [val if isinstance(val, list) else [val] for val in variable_values]
-                for combination in itertools.product(*variable_values):
-                    variables = {name: val for name, val in zip(variable_names, combination)}
-                    params = MainConfig(self.yaml_params, _variables=variables)
+
+                for variable_values_combination in itertools.product(*variable_values):
+                    variables = {name: val for name, val in zip(variable_names, variable_values_combination)}
+                    configs = MainConfig(self.yaml_params, _variables=variables)
 
                     # Assign extra parameters from args
-                    params.mode = self.mode
-                    params.config_path = self.config_path
-                    params.config_path_prefix = self.config_path_prefix
-                    params.config_name = self.config_name
-                    params.verbose = bool(self.args.verbose)
-                    params.dataset.num_workers = self.args.num_workers
-                    if params.train is not None and params.train.num_workers is None:
-                        params.train.num_workers = self.args.num_workers
+                    configs.mode = self.mode
+                    configs.config_path = self.config_path
+                    configs.config_path_prefix = self.config_path_prefix
+                    configs.config_name = self.config_name
+                    configs.verbose = bool(self.args.verbose)
+                    configs.dataset.num_workers = self.args.num_workers
+                    if configs.train is not None and configs.train.num_workers is None:
+                        configs.train.num_workers = self.args.num_workers
 
                     # Some config values are overwritten by command arguments
                     if self.args.batch_size is not None:
-                        params.train.batch_size = self.args.batch_size
+                        configs.train.batch_size = self.args.batch_size
+
                     variables_list.append(tuple([variables[name] for name in variable_names]))
-                    params_list.append(params)
+                    configs_list.append(configs)
 
                 report = {}
+
+                # Parse report properties
                 if 'report' in env_prop:
                     report['type'] = env_prop['report']['type']
+                    report['reduce'] = env_prop['report']['reduce']
                     if report['type'] == 'table':
                         report['row'] = env_prop['report']['row']
                         report['col'] = env_prop['report']['col']
                 else:
-                    if len(variable_names) == 2:
+                    if False and len(variable_names) == 2:
                         report['type'] = 'table'
                         report['row'] = variable_names[0]
                         report['col'] = variable_names[1]
@@ -477,28 +489,28 @@ class Configs:
                     variable_names=variable_names,
                     variable_values=variable_values,
                     variables_list=variables_list,
-                    parameters_list=params_list,
+                    configs_list=configs_list,
                     report=report
                 ))
         else:
-            params = MainConfig(self.yaml_params)
-            params.mode = self.mode
-            params.config_path = self.config_path
-            params.config_path_prefix = self.config_path_prefix
-            params.config_name = self.config_name
-            params.verbose = bool(self.args.verbose)
-            params.dataset.num_workers = self.args.num_workers
-            if params.train is not None and params.train.num_workers is None:
-                params.train.num_workers = self.args.num_workers
+            configs = MainConfig(self.yaml_params)
+            configs.mode = self.mode
+            configs.config_path = self.config_path
+            configs.config_path_prefix = self.config_path_prefix
+            configs.config_name = self.config_name
+            configs.verbose = bool(self.args.verbose)
+            configs.dataset.num_workers = self.args.num_workers
+            if configs.train is not None and configs.train.num_workers is None:
+                configs.train.num_workers = self.args.num_workers
 
             # Some config values are overwritten by command arguments
             if self.args.batch_size is not None:
-                params.train.batch_size = self.args.batch_size
+                configs.train.batch_size = self.args.batch_size
 
             self._environments.append(Environment(
                 name="main",
                 variable_names=[],
                 variable_values=[],
                 variables_list=[tuple()],
-                parameters_list=[params]
+                configs_list=[configs]
             ))

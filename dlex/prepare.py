@@ -7,8 +7,8 @@ def main(params=None, args=None):
         configs = Configs(mode="train")
         envs, args = configs.environments, configs.args
         assert len(envs) == 1
-        assert len(envs[0].parameters_list) == 1
-        params = envs[0].parameters_list[0]
+        assert len(envs[0].configs_list) == 1
+        params = envs[0].configs_list[0]
 
     dataset_builder = get_dataset(params)
     dataset_builder.prepare(download=args.download, preprocess=args.preprocess)
