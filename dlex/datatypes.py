@@ -11,6 +11,7 @@ class ModelReport:
     results: Dict[str, float] = None
     epoch_valid_results: List[Dict[str, float]] = None
     epoch_test_results: List[Dict[str, float]] = None
+    epoch_losses: List[float] = None
     finished: bool = False
     num_params: int = None
     num_trainable_params: int = None

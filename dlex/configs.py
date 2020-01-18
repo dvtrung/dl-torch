@@ -4,10 +4,11 @@ import itertools
 import os
 import re
 from dataclasses import dataclass, field
-from typing import List, Tuple, Dict, Any, Union, KeysView, Iterator
+from datetime import datetime
+from typing import List, Tuple, Dict, Any, Union
 
 import yaml
-from dlex.utils.logging import set_log_level
+from dlex.utils.logging import set_log_level, set_log_dir
 
 DEFAULT_TMP_PATH = os.path.expanduser(os.path.join("~", "tmp"))
 DEFAULT_DATASETS_PATH = os.path.expanduser(os.path.join("~", "tmp", "datasets"))
@@ -35,6 +36,11 @@ class AttrDict(dict):
         self.__dict__ = self
 
         for key in self:
+            if isinstance(self[key], Placeholder):
+                if self[key].name in variables:
+                    self[key] = variables[self[key].name]
+                else:
+                    self[key] = None
             if isinstance(self[key], dict):
                 self[key] = AttrDict(self[key], _variables=variables)
 
@@ -43,13 +49,6 @@ class AttrDict(dict):
     def __getattr__(self, item: str):
         # logger.warning("Access to unset param %s", item)
         return None
-
-    def __getattribute__(self, item):
-        ret = super().__getattribute__(item)
-        if isinstance(ret, Placeholder):
-            return super().__getattribute__('_variables')[ret.name]
-        else:
-            return ret
 
     def set(self, prop: Union[str, list], value):
         """
@@ -94,7 +93,7 @@ class AttrDict(dict):
                 continue
             if isinstance(self[key], AttrDict) and level > 1:
                 d[key] = self[key].to_dict(level=level - 1)
-            elif isinstance(self[key], Placeholder):
+            elif isinstance(self[key], Placeholder) and self._variables:
                 d[key] = self._variables[self[key].name]
             else:
                 d[key] = self[key]
@@ -105,6 +104,12 @@ class AttrDict(dict):
 
     def __iter__(self):
         return filter(lambda key: key != '_variables', super().__iter__())
+
+    def __getstate__(self):
+        return self.__dict__
+
+    def __setstate__(self, d):
+        self.__dict__.update(d)
 
 
 @dataclass
@@ -180,9 +185,9 @@ class MainConfig(AttrDict):
     gpu: List[int] = None
 
     def __init__(self, *args, **kwargs):
-        train = TrainConfig(**AttrDict(args[0]['train'], _variables=self._variables).to_dict()) \
+        train = TrainConfig(**AttrDict(args[0]['train'], _variables=kwargs['_variables']).to_dict()) \
             if "train" in args[0] else None
-        test = TestConfig(**AttrDict(args[0]['test'], _variables=self._variables).to_dict()) \
+        test = TestConfig(**AttrDict(args[0]['test'], _variables=kwargs['_variables']).to_dict()) \
             if "test" in args[0] else None
 
         super().__init__(*args, **kwargs)
@@ -193,18 +198,6 @@ class MainConfig(AttrDict):
     def __getattr__(self, item: str):
         # logger.warning("Access to unset param %s", item)
         return None
-
-    @property
-    def log_dir(self):
-        """Get logging directory based on model configs."""
-        log_dir = os.path.join("logs", self.config_name)
-        return os.path.join(log_dir, self.training_id)
-
-    @property
-    def output_dir(self):
-        """Get output directory based on model configs"""
-        result_dir = os.path.join(ModuleConfigs.TMP_PATH, "model_outputs", self.config_name)
-        return result_dir
 
 
 class Loader(yaml.SafeLoader):
@@ -279,10 +272,13 @@ class Environment:
 class Configs:
     """All configurations"""
     args = None
+    training_id = None
 
     def __init__(self, mode, argv=None):
         self.mode = mode
         self.parse_args(argv)
+
+        self.training_id = self.args.training_id or datetime.now().strftime('%Y%m%d-%H%M%S')
 
         with open(self.config_path, 'r') as stream:
             try:
@@ -307,6 +303,15 @@ class Configs:
         self.load_configs()
 
         set_log_level(self.args.log)
+        self.init_dirs()
+
+    def init_dirs(self):
+        os.makedirs(self.log_dir, exist_ok=True)
+        os.makedirs(os.path.join(self.log_dir, "results"), exist_ok=True)
+        # shutil.rmtree(params.output_dir, ignore_errors=True)
+        os.makedirs(self.output_dir, exist_ok=True)
+        if self.mode == "train":
+            set_log_dir(self)
 
     @property
     def config_path(self):
@@ -370,9 +375,13 @@ class Configs:
         parser.add_argument(
             '--gpu_memory_max',
             help="Maximum used memory (MiB) available for the device to be used", default=100)
+
         if self.mode == "train":
             parser.add_argument('--debug', action="store_true",
                                 help="train and eval on the same small data to check if the model works")
+            parser.add_argument('--training_id',
+                                help="Training ID")
+
         parser.add_argument('--download', action="store_true",
                             help="force to download, unzip and preprocess the data")
         parser.add_argument('--preprocess', action="store_true",
@@ -400,8 +409,8 @@ class Configs:
 
         if self.mode == "train":
             parser.add_argument(
-                '--num-processes', type=int, default=1, metavar='N',
-                help="how many training process to use")
+                '-p, --num-processes', type=int, default=1, metavar='N', dest='num_processes',
+                help="number of training processes running at a time")
             parser.add_argument(
                 '--save-all', action='store_true',
                 help='save every epoch')
@@ -432,6 +441,18 @@ class Configs:
     def environments(self) -> List[Environment]:
         return self._environments
 
+    @property
+    def log_dir(self):
+        """Get logging directory based on model configs."""
+        log_dir = os.path.join("logs", self.config_name)
+        return os.path.join(log_dir, *self.training_id.split('-'))
+
+    @property
+    def output_dir(self):
+        """Get output directory based on model configs"""
+        result_dir = os.path.join(ModuleConfigs.TMP_PATH, "model_outputs", self.config_name)
+        return result_dir
+
     def load_configs(self) -> List[Tuple[Dict[str, Any], MainConfig]]:
         if 'env' in self.yaml_params:
             for env_name, env_prop in self.yaml_params['env'].items():
@@ -441,6 +462,15 @@ class Configs:
                 variables_list = []
                 variable_names = list(env_prop['variables'].keys()) if 'variables' in env_prop else []
                 variable_values = list(env_prop['variables'].values()) if 'variables' in env_prop else []
+
+                # fill default values
+                if 'default' in self.yaml_params['env'] and 'variables' in self.yaml_params['env']['default']:
+                    vals = self.yaml_params['env']['default']['variables']
+                    for name, val in vals.items():
+                        if name not in variable_names:
+                            variable_names.append(name)
+                            variable_values.append(val)
+
                 variable_values = [val if isinstance(val, list) else [val] for val in variable_values]
 
                 for variable_values_combination in itertools.product(*variable_values):
@@ -454,6 +484,7 @@ class Configs:
                     configs.config_name = self.config_name
                     configs.verbose = bool(self.args.verbose)
                     configs.dataset.num_workers = self.args.num_workers
+                    configs.log_dir = os.path.join(self.log_dir, env_name)
                     if configs.train is not None and configs.train.num_workers is None:
                         configs.train.num_workers = self.args.num_workers
 
@@ -474,6 +505,7 @@ class Configs:
                         report['row'] = env_prop['report']['row']
                         report['col'] = env_prop['report']['col']
                 else:
+                    report['reduce'] = []
                     if False and len(variable_names) == 2:
                         report['type'] = 'table'
                         report['row'] = variable_names[0]
@@ -514,3 +546,4 @@ class Configs:
                 variables_list=[tuple()],
                 configs_list=[configs]
             ))
+

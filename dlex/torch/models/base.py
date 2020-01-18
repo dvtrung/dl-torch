@@ -211,6 +211,8 @@ class DataParellelModel(nn.DataParallel):
             if load_optimizers:
                 for i, optimizer in enumerate(self.optimizers):
                     optimizer.load_state_dict(checkpoint['optimizers'][i])
+
+            return self.params.training_id
         else:
             raise Exception("Checkpoint not found: %s" % file_name)
 

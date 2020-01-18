@@ -5,10 +5,10 @@ from typing import Tuple
 
 import torch
 from dlex.datatypes import ModelReport
-from dlex.train import get_unused_gpus
+from dlex.utils.utils import get_unused_gpus
 from tqdm import tqdm
 
-from dlex.configs import MainConfig
+from dlex.configs import MainConfig, Configs
 from dlex.datasets.torch import Dataset
 from dlex.torch.models.base import BaseModel
 from dlex.torch.utils.utils import load_model
@@ -85,7 +85,7 @@ def evaluate(
     return result, outputs
 
 
-def main(params=None, args=None, report=None):
+def main(params=None, configs: Configs = None, report=None):
     """Main program."""
     report = ModelReport()
     params, args, model, datasets = load_model("test", report, None, params, args)
@@ -96,7 +96,7 @@ def main(params=None, args=None, report=None):
     for mode in params.train.eval:
         result, outputs = evaluate(
             model, datasets.get_dataset(mode), params,
-            output_path=os.path.join(params.log_dir, "results", f"{args.load}_{mode}"), report=report)
+            output_path=os.path.join(configs.log_dir, "results", f"{args.load}_{mode}"), report=report)
 
         for output in random.choices(outputs, k=50):
             logger.info(str(output))

@@ -1,22 +1,17 @@
-from datetime import datetime
-from typing import OrderedDict
-
-import torch
-import torch.nn as nn
 import numpy as np
-
+import torch
 from dlex.configs import Configs, MainConfig
 from dlex.datatypes import ModelReport
 from dlex.torch.datatypes import Datasets
 from dlex.torch.models.base import DataParellelModel
 from dlex.torch.utils.model_utils import get_model
-from dlex.utils import logger, init_dirs, table2str
+from dlex.utils import logger, table2str
 from dlex.utils.model_utils import get_dataset
 
 DEBUG_BATCH_SIZE = 4
 
 
-def load_model(mode, report: ModelReport, argv=None, params: MainConfig = None, args=None):
+def load_model(mode, report: ModelReport, argv=None, params: MainConfig = None, configs=None):
     """
     Load model and dataset
     :param mode: train, test, dev
@@ -27,12 +22,14 @@ def load_model(mode, report: ModelReport, argv=None, params: MainConfig = None, 
     :return:
     """
 
-    if not params and not args:
+    if not configs:
         configs = Configs(mode=mode, argv=argv)
         envs, args = configs.environments, configs.args
         assert len(envs) == 1
         assert len(envs[0].configs_list) == 1
         params = envs[0].configs_list[0]
+    else:
+        args = configs.args
 
     report.metrics = params.test.metrics
 
@@ -107,14 +104,10 @@ def load_model(mode, report: ModelReport, argv=None, params: MainConfig = None, 
 
     # Load checkpoint or initialize new training
     if args.load:
-        model.load_checkpoint(args.load)
-        init_dirs(params)
+        configs.training_id = model.load_checkpoint(args.load)
         logger.info("Saved model loaded: %s", args.load)
         if mode == "train":
             logger.info("EPOCH: %f", model.global_step / len(datasets.train))
-    else:
-        params.training_id = datetime.now().strftime('%Y%m%d-%H%M%S')
-        init_dirs(params)
 
     return params, args, model, datasets
 

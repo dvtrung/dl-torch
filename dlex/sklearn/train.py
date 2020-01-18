@@ -10,7 +10,6 @@ from sklearn.model_selection import KFold
 from dlex.configs import Configs
 from dlex.utils.logging import logger, logging
 from dlex.utils.model_utils import get_dataset
-from dlex.utils.utils import init_dirs
 from tqdm import tqdm
 
 
@@ -51,12 +50,8 @@ def train(params, args, report_callback=None):
     # Load checkpoint or initialize new training
     if args.load:
         model.load_checkpoint(args.load)
-        init_dirs(params)
         logger.info("Saved model loaded: %s", args.load)
         logger.info("Epoch: %f", model.global_step / len(dataset.X_train))
-    else:
-        params.set('training_id', datetime.now().strftime('%Y%m%d-%H%M%S'))
-        init_dirs(params)
 
     logger.info("Dataset: %s. Model: %s", str(dataset_builder), str(model_cls))
     logger.info("Training started.")

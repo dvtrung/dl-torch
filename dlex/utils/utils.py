@@ -12,7 +12,7 @@ from typing import List
 import requests
 from tqdm import tqdm
 
-from .logging import set_log_dir, logger
+from .logging import logger
 
 urllib_start_time = 0
 
@@ -86,15 +86,6 @@ def maybe_unzip(file_path, folder_path):
         logger.warning("File type is not supported (%s). Not a zip file?" % ext)
 
 
-def init_dirs(params):
-    os.makedirs(params.log_dir, exist_ok=True)
-    os.makedirs(os.path.join(params.log_dir, "results"), exist_ok=True)
-    # shutil.rmtree(params.output_dir, ignore_errors=True)
-    os.makedirs(params.output_dir, exist_ok=True)
-    if params.mode == "train":
-        set_log_dir(params)
-
-
 def camel2snake(name: str) -> str:
     s1 = re.sub('(.)([A-Z][a-z]+)', r'\1_\2', name)
     return re.sub('([a-z0-9])([A-Z])', r'\1_\2', s1).lower()
@@ -128,3 +119,22 @@ def table2str(table: List[List[str]], padding: int = 1) -> str:
     for row in table[1:]:
         s += "|" + "|".join([_append_blank(cell, col_sizes[i]) for i, cell in enumerate(row)]) + "|\n"
     return s
+
+
+def get_unused_gpus(args):
+    try:
+        logger.info("Searching for unused GPUs...")
+        import subprocess
+        from io import StringIO
+        import pandas as pd
+
+        gpu_stats = subprocess.check_output(["nvidia-smi", "--format=csv", "--query-gpu=memory.used,memory.free"])
+        gpu_df = pd.read_csv(StringIO(gpu_stats.decode()), names=['memory.used', 'memory.free'], skiprows=1)
+        gpu_df['memory.used'] = gpu_df['memory.used'].map(lambda x: int(x.rstrip(' [MiB]')))
+        gpu_df['memory.free'] = gpu_df['memory.free'].map(lambda x: int(x.rstrip(' [MiB]')))
+        gpu_df = gpu_df[gpu_df['memory.used'] <= args.gpu_memory_max]
+        gpu_df = gpu_df[gpu_df['memory.free'] >= args.gpu_memory_min]
+        idx = gpu_df.index.tolist()[:args.num_gpus]
+        return idx
+    except Exception:
+        return []

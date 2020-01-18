@@ -8,24 +8,38 @@ from dlex.torch.utils.ops_utils import maybe_cuda
 
 
 def pad_sequence(data: List[List[Any]], padding_value, output_tensor=False):
-    max_len = max([len(seq) for seq in data])
-
-    i = 0
-    while len(data[i]) == 0:
-        i += 1
-        if i == len(data):
-            raise ValueError("Empty input.")
-    if isinstance(data[i][0], list) or isinstance(data[i][0], tuple):
-        padding_value = [padding_value for _ in range(len(data[i][0]))]
-
-    if not output_tensor:
-        lengths = [max(len(seq), 1) for seq in data]
-        data = [torch.tensor(seq + [padding_value] * (max_len - len(seq))) for seq in data]
-        return data, lengths
+    if type(data[0][0]) == list and len(data[0][0]) > 0 and type(data[0][0][0]) == list:
+        values = []
+        lengths = []
+        for i in range(len(data)):
+            val_, length_ = pad_sequence(data[i], padding_value, output_tensor)
+            values.append(val_)
+            lengths.append(length_)
+        max_len = max(val.shape[1] for val in values)
+        values = [torch.cat([val, maybe_cuda(torch.zeros([val.shape[0], max_len - val.shape[1], val.shape[2]]))], 1) for val in values]
+        return maybe_cuda(torch.stack(values)), maybe_cuda(torch.stack(lengths))
     else:
-        lengths = [max(len(seq), 1) for seq in data]
-        data = [seq + [padding_value] * (max_len - len(seq)) for seq in data]
-        return maybe_cuda(torch.tensor(data)), maybe_cuda(LongTensor(lengths))
+        max_len = max([len(seq) for seq in data])
+
+        i = 0
+        while len(data[i]) == 0:
+            i += 1
+            if i == len(data):
+                raise ValueError("Empty input.")
+        if isinstance(data[i][0], list) or isinstance(data[i][0], tuple):
+            padding_value = [padding_value for _ in range(len(data[i][0]))]
+
+        if not output_tensor:
+            lengths = [max(len(seq), 1) for seq in data]
+            if type(data[0]) == list:
+                data = [torch.tensor(seq + [padding_value] * (max_len - len(seq))) for seq in data]
+            else:
+                data = [torch.cat([seq, maybe_cuda(torch.tensor([padding_value] * (max_len - len(seq))))]) for seq in data]
+            return data, lengths
+        else:
+            lengths = [max(len(seq), 1) for seq in data]
+            data = [seq + [padding_value] * (max_len - len(seq)) for seq in data]
+            return maybe_cuda(torch.tensor(data)), maybe_cuda(LongTensor(lengths))
 
 
 def get_mask(

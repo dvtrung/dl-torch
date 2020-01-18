@@ -2,7 +2,6 @@ import json
 import logging
 import os
 
-import colorlog
 import numpy as np
 from tqdm import tqdm
 
@@ -23,6 +22,16 @@ class TqdmLoggingHandler(logging.Handler):
             self.handleError(record)
 
 
+class DebugFileHandler(logging.FileHandler):
+    def __init__(self, filename, mode='a', encoding=None, delay=False):
+        logging.FileHandler.__init__(self, filename, mode, encoding, delay)
+
+    def emit(self, record):
+        if not record.levelno == logging.DEBUG:
+            return
+        logging.FileHandler.emit(self, record)
+
+
 log_format = '%(asctime)s - %(levelname)s - %(message)s'
 bold_seq = '\033[1m'
 #colorlog.basicConfig(format=(
@@ -32,10 +41,11 @@ bold_seq = '\033[1m'
 #))
 
 logger = logging.getLogger('dlex')
-logger.addHandler(TqdmLoggingHandler())
+# logger.addHandler(TqdmLoggingHandler())
 
 
 def set_log_level(level: str):
+    level = 'debug'
     level = dict(
         none=logging.NOTSET,
         info=logging.INFO,
@@ -43,10 +53,6 @@ def set_log_level(level: str):
         error=logging.ERROR,
         debug=logging.DEBUG)[level]
     logger.setLevel(level)
-
-
-# Here we define our formatter
-# formatter = logging.Formatter(Fore.BLUE + '%(asctime)s - %(levelname)s - %(message)s' + Style.RESET_ALL)
 
 
 epoch_info_logger = logging.getLogger('dlex-epoch-info')
@@ -57,35 +63,36 @@ epoch_step_info_logger.setLevel(logging.INFO)
 epoch_step_info_logger.propagate = False
 
 
-def set_log_dir(params):
-    os.makedirs(params.log_dir, exist_ok=True)
-    sym_path = os.path.abspath(os.path.join(params.log_dir, os.pardir, "latest"))
+def set_log_dir(configs):
+    os.makedirs(configs.log_dir, exist_ok=True)
+    formatter = logging.Formatter('%(asctime)s - %(message)s')
+    sym_path = os.path.abspath(os.path.join(configs.log_dir, os.pardir, "latest"))
     if os.path.exists(sym_path):
         os.unlink(sym_path)
     # TODO: symlink doesn't work correctly
     # os.symlink(params.log_dir, sym_path, True)
 
     log_info_handler = logging.FileHandler(
-        os.path.join(params.log_dir, "info.log"))
+        os.path.join(configs.log_dir, "info.log"))
     log_info_handler.setLevel(logging.INFO)
-    # log_info_handler.setFormatter(formatter)
+    log_info_handler.setFormatter(formatter)
     logger.addHandler(log_info_handler)
 
-    log_debug_handler = logging.FileHandler(
-        os.path.join(params.log_dir, "debug.log"))
+    log_debug_handler = DebugFileHandler(
+        os.path.join(configs.log_dir, "debug.log"))
     log_debug_handler.setLevel(logging.DEBUG)
-    # log_debug_handler.setFormatter(formatter)
+    log_debug_handler.setFormatter(formatter)
     logger.addHandler(log_debug_handler)
 
-    log_epoch_info_handler = logging.FileHandler(
-        os.path.join(params.log_dir, "epoch-info.log"))
-    log_epoch_info_handler.setLevel(logging.INFO)
-    epoch_info_logger.addHandler(log_epoch_info_handler)
+    # log_epoch_info_handler = logging.FileHandler(
+    #     os.path.join(configs.log_dir, "epoch-info.log"))
+    # log_epoch_info_handler.setLevel(logging.INFO)
+    # epoch_info_logger.addHandler(log_epoch_info_handler)
 
-    log_epoch_step_info_handler = logging.FileHandler(
-        os.path.join(params.log_dir, "epoch-step-info.log"))
-    log_epoch_step_info_handler.setLevel(logging.INFO)
-    epoch_step_info_logger.addHandler(log_epoch_step_info_handler)
+    # log_epoch_step_info_handler = logging.FileHandler(
+    #     os.path.join(configs.log_dir, "epoch-step-info.log"))
+    # log_epoch_step_info_handler.setLevel(logging.INFO)
+    # epoch_step_info_logger.addHandler(log_epoch_step_info_handler)
 
 
 def beautify(obj):
@@ -110,6 +117,7 @@ def log_result(mode: str, params, new_result: float, is_better_result):
     """Add a checkpoint for evaluation result.
     :return best result after adding new result
     """
+    return {m: new_result for m in params.test.metrics}
     ret = load_results(mode, params)
     ret["evaluations"].append(new_result)
     for m in params.test.metrics:
@@ -122,6 +130,7 @@ def log_result(mode: str, params, new_result: float, is_better_result):
 
 
 def log_outputs(mode, params, outputs):
+    os.makedirs(params.log_dir, exist_ok=True)
     with open(os.path.join(params.log_dir, "outputs_%s.json" % mode), "w") as f:
         f.write(json.dumps(outputs, indent=2))
 
