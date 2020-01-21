@@ -17,6 +17,6 @@ class ModelReport:
     num_trainable_params: int = None
     param_details: str = None
 
-    cross_validation_num_folds: int = None
-    cross_validation_current_fold: int = None
+    cv_num_folds: int = None
+    cv_current_fold: int = None
     summary_writer = None

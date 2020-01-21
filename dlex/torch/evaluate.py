@@ -19,8 +19,11 @@ def evaluate(
         model: BaseModel,
         dataset: Dataset,
         params: MainConfig,
+        configs: Configs,
         output_path,
-        report: ModelReport = None) -> Tuple[dict, list]:
+        report: ModelReport = None,
+        tqdm_desc="Eval",
+        tqdm_position=None) -> Tuple[dict, list]:
     """
     Evaluate model and save result.
     :param model:
@@ -41,7 +44,12 @@ def evaluate(
         results = {metric: 0. for metric in params.test.metrics}
         outputs = []
         y_pred_all, y_ref_all, extra_all = [], [], []
-        for batch in tqdm(data_iter, desc="Eval", leave=False):
+        for batch in tqdm(
+                data_iter,
+                desc=tqdm_desc,
+                leave=False,
+                position=tqdm_position,
+                disable=not configs.args.show_progress):
             try:
                 if batch is None or len(batch) == 0:
                     raise Exception("Batch size 0")
@@ -95,7 +103,7 @@ def main(params=None, configs: Configs = None, report=None):
 
     for mode in params.train.eval:
         result, outputs = evaluate(
-            model, datasets.get_dataset(mode), params,
+            model, datasets.get_dataset(mode), params, configs,
             output_path=os.path.join(configs.log_dir, "results", f"{args.load}_{mode}"), report=report)
 
         for output in random.choices(outputs, k=50):

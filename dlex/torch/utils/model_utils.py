@@ -55,12 +55,18 @@ def rnn_cell(cell):
         return torch.nn.GRU
 
 
-def linear_layers(dims: List[int], batch_norm: bool = True, activation_fn="relu"):
+def linear_layers(
+        dims: List[int],
+        norm: nn.Module = nn.LayerNorm,
+        dropout: int = 0.0,
+        activation_fn="relu"):
     linear_layers = []
     for i, in_dim, out_dim in zip(range(len(dims) - 1), dims[:-1], dims[1:]):
         linear_layers.append(nn.Linear(in_dim, out_dim))
-        if batch_norm:
-            linear_layers.append(nn.BatchNorm1d(out_dim))
+        if norm:
+            linear_layers.append(norm(out_dim))
+        if dropout > 0:
+            linear_layers.append(nn.Dropout(dropout))
         if activation_fn and i != len(dims) - 1:
             linear_layers.append(dict(
                 relu=nn.ReLU

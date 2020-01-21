@@ -26,7 +26,7 @@ class SklearnDataset:
             data = list(zip(X, y))
             random.shuffle(data)
             X, y = zip(*data)
-            pos_start = len(y) * (self.params.dataset.cross_validation_current_fold - 1) // self.params.dataset.cross_validation
+            pos_start = len(y) * (self.params.dataset.cv_current_fold - 1) // self.params.dataset.cross_validation
             pos_end = pos_start + len(y) // self.params.dataset.cross_validation
             self.X_train = X[:pos_start] + X[pos_end:]
             self.X_test = X[pos_start:pos_end]

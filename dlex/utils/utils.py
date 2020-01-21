@@ -138,3 +138,7 @@ def get_unused_gpus(args):
         return idx
     except Exception:
         return []
+
+
+def get_file_size(filepath: str) -> float:
+    return os.path.getsize(filepath) / 1024 / 1024

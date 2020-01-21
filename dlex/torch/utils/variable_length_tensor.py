@@ -1,18 +1,16 @@
 from typing import List, Any, Union
 
 import torch
-from torch import LongTensor
-import numpy as np
-
 from dlex.torch.utils.ops_utils import maybe_cuda
+from torch import LongTensor
 
 
-def pad_sequence(data: List[List[Any]], padding_value, output_tensor=False):
-    if type(data[0][0]) == list and len(data[0][0]) > 0 and type(data[0][0][0]) == list:
+def pad_sequence(data: List[List[Any]], padding_value, output_tensor=False, dim: int = 2):
+    if dim == 3:
         values = []
         lengths = []
         for i in range(len(data)):
-            val_, length_ = pad_sequence(data[i], padding_value, output_tensor)
+            val_, length_ = pad_sequence(data[i], padding_value, output_tensor, dim=2)
             values.append(val_)
             lengths.append(length_)
         max_len = max(val.shape[1] for val in values)

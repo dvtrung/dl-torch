@@ -6,6 +6,11 @@ import numpy as np
 from tqdm import tqdm
 
 
+import warnings
+warnings.filterwarnings(action='ignore', category=DeprecationWarning)
+warnings.filterwarnings(action='ignore', category=FutureWarning)
+
+
 class TqdmLoggingHandler(logging.Handler):
     def __init__(self, level=logging.NOTSET):
         super().__init__(level)
@@ -28,6 +33,16 @@ class DebugFileHandler(logging.FileHandler):
 
     def emit(self, record):
         if not record.levelno == logging.DEBUG:
+            return
+        logging.FileHandler.emit(self, record)
+
+
+class ErrorFileHandler(logging.FileHandler):
+    def __init__(self, filename, mode='a', encoding=None, delay=False):
+        logging.FileHandler.__init__(self, filename, mode, encoding, delay)
+
+    def emit(self, record):
+        if not record.levelno == logging.ERROR:
             return
         logging.FileHandler.emit(self, record)
 
@@ -83,6 +98,11 @@ def set_log_dir(configs):
     log_debug_handler.setLevel(logging.DEBUG)
     log_debug_handler.setFormatter(formatter)
     logger.addHandler(log_debug_handler)
+
+    log_error_handler = ErrorFileHandler(os.path.join(configs.log_dir, "error.log"))
+    log_error_handler.setLevel(logging.ERROR)
+    log_error_handler.setFormatter(formatter)
+    logger.addHandler(log_error_handler)
 
     # log_epoch_info_handler = logging.FileHandler(
     #     os.path.join(configs.log_dir, "epoch-info.log"))

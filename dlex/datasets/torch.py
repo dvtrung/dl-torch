@@ -42,7 +42,6 @@ class Dataset(PytorchDataset):
         return self._data
 
     def shuffle(self):
-        logger.debug(f"Dataset {self.mode} shuffled.")
         random.shuffle(self._data)
 
     @property

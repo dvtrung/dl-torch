@@ -2,12 +2,14 @@ import logging
 import multiprocessing
 import os
 import runpy
+import traceback
 from collections import defaultdict
 from datetime import datetime
 from functools import partial
 from time import sleep
 from typing import Dict, Tuple, Any, List
 
+import numpy as np
 from dlex.datatypes import ModelReport
 from dlex.utils import logger, table2str, get_unused_gpus
 
@@ -20,28 +22,37 @@ report_queue = manager.Queue()
 
 def launch_training(params, training_idx):
     backend = configs.backend
+
     if backend is None:
         raise ValueError("No backend specified. Please add it in config file.")
-    if backend == "sklearn":
-        from dlex.sklearn.train import train
-        train(params, configs.args)
-        # runpy.run_module("dlex.sklearn.train", run_name=__name__)
-    elif backend == "pytorch" or backend == "torch":
-        # runpy.run_module("dlex.torch.train", run_name=__name__)
-        from dlex.torch.train import main
-        return main(None, params, configs, training_idx, report_queue)
-    elif backend == "tensorflow" or backend == "tf":
-        runpy.run_module("dlex.tf.train", run_name=__name__)
-    else:
-        raise ValueError("Backend is not valid.")
+
+    try:
+        if backend == "sklearn":
+            from dlex.sklearn.train import train
+            train(params, configs.args)
+            # runpy.run_module("dlex.sklearn.train", run_name=__name__)
+        elif backend == "pytorch" or backend == "torch":
+            # runpy.run_module("dlex.torch.train", run_name=__name__)
+            from dlex.torch.train import main
+            return main(None, params, configs, training_idx, report_queue)
+        elif backend == "tensorflow" or backend == "tf":
+            runpy.run_module("dlex.tf.train", run_name=__name__)
+        else:
+            raise ValueError("Backend is not valid.")
+    except Exception as e:
+        print(e)
+        print(traceback.format_exc())
+        if configs.args.notify:
+            msg = "Error (%s): %s" % (configs.config_name, str(e))
+            os.system(configs.args.notify_cmd % msg)
 
 
 def update_results(
         report: ModelReport,
-        env_name: Environment,
+        env_name: str,
         variable_values: Tuple[Any]):
     """
-    :param env:
+    :param env_name:
     :param variable_values:
     :param report: an instance of ModelReport
     :return:
@@ -51,6 +62,11 @@ def update_results(
     if report:
         all_reports[env_name][variable_values] = report
     write_report()
+
+
+def _error_callback(e: Exception):
+    logger.error(str(e))
+    logger.error(traceback.format_exc())
 
 
 def _gather_metrics(report: Dict[Tuple, ModelReport]) -> List[str]:
@@ -63,17 +79,23 @@ def _gather_metrics(report: Dict[Tuple, ModelReport]) -> List[str]:
 
 def _format_result(r: ModelReport, m: str):
     if r and r.results and m in r.results:
+        res = r.results[m]
         if r.finished:
             status = ""
-        elif r.cross_validation_num_folds:
-            status = f" (CV {r.cross_validation_current_fold}/{r.cross_validation_num_folds})"
+        elif r.cv_num_folds:
+            if type(res) == list and len(res) < r.cv_num_folds:
+                status = f" (CV {r.cv_current_fold - 1}/{r.cv_num_folds})"
+            else:
+                status = ""
         else:
-            status = f" (E {r.current_epoch}/{r.num_epochs})"
+            status = f" (E {r.current_epoch - 1}/{r.num_epochs})"
 
-        if type(r.results[m]) == float:
-            result = "%.2f" % r.results[m]
-        elif type(r.results[m]) == tuple and len(r.results[m]) == 2:
-            result = "%.2f±%.2f" % r.results[m]
+        if res is None:
+            result = "-"
+        elif type(res) == float:
+            result = "%.2f" % res
+        elif type(res) == list and r.cv_num_folds:
+            result = "[" + ", ".join(["%.2f" % r for r in res]) + "] -> " + "%.2f ± %.2f" % (np.mean(res), np.std(res))
         else:
             result = str(type(r.results[m]))
         return result + status
@@ -107,12 +129,12 @@ def write_report():
     long_report = ""
 
     def _short_report(s):
-        nonlocal short_report
-        short_report += f"{s}\n"
-
-    def _long_report(s):
         nonlocal short_report, long_report
         short_report += f"{s}\n"
+        long_report += f"{s}\n"
+
+    def _long_report(s):
+        nonlocal long_report
         long_report += f"{s}\n"
 
     _short_report(f"# Report of {os.path.basename(configs.config_path)}")
@@ -169,11 +191,14 @@ def write_report():
                 _short_report(f"\n{table2str(data)}\n")
 
     if configs.args.report:
-        print(short_report)
-        os.makedirs("model_reports", exist_ok=True)
-        file_name = f"{configs.config_name}_{'_'.join(list(all_reports.keys()))}_{launch_time.strftime('%Y%m%d-%H%M%S')}.md"
-        with open(os.path.join("model_reports", file_name), "w") as f:
-            f.write(long_report)
+        print(long_report)
+
+    with open(os.path.join(configs.log_dir, "report.md"), "w") as f:
+        f.write(short_report)
+    with open(os.path.join(configs.log_dir, "report_full.md"), "w") as f:
+        f.write(long_report)
+
+    return short_report, long_report
 
 
 def main():
@@ -191,35 +216,56 @@ def main():
         all_reports[env.name] = manager.dict()
         # init result list
         for variable_values, params in zip(env.variables_list, env.configs_list):
-            all_reports[env.name][variable_values] = manager.dict()
+            all_reports[env.name][variable_values] = None
 
-    pool = multiprocessing.Pool(processes=args.num_processes)
-    gpu = args.gpu or get_unused_gpus(args)
-    results = []
-    callbacks = []
-    process_args = []
-    for env in envs:
-        for variable_values, params in zip(env.variables_list, env.configs_list):
-            params.gpu = gpu
-            callback = partial(update_results, env_name=env.name, variable_values=variable_values)
-            callbacks.append(callback)
-            process_args.append((env, params, variable_values))
+    write_report()
 
-    for idx, (pargs, callback) in enumerate(zip(process_args, callbacks)):
-        _, params, _ = pargs
-        r = pool.apply_async(launch_training, (params, idx), callback=callback)
-        sleep(2)
-        results.append(r)
+    if args.num_processes >= 1:
+        pool = multiprocessing.Pool(processes=args.num_processes)
+        gpu = args.gpu or get_unused_gpus(args)
+        results = []
+        callbacks = []
+        process_args = []
+        for env in envs:
+            for variable_values, params in zip(env.variables_list, env.configs_list):
+                params.gpu = gpu
+                callback = partial(update_results, env_name=env.name, variable_values=variable_values)
+                callbacks.append(callback)
+                process_args.append((env, params, variable_values))
 
-    while True:
-        idx, report = report_queue.get()
-        update_results(report, process_args[idx][0].name, process_args[idx][2])
+        for idx, (pargs, callback) in enumerate(zip(process_args, callbacks)):
+            _, params, _ = pargs
+            r = pool.apply_async(
+                launch_training,
+                args=(params, idx + 1),
+                callback=callback,
+                error_callback=_error_callback)
+            sleep(10)
+            results.append(r)
+        pool.close()
 
-    for r in results:
-        r.get()
-    pool.close()
+        while not all(r.ready() for r in results):
+            idx, report = report_queue.get()
+            update_results(report, process_args[idx - 1][0].name, process_args[idx - 1][2])
 
-    pool.join()
+        # for r in results:
+        #     r.get()
+        pool.join()
+    else:
+        gpu = args.gpu or get_unused_gpus(args)
+        idx = 0
+        for env in envs:
+            for variable_values, params in zip(env.variables_list, env.configs_list):
+                idx += 1
+                params.gpu = gpu
+                report = launch_training(params, idx)
+                update_results(report, env.name, variable_values)
+
+    _, report = write_report()
+
+    if args.notify:
+        os.system(args.notify_cmd % report)
+
     # results.get(timeout=1)
     # for thread_args in threads_args:
     #     threads = []

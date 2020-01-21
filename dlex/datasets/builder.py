@@ -3,7 +3,7 @@ import os
 import shutil
 from typing import Tuple, List
 
-from sklearn.metrics import accuracy_score
+from sklearn.metrics import accuracy_score, average_precision_score, f1_score
 
 from dlex.configs import ModuleConfigs, MainConfig
 from dlex.torch import BatchItem
@@ -109,7 +109,13 @@ class DatasetBuilder:
         :return:
         """
         if metric == "acc":
-            return float(accuracy_score(pred, ref)) * 100
+            return float(accuracy_score(ref, pred)) * 100
+        elif metric == "precision":
+            return float(average_precision_score(ref, pred))
+        elif metric == "recall":
+            pass
+        elif metric == "f1":
+            return float(f1_score(ref, pred)) * 100
         elif metric == "err":
             ret = self.evaluate(pred, ref, "acc", output_path)
             return 100 - ret

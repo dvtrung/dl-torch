@@ -359,7 +359,7 @@ class Configs:
             help="Values to override configs read from file"
         )
         parser.add_argument(
-            '--env',
+            '--env', default=["default"],
             nargs='+', dest="env", help="List of environments")
         parser.add_argument(
             '--report', action="store_true",
@@ -375,12 +375,18 @@ class Configs:
         parser.add_argument(
             '--gpu_memory_max',
             help="Maximum used memory (MiB) available for the device to be used", default=100)
+        parser.add_argument('--training_id', help="Training ID")
 
         if self.mode == "train":
-            parser.add_argument('--debug', action="store_true",
-                                help="train and eval on the same small data to check if the model works")
-            parser.add_argument('--training_id',
-                                help="Training ID")
+            parser.add_argument(
+                '--debug', action="store_true",
+                help="train and eval on the same small data to check if the model works")
+            parser.add_argument(
+                '--notify', action="store_true",
+                help="send notification")
+            parser.add_argument(
+                '--notify-cmd', type=str, default="telegram-send --format markdown '```%s```'",
+                help="command to run for sending notification")
 
         parser.add_argument('--download', action="store_true",
                             help="force to download, unzip and preprocess the data")
@@ -407,9 +413,12 @@ class Configs:
         parser.add_argument('--num-workers', type=int, default=0, metavar='N',
                             help="Number of workers for loading data")
 
+        parser.add_argument('--show-progress', action="store_true",
+                            help="show progress bar")
+
         if self.mode == "train":
             parser.add_argument(
-                '-p, --num-processes', type=int, default=1, metavar='N', dest='num_processes',
+                '-p, --num-processes', type=int, default=0, metavar='N', dest='num_processes',
                 help="number of training processes running at a time")
             parser.add_argument(
                 '--save-all', action='store_true',
@@ -431,11 +440,16 @@ class Configs:
                 '-i --input',
                 nargs="*", action="append",
                 dest="input")
+        elif self.mode == "log":
+            parser.add_argument(
+                '--level',
+                type=str, default="info",
+                help="log level")
 
         if argv is None:
-            self.args = parser.parse_args()
+            self.args, _ = parser.parse_known_args()
         else:
-            self.args = parser.parse_args(argv)
+            self.args, _ = parser.parse_known_args(argv)
 
     @property
     def environments(self) -> List[Environment]:
@@ -444,7 +458,7 @@ class Configs:
     @property
     def log_dir(self):
         """Get logging directory based on model configs."""
-        log_dir = os.path.join("logs", self.config_name)
+        log_dir = os.path.join("logs", self.config_name, "_".join(self.args.env))
         return os.path.join(log_dir, *self.training_id.split('-'))
 
     @property
