@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Data Set &mdash; dlex  documentation</title>
+  <title>Dataset &mdash; dlex  documentation</title>
   
 
   
@@ -84,7 +84,10 @@
 <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="../getting_started.html">Getting Started</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../configs.html">Configurations</a></li>
-<li class="toctree-l1 current"><a class="current reference internal" href="#">Data Set</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Dataset</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#imagedataset">ImageDataset</a></li>
+</ul>
+</li>
 <li class="toctree-l1"><a class="reference internal" href="model.html">Model</a></li>
 </ul>
 
@@ -131,7 +134,7 @@
     
       <li><a href="../index.html">Docs</a> &raquo;</li>
         
-      <li>Data Set</li>
+      <li>Dataset</li>
     
     
       <li class="wy-breadcrumbs-aside">
@@ -150,8 +153,8 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
             
-  <div class="section" id="data-set">
-<h1>Data Set<a class="headerlink" href="#data-set" title="Permalink to this headline">¶</a></h1>
+  <div class="section" id="dataset">
+<h1>Dataset<a class="headerlink" href="#dataset" title="Permalink to this headline">¶</a></h1>
 <dl class="class">
 <dt id="dlex.datasets.DatasetBuilder">
 <em class="property">class </em><code class="sig-prename descclassname">dlex.datasets.</code><code class="sig-name descname">DatasetBuilder</code><span class="sig-paren">(</span><em class="sig-param">params: dlex.configs.MainConfig</em><span class="sig-paren">)</span><a class="headerlink" href="#dlex.datasets.DatasetBuilder" title="Permalink to this definition">¶</a></dt>
@@ -281,6 +284,56 @@ required for training.</p>
 
 </dd></dl>
 
+<div class="section" id="imagedataset">
+<h2>ImageDataset<a class="headerlink" href="#imagedataset" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="dlex.datasets.image.ImageDataset">
+<em class="property">class </em><code class="sig-prename descclassname">dlex.datasets.image.</code><code class="sig-name descname">ImageDataset</code><span class="sig-paren">(</span><em class="sig-param">params: dlex.configs.MainConfig</em><span class="sig-paren">)</span><a class="headerlink" href="#dlex.datasets.image.ImageDataset" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="method">
+<dt id="dlex.datasets.image.ImageDataset.format_output">
+<code class="sig-name descname">format_output</code><span class="sig-paren">(</span><em class="sig-param">y_pred</em>, <em class="sig-param">batch_item</em>, <em class="sig-param">tag='default') -&gt; (&lt;class 'str'&gt;</em>, <em class="sig-param">&lt;class 'str'&gt;</em>, <em class="sig-param">&lt;class 'str'&gt;</em><span class="sig-paren">)</span><a class="headerlink" href="#dlex.datasets.image.ImageDataset.format_output" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get representations of model inputs and results in readable format</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>y_pred</strong> – </p></li>
+<li><p><strong>batch_item</strong> (<em>BatchItem</em>) – </p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>A tuple containing string representations of input, ground-truth and predicted values</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="dlex.datasets.image.ImageDataset.input_shape">
+<em class="property">property </em><code class="sig-name descname">input_shape</code><a class="headerlink" href="#dlex.datasets.image.ImageDataset.input_shape" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>shape of the input image</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="dlex.datasets.image.ImageDataset.num_channels">
+<em class="property">property </em><code class="sig-name descname">num_channels</code><a class="headerlink" href="#dlex.datasets.image.ImageDataset.num_channels" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>number of channels in the input image</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="dlex.datasets.image.torch.PytorchImageDataset">
+<em class="property">class </em><code class="sig-prename descclassname">dlex.datasets.image.torch.</code><code class="sig-name descname">PytorchImageDataset</code><span class="sig-paren">(</span><em class="sig-param">builder</em>, <em class="sig-param">mode</em><span class="sig-paren">)</span><a class="headerlink" href="#dlex.datasets.image.torch.PytorchImageDataset" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
 </div>
 
 

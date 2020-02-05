@@ -83,7 +83,7 @@
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="getting_started.html">Getting Started</a></li>
 <li class="toctree-l1"><a class="reference internal" href="configs.html">Configurations</a></li>
-<li class="toctree-l1"><a class="reference internal" href="modules/dataset.html">Data Set</a></li>
+<li class="toctree-l1"><a class="reference internal" href="modules/dataset.html">Dataset</a></li>
 <li class="toctree-l1"><a class="reference internal" href="modules/model.html">Model</a></li>
 </ul>
 
@@ -151,14 +151,17 @@
             
   <div class="section" id="welcome-to-dlex-s-documentation">
 <h1>Welcome to dlex’s documentation!<a class="headerlink" href="#welcome-to-dlex-s-documentation" title="Permalink to this headline">¶</a></h1>
-<p>dlex is an open source framework for machine learning scientific experiment. Features include:</p>
+<p>dlex is an open-source framework for machine learning scientific experiment. Features include:</p>
 <ul class="simple">
 <li><p>Configuration-based experiment setup. Less code for more reproducibility</p></li>
 <li><p>Pytorch or Tensorflow 2.0 or scikit-learn as backend with similar training flow</p></li>
 <li><p>Efficiently log, report and analyze experiment results</p></li>
 <li><p>Cross-platform GUI for monitoring experiments, either local or remote sever (Electron-based)</p></li>
 </ul>
-<p># Resources</p>
+<p>dlex is built on top of other libraries: it provides wrappers for many built-in modules, data loaders and models from other open-source projects (torchtext, torchvision, etc.) so that they can all be used the same manner.</p>
+</div>
+<div class="section" id="resources">
+<h1>Resources<a class="headerlink" href="#resources" title="Permalink to this headline">¶</a></h1>
 <ul class="simple">
 <li><p><a class="reference external" href="https://github.com/trungd/dlex/tree/master/implementations">Various model implementations</a></p></li>
 <li><p><a class="reference external" href="https://github.com/trungd/ml-graph/">Implementations of machine learning algorithms for graph</a></p></li>
@@ -180,7 +183,10 @@
 <li class="toctree-l2"><a class="reference internal" href="configs.html#test">Test</a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="modules/dataset.html">Data Set</a></li>
+<li class="toctree-l1"><a class="reference internal" href="modules/dataset.html">Dataset</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="modules/dataset.html#imagedataset">ImageDataset</a></li>
+</ul>
+</li>
 <li class="toctree-l1"><a class="reference internal" href="modules/model.html">Model</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="modules/model.html#pytorch-model">Pytorch Model</a></li>
 </ul>

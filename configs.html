@@ -35,7 +35,7 @@
   <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="Data Set" href="modules/dataset.html" />
+    <link rel="next" title="Dataset" href="modules/dataset.html" />
     <link rel="prev" title="Getting Started" href="getting_started.html" /> 
 </head>
 
@@ -92,7 +92,7 @@
 <li class="toctree-l2"><a class="reference internal" href="#test">Test</a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="modules/dataset.html">Data Set</a></li>
+<li class="toctree-l1"><a class="reference internal" href="modules/dataset.html">Dataset</a></li>
 <li class="toctree-l1"><a class="reference internal" href="modules/model.html">Model</a></li>
 </ul>
 
@@ -163,14 +163,14 @@
 <div class="section" id="top-level-entries">
 <h2>Top-level entries<a class="headerlink" href="#top-level-entries" title="Permalink to this headline">¶</a></h2>
 <dl class="simple">
-<dt>backend:</dt><dd><p>Must be included. The following backends are supported</p>
+<dt>backend</dt><dd><p>Must be included. The following backends are supported</p>
 <ul class="simple">
 <li><p>pytorch / torch: use <code class="docutils literal notranslate"><span class="pre">dlex.torch.BaseModel</span></code> as base model and <code class="docutils literal notranslate"><span class="pre">dlex.datasets.torch.Dataset</span></code> as base dataset</p></li>
 <li><p>tensorflow / tf: partially supported</p></li>
 <li><p>sklearn: partially supported</p></li>
 </ul>
 </dd>
-<dt>random_seed:</dt><dd><p>Random seed for all randomization engines (numpy, random, torch, tensorflow etc.)</p>
+<dt>random_seed</dt><dd><p>Random seed for all randomization engines (numpy, random, torch, tensorflow etc.)</p>
 </dd>
 </dl>
 </div>
@@ -183,15 +183,15 @@
 </div>
 <p>Entries for each variable:</p>
 <dl class="simple">
-<dt>variables:</dt><dd><p>Each environment comes with a list of variables and values. Value of each variable can be a single value or a list. If it is a list, all possible combinations of variable values will be examined.</p>
+<dt>variables</dt><dd><p>Each environment comes with a list of variables and values. Value of each variable can be a single value or a list. If it is a list, all possible combinations of variable values will be examined.</p>
 </dd>
-<dt>report:</dt><dd><p>When some variables are assigned multiple values, each combination of them will give one or some results. Use <code class="docutils literal notranslate"><span class="pre">report</span></code> to specify how these results are displayed in report.</p>
+<dt>report</dt><dd><p>When some variables are assigned multiple values, each combination of them will give one or some results. Use <code class="docutils literal notranslate"><span class="pre">report</span></code> to specify how these results are displayed in report.</p>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">type</span></code>: <code class="docutils literal notranslate"><span class="pre">table</span></code> or <code class="docutils literal notranslate"><span class="pre">raw</span></code></p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">row</span></code> / <code class="docutils literal notranslate"><span class="pre">col</span></code>: when type is table, indicate name of the variable displayed as row / col</p></li>
 </ul>
 </dd>
-<dt>default:</dt><dd><p>Set to false if the env is not included in default execution. In that case, it can only be run with <code class="docutils literal notranslate"><span class="pre">--env</span></code> in the command. All the environments are run by default.</p>
+<dt>default</dt><dd><p>Set to false if the env is not included in default execution. In that case, it can only be run with <code class="docutils literal notranslate"><span class="pre">--env</span></code> in the command. All the environments are run by default.</p>
 </dd>
 </dl>
 <p>Below is an example of a config file with environments.</p>
@@ -240,7 +240,7 @@
 </div>
 <div class="section" id="train">
 <h2>Train<a class="headerlink" href="#train" title="Permalink to this headline">¶</a></h2>
-<p>train entry is mapped into <code class="docutils literal notranslate"><span class="pre">TrainConfig</span></code> with the following fields and methods</p>
+<p><code class="docutils literal notranslate"><span class="pre">train</span></code> entry is mapped into <code class="docutils literal notranslate"><span class="pre">TrainConfig</span></code> with the following fields and methods</p>
 <dl class="class">
 <dt id="dlex.configs.TrainConfig">
 <em class="property">class </em><code class="sig-prename descclassname">dlex.configs.</code><code class="sig-name descname">TrainConfig</code><span class="sig-paren">(</span><em class="sig-param">num_epochs: int = None</em>, <em class="sig-param">num_workers: int = None</em>, <em class="sig-param">batch_size: int = None</em>, <em class="sig-param">optimizer: dlex.configs.OptimizerConfig = None</em>, <em class="sig-param">lr_scheduler: dict = None</em>, <em class="sig-param">eval: list = &lt;factory&gt;</em>, <em class="sig-param">max_grad_norm: float = 5.0</em>, <em class="sig-param">save_every: str = '1e'</em>, <em class="sig-param">log_every: str = '5s'</em>, <em class="sig-param">cross_validation: int = None</em><span class="sig-paren">)</span><a class="headerlink" href="#dlex.configs.TrainConfig" title="Permalink to this definition">¶</a></dt>
@@ -275,7 +275,7 @@ Examples: 100s, 30m, 2h, 1e</p></li>
 </div>
 <div class="section" id="test">
 <h2>Test<a class="headerlink" href="#test" title="Permalink to this headline">¶</a></h2>
-<p>test entry is mapped into <code class="docutils literal notranslate"><span class="pre">TrainConfig</span></code> with the following fields and methods</p>
+<p><code class="docutils literal notranslate"><span class="pre">test</span></code> entry is mapped into <code class="docutils literal notranslate"><span class="pre">TestConfig</span></code> with the following fields and methods</p>
 <dl class="class">
 <dt id="dlex.configs.TestConfig">
 <em class="property">class </em><code class="sig-prename descclassname">dlex.configs.</code><code class="sig-name descname">TestConfig</code><span class="sig-paren">(</span><em class="sig-param">batch_size: int = None</em>, <em class="sig-param">metrics: list = &lt;factory&gt;</em><span class="sig-paren">)</span><a class="headerlink" href="#dlex.configs.TestConfig" title="Permalink to this definition">¶</a></dt>
@@ -300,7 +300,7 @@ Examples: 100s, 30m, 2h, 1e</p></li>
   
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
       
-        <a href="modules/dataset.html" class="btn btn-neutral float-right" title="Data Set" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+        <a href="modules/dataset.html" class="btn btn-neutral float-right" title="Dataset" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
         <a href="getting_started.html" class="btn btn-neutral float-left" title="Getting Started" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>

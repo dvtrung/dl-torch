@@ -95,7 +95,7 @@
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="configs.html">Configurations</a></li>
-<li class="toctree-l1"><a class="reference internal" href="modules/dataset.html">Data Set</a></li>
+<li class="toctree-l1"><a class="reference internal" href="modules/dataset.html">Dataset</a></li>
 <li class="toctree-l1"><a class="reference internal" href="modules/model.html">Model</a></li>
 </ul>
 
@@ -165,6 +165,7 @@
 <h1>Getting Started<a class="headerlink" href="#getting-started" title="Permalink to this headline">¶</a></h1>
 <div class="section" id="install">
 <h2>Install<a class="headerlink" href="#install" title="Permalink to this headline">¶</a></h2>
+<p>dlex can be install using <code class="docutils literal notranslate"><span class="pre">pip</span></code></p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">pip</span> <span class="n">install</span> <span class="n">dlex</span>
 </pre></div>
 </div>
@@ -173,11 +174,13 @@
 <h2>Set up an experiment<a class="headerlink" href="#set-up-an-experiment" title="Permalink to this headline">¶</a></h2>
 <div class="section" id="step-1-folder-structure">
 <h3>Step 1:  Folder structure<a class="headerlink" href="#step-1-folder-structure" title="Permalink to this headline">¶</a></h3>
+<p>The following folder structure is for best practice</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">Experiment</span><span class="o">/</span>
 <span class="o">|--</span> <span class="n">model_configs</span>
-<span class="o">|--</span> <span class="n">model_outputs</span>
-<span class="o">|--</span> <span class="n">logs</span>
-<span class="o">|--</span> <span class="n">saved_models</span>
+<span class="o">|--</span> <span class="n">model_outputs</span><span class="o">*</span>
+<span class="o">|--</span> <span class="n">model_reports</span><span class="o">*</span>
+<span class="o">|--</span> <span class="n">logs</span><span class="o">*</span>
+<span class="o">|--</span> <span class="n">saved_models</span><span class="o">*</span>
 <span class="o">|--</span> <span class="n">src</span>
 <span class="o">|</span>   <span class="o">|--</span> <span class="n">datasets</span>
 <span class="o">|</span>   <span class="o">|</span>   <span class="o">|--</span> <span class="o">&lt;</span><span class="n">dataset</span><span class="o">&gt;.</span><span class="n">py</span>
@@ -186,13 +189,14 @@
 <span class="o">|--</span> <span class="n">README</span><span class="o">.</span><span class="n">md</span>
 </pre></div>
 </div>
-<p>Model parameters and outputs are saved to <code class="docutils literal notranslate"><span class="pre">./saved_models</span></code> and <code class="docutils literal notranslate"><span class="pre">./model_outputs</span></code> unless <code class="docutils literal notranslate"><span class="pre">DLEX_SAVED_MODELS_PATH</span></code> and <code class="docutils literal notranslate"><span class="pre">DLEX_MODEL_OUTPUTS_PATH</span></code> is specified</p>
+<p>Model parameters and outputs are saved to <code class="docutils literal notranslate"><span class="pre">./saved_models</span></code> and <code class="docutils literal notranslate"><span class="pre">./model_outputs</span></code> unless <code class="docutils literal notranslate"><span class="pre">DLEX_SAVED_MODELS_PATH</span></code> and <code class="docutils literal notranslate"><span class="pre">DLEX_MODEL_OUTPUTS_PATH</span></code> is specified. The folders with * do not need to be created manually, instead they will be created during training and evaluation if missing.</p>
 </div>
 <div class="section" id="step-2-define-dataset">
 <h3>Step 2: Define dataset<a class="headerlink" href="#step-2-define-dataset" title="Permalink to this headline">¶</a></h3>
+<p>Two classes are required to load and inject data to model.</p>
 <ul class="simple">
-<li><p><cite>Dataset Builder</cite>: handle downloading and preprocessing data. <cite>DatasetBuilder</cite> should be framework and config independent.</p></li>
-<li><p><cite>PytorchDataset</cite>, <cite>TensorflowDataset</cite>: handle loading dataset from the storage, shuffle, sort, batchify, etc. using concepts from each framework</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">DatasetBuilder</span></code>: handle downloading and preprocessing data. <code class="docutils literal notranslate"><span class="pre">DatasetBuilder</span></code> should be framework and config independent.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">PytorchDataset</span></code>, <code class="docutils literal notranslate"><span class="pre">TensorflowDataset</span></code>, <code class="docutils literal notranslate"><span class="pre">SklearnDataset</span></code>: handle loading dataset from the storage; perform shuffle, sorting, batchification, etc. using concepts from each framework</p></li>
 </ul>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">dlex.configs</span> <span class="kn">import</span> <span class="n">AttrDict</span>
 <span class="kn">from</span> <span class="nn">dlex.datasets.torch</span> <span class="kn">import</span> <span class="n">PytorchDataset</span>
@@ -220,17 +224,90 @@
         <span class="c1"># Load data from preprocessed files...</span>
 </pre></div>
 </div>
+<p>In this example, we use <code class="docutils literal notranslate"><span class="pre">dlex.datasets.image.MNIST</span></code> and <code class="docutils literal notranslate"><span class="pre">dlex.datasets.image.CIFAR10</span></code>. You do not need to write even a line of code!</p>
 </div>
 <div class="section" id="step-3-construct-model">
 <h3>Step 3: Construct model<a class="headerlink" href="#step-3-construct-model" title="Permalink to this headline">¶</a></h3>
-<p>Model supports loss calculation, training, predicting and outputting prediction to specified format.</p>
+<p>Besides standard module definition, model also needs to support loss calculation, training, predicting and outputting prediction to specified format.</p>
+<p>Model receives a <code class="docutils literal notranslate"><span class="pre">MainConfig</span></code> instance containing all configurations and a dataset instance (which is one of <code class="docutils literal notranslate"><span class="pre">PytorchDataset</span></code>, <code class="docutils literal notranslate"><span class="pre">TensorflowDataset</span></code> or <code class="docutils literal notranslate"><span class="pre">SklearnDataset</span></code> depending on the framework).</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">torch.nn</span> <span class="k">as</span> <span class="nn">nn</span>
+
+<span class="kn">from</span> <span class="nn">dlex.torch.models.base</span> <span class="k">import</span> <span class="n">ClassificationModel</span>
+<span class="kn">from</span> <span class="nn">dlex.torch</span> <span class="k">import</span> <span class="n">Batch</span>
+
+
+<span class="k">class</span> <span class="nc">VGG</span><span class="p">(</span><span class="n">ClassificationModel</span><span class="p">):</span>
+    <span class="n">LAYERS</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s1">&#39;VGG11&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mi">64</span><span class="p">,</span> <span class="s1">&#39;M&#39;</span><span class="p">,</span> <span class="mi">128</span><span class="p">,</span> <span class="s1">&#39;M&#39;</span><span class="p">,</span> <span class="mi">256</span><span class="p">,</span> <span class="mi">256</span><span class="p">,</span> <span class="s1">&#39;M&#39;</span><span class="p">,</span> <span class="mi">512</span><span class="p">,</span> <span class="mi">512</span><span class="p">,</span> <span class="s1">&#39;M&#39;</span><span class="p">,</span> <span class="mi">512</span><span class="p">,</span> <span class="mi">512</span><span class="p">,</span> <span class="s1">&#39;M&#39;</span><span class="p">],</span>
+        <span class="s1">&#39;VGG13&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mi">64</span><span class="p">,</span> <span class="mi">64</span><span class="p">,</span> <span class="s1">&#39;M&#39;</span><span class="p">,</span> <span class="mi">128</span><span class="p">,</span> <span class="mi">128</span><span class="p">,</span> <span class="s1">&#39;M&#39;</span><span class="p">,</span> <span class="mi">256</span><span class="p">,</span> <span class="mi">256</span><span class="p">,</span> <span class="s1">&#39;M&#39;</span><span class="p">,</span> <span class="mi">512</span><span class="p">,</span> <span class="mi">512</span><span class="p">,</span> <span class="s1">&#39;M&#39;</span><span class="p">,</span> <span class="mi">512</span><span class="p">,</span> <span class="mi">512</span><span class="p">,</span> <span class="s1">&#39;M&#39;</span><span class="p">],</span>
+        <span class="s1">&#39;VGG16&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mi">64</span><span class="p">,</span> <span class="mi">64</span><span class="p">,</span> <span class="s1">&#39;M&#39;</span><span class="p">,</span> <span class="mi">128</span><span class="p">,</span> <span class="mi">128</span><span class="p">,</span> <span class="s1">&#39;M&#39;</span><span class="p">,</span> <span class="mi">256</span><span class="p">,</span> <span class="mi">256</span><span class="p">,</span> <span class="mi">256</span><span class="p">,</span> <span class="s1">&#39;M&#39;</span><span class="p">,</span> <span class="mi">512</span><span class="p">,</span> <span class="mi">512</span><span class="p">,</span> <span class="mi">512</span><span class="p">,</span> <span class="s1">&#39;M&#39;</span><span class="p">,</span> <span class="mi">512</span><span class="p">,</span> <span class="mi">512</span><span class="p">,</span> <span class="mi">512</span><span class="p">,</span> <span class="s1">&#39;M&#39;</span><span class="p">],</span>
+        <span class="s1">&#39;VGG19&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mi">64</span><span class="p">,</span> <span class="mi">64</span><span class="p">,</span> <span class="s1">&#39;M&#39;</span><span class="p">,</span> <span class="mi">128</span><span class="p">,</span> <span class="mi">128</span><span class="p">,</span> <span class="s1">&#39;M&#39;</span><span class="p">,</span> <span class="mi">256</span><span class="p">,</span> <span class="mi">256</span><span class="p">,</span> <span class="mi">256</span><span class="p">,</span> <span class="mi">256</span><span class="p">,</span> <span class="s1">&#39;M&#39;</span><span class="p">,</span> <span class="mi">512</span><span class="p">,</span> <span class="mi">512</span><span class="p">,</span> <span class="mi">512</span><span class="p">,</span> <span class="mi">512</span><span class="p">,</span> <span class="s1">&#39;M&#39;</span><span class="p">,</span> <span class="mi">512</span><span class="p">,</span> <span class="mi">512</span><span class="p">,</span> <span class="mi">512</span><span class="p">,</span> <span class="mi">512</span><span class="p">,</span>
+                  <span class="s1">&#39;M&#39;</span><span class="p">],</span>
+    <span class="p">}</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">params</span><span class="p">,</span> <span class="n">dataset</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">params</span><span class="p">,</span> <span class="n">dataset</span><span class="p">)</span>
+
+        <span class="n">cfg</span> <span class="o">=</span> <span class="n">params</span><span class="o">.</span><span class="n">model</span>
+        <span class="n">layers</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">in_channels</span> <span class="o">=</span> <span class="n">dataset</span><span class="o">.</span><span class="n">num_channels</span>
+        <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">LAYERS</span><span class="p">[</span><span class="n">cfg</span><span class="o">.</span><span class="n">vgg_type</span> <span class="ow">or</span> <span class="s1">&#39;VGG11&#39;</span><span class="p">]:</span>
+            <span class="k">if</span> <span class="n">x</span> <span class="o">==</span> <span class="s1">&#39;M&#39;</span><span class="p">:</span>
+                <span class="n">layers</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">nn</span><span class="o">.</span><span class="n">MaxPool2d</span><span class="p">(</span><span class="n">kernel_size</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">stride</span><span class="o">=</span><span class="mi">2</span><span class="p">))</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">layers</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">nn</span><span class="o">.</span><span class="n">Conv2d</span><span class="p">(</span><span class="n">in_channels</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">kernel_size</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">padding</span><span class="o">=</span><span class="mi">1</span><span class="p">))</span>
+                <span class="n">layers</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">nn</span><span class="o">.</span><span class="n">BatchNorm2d</span><span class="p">(</span><span class="n">x</span><span class="p">))</span>
+                <span class="n">layers</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">nn</span><span class="o">.</span><span class="n">ReLU</span><span class="p">(</span><span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">))</span>
+                <span class="n">in_channels</span> <span class="o">=</span> <span class="n">x</span>
+        <span class="n">layers</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">nn</span><span class="o">.</span><span class="n">AvgPool2d</span><span class="p">(</span><span class="n">kernel_size</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">stride</span><span class="o">=</span><span class="mi">1</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">features</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Sequential</span><span class="p">(</span><span class="o">*</span><span class="n">layers</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">classifier</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Linear</span><span class="p">(</span><span class="mi">512</span><span class="p">,</span> <span class="n">dataset</span><span class="o">.</span><span class="n">num_classes</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">softmax</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">LogSoftmax</span><span class="p">(</span><span class="n">dim</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">batch</span><span class="p">:</span> <span class="n">Batch</span><span class="p">):</span>
+        <span class="n">out</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">features</span><span class="p">(</span><span class="n">batch</span><span class="o">.</span><span class="n">X</span><span class="p">)</span>
+        <span class="n">out</span> <span class="o">=</span> <span class="n">out</span><span class="o">.</span><span class="n">view</span><span class="p">(</span><span class="n">out</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="mi">0</span><span class="p">),</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">out</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">classifier</span><span class="p">(</span><span class="n">out</span><span class="p">)</span>
+        <span class="n">out</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">softmax</span><span class="p">(</span><span class="n">out</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">out</span>
+</pre></div>
+</div>
 </div>
 <div class="section" id="step-4-configurations">
 <h3>Step 4: Configurations<a class="headerlink" href="#step-4-configurations" title="Permalink to this headline">¶</a></h3>
 <p>Lots of code can be reduced with configurations. See the complete guide in <a class="reference internal" href="configs.html#configs"><span class="std std-ref">Configurations</span></a>.</p>
+<div class="highlight-yml notranslate"><div class="highlight"><pre><span></span>backend: pytorch
+env:
+  cifar:
+    title: Results on CIFAR10
+    variables:
+      dataset:
+        - dlex.datasets.image.CIFAR10
+      vgg_type:
+        - VGG16
+        - VGG19
+model:
+  name: src.models.vgg.VGG
+  vgg_type: ~vgg_type
+dataset:
+  name: ~dataset
+train:
+  eval: [dev, test]
+  batch_size: 256
+  num_epochs: 30
+  optimizer:
+    name: adam
+    lr: 0.01
+  max_grad_norm: 1.0
+test:
+  metrics: [err]
+</pre></div>
+</div>
 </div>
 <div class="section" id="step-5-train-evaluate">
 <h3>Step 5: Train &amp; evaluate<a class="headerlink" href="#step-5-train-evaluate" title="Permalink to this headline">¶</a></h3>
+<p>Training and evaluation are handled by dlex. Simply execute these commands:</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>dlex train -c &lt;config_path&gt;
 dlex evaluate -c &lt;config_path&gt;
 dlex infer -c &lt;config_path&gt;

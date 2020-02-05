@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Search &mdash; dlex  documentation</title>
+  <title>Supported Datasets &mdash; dlex  documentation</title>
   
 
   
@@ -25,7 +25,6 @@
         <script type="text/javascript" src="_static/underscore.js"></script>
         <script type="text/javascript" src="_static/doctools.js"></script>
         <script type="text/javascript" src="_static/language_data.js"></script>
-        <script type="text/javascript" src="_static/searchtools.js"></script>
     
     <script type="text/javascript" src="_static/js/theme.js"></script>
 
@@ -35,7 +34,7 @@
   <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
   <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
     <link rel="index" title="Index" href="genindex.html" />
-    <link rel="search" title="Search" href="#" /> 
+    <link rel="search" title="Search" href="search.html" /> 
 </head>
 
 <body class="wy-body-for-nav">
@@ -62,7 +61,7 @@
 
           
 <div role="search">
-  <form id="rtd-search-form" class="wy-form" action="#" method="get">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
     <input type="text" name="q" placeholder="Search docs" />
     <input type="hidden" name="check_keywords" value="yes" />
     <input type="hidden" name="area" value="default" />
@@ -130,12 +129,14 @@
     
       <li><a href="index.html">Docs</a> &raquo;</li>
         
-      <li>Search</li>
+      <li>Supported Datasets</li>
     
     
       <li class="wy-breadcrumbs-aside">
         
             
+            <a href="_sources/supported_datasets.rst.txt" rel="nofollow"> View page source</a>
+          
         
       </li>
     
@@ -147,19 +148,50 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
             
-  <noscript>
-  <div id="fallback" class="admonition warning">
-    <p class="last">
-      Please activate JavaScript to enable the search
-      functionality.
-    </p>
-  </div>
-  </noscript>
+  <div class="section" id="supported-datasets">
+<h1>Supported Datasets<a class="headerlink" href="#supported-datasets" title="Permalink to this headline">¶</a></h1>
+</div>
+<div class="section" id="image-recognition">
+<h1>Image Recognition<a class="headerlink" href="#image-recognition" title="Permalink to this headline">¶</a></h1>
+<p>MNIST</p>
+<dl class="class">
+<dt id="dlex.datasets.image.MNIST">
+<em class="property">class </em><code class="sig-prename descclassname">dlex.datasets.image.</code><code class="sig-name descname">MNIST</code><span class="sig-paren">(</span><em class="sig-param">params: dlex.configs.MainConfig</em><span class="sig-paren">)</span><a class="headerlink" href="#dlex.datasets.image.MNIST" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="method">
+<dt id="dlex.datasets.image.MNIST.input_shape">
+<em class="property">property </em><code class="sig-name descname">input_shape</code><a class="headerlink" href="#dlex.datasets.image.MNIST.input_shape" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>shape of the input image</p>
+</dd>
+</dl>
+</dd></dl>
 
-  
-  <div id="search-results">
-  
-  </div>
+<dl class="method">
+<dt id="dlex.datasets.image.MNIST.num_channels">
+<em class="property">property </em><code class="sig-name descname">num_channels</code><a class="headerlink" href="#dlex.datasets.image.MNIST.num_channels" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>number of channels in the input image</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="simple">
+<dt>CIFAR10</dt><dd><p>dlex.datasets.image.CIFAR10</p>
+</dd>
+</dl>
+</div>
+<div class="section" id="question-answering">
+<h1>Question Answering<a class="headerlink" href="#question-answering" title="Permalink to this headline">¶</a></h1>
+<dl class="simple">
+<dt>SQuad V1</dt><dd><p>dlex_impl.question_answering.datasets.SQuAD_V1</p>
+</dd>
+</dl>
+</div>
+
 
            </div>
            
@@ -197,14 +229,7 @@
   
   
     
-  
-  <script type="text/javascript">
-    jQuery(function() { Search.loadIndex("searchindex.js"); });
-  </script>
-  
-  <script type="text/javascript" id="searchindexloader"></script>
    
-
 
 </body>
 </html>
