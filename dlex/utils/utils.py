@@ -7,7 +7,7 @@ import tarfile
 import time
 import zipfile
 from subprocess import call
-from typing import List
+from typing import List, Union
 
 import requests
 from tqdm import tqdm
@@ -142,3 +142,7 @@ def get_unused_gpus(args):
 
 def get_file_size(filepath: str) -> float:
     return os.path.getsize(filepath) / 1024 / 1024
+
+
+def split_ints(s: Union[str, int]) -> List[int]:
+    return [int(n.strip()) for n in str(s).split(',')]

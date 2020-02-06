@@ -56,11 +56,11 @@ bold_seq = '\033[1m'
 #))
 
 logger = logging.getLogger('dlex')
-# logger.addHandler(TqdmLoggingHandler())
+logger.setLevel(logging.DEBUG)
 
 
 def set_log_level(level: str):
-    level = 'debug'
+    level = "error"
     level = dict(
         none=logging.NOTSET,
         info=logging.INFO,
@@ -87,14 +87,12 @@ def set_log_dir(configs):
     # TODO: symlink doesn't work correctly
     # os.symlink(params.log_dir, sym_path, True)
 
-    log_info_handler = logging.FileHandler(
-        os.path.join(configs.log_dir, "info.log"))
+    log_info_handler = logging.FileHandler(os.path.join(configs.log_dir, "info.log"))
     log_info_handler.setLevel(logging.INFO)
     log_info_handler.setFormatter(formatter)
     logger.addHandler(log_info_handler)
 
-    log_debug_handler = DebugFileHandler(
-        os.path.join(configs.log_dir, "debug.log"))
+    log_debug_handler = DebugFileHandler(os.path.join(configs.log_dir, "debug.log"))
     log_debug_handler.setLevel(logging.DEBUG)
     log_debug_handler.setFormatter(formatter)
     logger.addHandler(log_debug_handler)
@@ -103,6 +101,10 @@ def set_log_dir(configs):
     log_error_handler.setLevel(logging.ERROR)
     log_error_handler.setFormatter(formatter)
     logger.addHandler(log_error_handler)
+
+    if configs.args.show_logs:
+        logger.addHandler(TqdmLoggingHandler())
+
 
     # log_epoch_info_handler = logging.FileHandler(
     #     os.path.join(configs.log_dir, "epoch-info.log"))

@@ -1,4 +1,6 @@
 """Operators utils"""
+from typing import List, Union
+
 import torch
 
 CUDA = torch.cuda.is_available()
@@ -12,7 +14,7 @@ def Tensor(*args):
     return x.cuda(device=gpus[0]) if CUDA else x
 
 
-def maybe_cuda(x):
+def maybe_cuda(x: Union[List, torch.Tensor]) -> torch.Tensor:
     return x.cuda() if CUDA else x
 
 

@@ -1,18 +1,23 @@
 backend: pytorch
 env:
-  main:
+  default:
     title: Results on image datasets
     variables:
       dataset:
         - dlex.datasets.image.MNIST
         - dlex.datasets.image.CIFAR10
+      num_channels:
+        - 20, 50
+        - 10, 20
 model:
-  name: src.models.cnn.SimpleModel
+  name: src.models.simple_cnn.SimpleCNN
+  kernel_size: 3
+  num_channels: ~num_channels
 dataset:
   name: ~dataset
 train:
   eval: [dev, test]
-  batch_size: 256
+  batch_size: 1024
   num_epochs: 30
   optimizer:
     name: adam

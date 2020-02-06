@@ -9,7 +9,7 @@ def main():
     """Read config and train model."""
     configs = Configs(mode="train")
     dataset_cls = get_dataset(configs.params)
-    logger.info("Dataset: %s (%s)", configs.params.dataset.name, str(dataset_cls))
+    logger.debug("Dataset: %s (%s)", configs.params.dataset.name, str(dataset_cls))
 
     # Init dataset
     dataset_cls.prepare(download=False, preprocess=True)

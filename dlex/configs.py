@@ -144,6 +144,7 @@ class TrainConfig:
     :type log_every: str
     :param early_stop: Number of epochs to stop of results are not improving
     :type early_stop: int
+    :param select_model: One of [best, last]
     """
     num_epochs: int = None
     num_workers: int = None
@@ -156,6 +157,9 @@ class TrainConfig:
     log_every: str = "5s"
     cross_validation: int = None
     early_stop: int = None
+    select_model: str = "best"
+    show_report: bool = False
+    show_progress: bool = False
 
 
 @dataclass
@@ -167,7 +171,7 @@ class TestConfig:
     :type metrics: list
     """
     batch_size: int = None
-    metrics: list = field(default_factory=lambda: ["default"])
+    metrics: list = field(default_factory=lambda: ["acc"])
 
 
 class MainConfig(AttrDict):
@@ -185,10 +189,10 @@ class MainConfig(AttrDict):
     gpu: List[int] = None
 
     def __init__(self, *args, **kwargs):
-        train = TrainConfig(**AttrDict(args[0]['train'], _variables=kwargs['_variables']).to_dict()) \
+        train = TrainConfig(**AttrDict(args[0]['train'], _variables=kwargs.get('_variables')).to_dict()) \
             if "train" in args[0] else None
-        test = TestConfig(**AttrDict(args[0]['test'], _variables=kwargs['_variables']).to_dict()) \
-            if "test" in args[0] else None
+        test = TestConfig(**AttrDict(args[0]['test'], _variables=kwargs.get('_variables')).to_dict()) \
+            if "test" in args[0] else TestConfig()
 
         super().__init__(*args, **kwargs)
 
@@ -227,6 +231,9 @@ Loader.add_implicit_resolver(
 class Placeholder:
     def __init__(self, name):
         self.name = name
+
+    def __repr__(self):
+        return f"[{self.name}]"
 
 
 def add_variable_tag():
@@ -302,7 +309,7 @@ class Configs:
         self._environments = []
         self.load_configs()
 
-        set_log_level(self.args.log)
+        # set_log_level(self.args.log)
         self.init_dirs()
 
     def init_dirs(self):
@@ -365,8 +372,8 @@ class Configs:
             '--report', action="store_true",
             help="Show clean screen with report")
         parser.add_argument(
-            '--log',
-            help="One of [none, debug, info, error, warn]", default='info')
+            '--show-logs',
+            help="One of [none, debug, info, error, warn]", default="")
         parser.add_argument('-g, --gpus', nargs='+', help="Specify GPU(s) to use", dest='gpu')
         parser.add_argument('--num_gpus', help="Maximum number of GPUs to assign", type=int, default=1)
         parser.add_argument(
@@ -426,6 +433,7 @@ class Configs:
             parser.add_argument(
                 '--exit-on-runtime-error', action="store_true",
                 help="Exit when encoutering rumtime error (eg: CUDA out of memery). Exit code: 2")
+
             parser.add_argument(
                 '--output_test_samples', action="store_true",
                 help="Output samples after evaluation."
@@ -466,6 +474,14 @@ class Configs:
         """Get output directory based on model configs"""
         result_dir = os.path.join(ModuleConfigs.TMP_PATH, "model_outputs", self.config_name)
         return result_dir
+
+    @property
+    def report_path(self):
+        if not os.path.exists("model_reports"):
+            os.makedirs("model_reports")
+        return os.path.join(
+            "model_reports",
+            f"{self.config_name}_{'_'.join(self.args.env)}_{self.training_id.replace('-', '_')}.md")
 
     def load_configs(self) -> List[Tuple[Dict[str, Any], MainConfig]]:
         if 'env' in self.yaml_params:
@@ -554,10 +570,12 @@ class Configs:
                 configs.train.batch_size = self.args.batch_size
 
             self._environments.append(Environment(
-                name="main",
+                name="default",
+                title="Default",
                 variable_names=[],
                 variable_values=[],
                 variables_list=[tuple()],
-                configs_list=[configs]
+                configs_list=[configs],
+                report=dict(type='raw', reduce=[])
             ))
 

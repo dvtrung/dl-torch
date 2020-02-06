@@ -53,7 +53,7 @@ def train(params, args, report_callback=None):
         logger.info("Saved model loaded: %s", args.load)
         logger.info("Epoch: %f", model.global_step / len(dataset.X_train))
 
-    logger.info("Dataset: %s. Model: %s", str(dataset_builder), str(model_cls))
+    logger.debug("Dataset: %s. Model: %s", str(dataset_builder), str(model_cls))
     logger.info("Training started.")
 
     if params.train.cross_validation:

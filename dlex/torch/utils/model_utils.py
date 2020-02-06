@@ -59,7 +59,8 @@ def linear_layers(
         dims: List[int],
         norm: nn.Module = nn.LayerNorm,
         dropout: int = 0.0,
-        activation_fn="relu"):
+        activation_fn="relu",
+        ignore_last_layer=True):
     linear_layers = []
     for i, in_dim, out_dim in zip(range(len(dims) - 1), dims[:-1], dims[1:]):
         linear_layers.append(nn.Linear(in_dim, out_dim))
@@ -67,8 +68,60 @@ def linear_layers(
             linear_layers.append(norm(out_dim))
         if dropout > 0:
             linear_layers.append(nn.Dropout(dropout))
-        if activation_fn and i != len(dims) - 1:
-            linear_layers.append(dict(
-                relu=nn.ReLU
-            )[activation_fn]())
+        if not (ignore_last_layer and i == len(dims) - 2):
+            if activation_fn:
+                linear_layers.append(dict(
+                    relu=nn.ReLU
+                )[activation_fn]())
     return nn.Sequential(*linear_layers)
+
+
+def get_activation_fn(fn):
+    if fn == 'relu':
+        return nn.ReLU
+    elif fn == 'elu':
+        return nn.ELU
+    else:
+        raise ValueError("%s is not a valid activation function" % fn)
+
+
+class MultiLinear(nn.Module):
+    def __init__(
+            self,
+            dims,
+            embed_dim: int = 0,
+            norm_layer: nn.Module = nn.LayerNorm,
+            dropout=0.0,
+            activation_fn='relu',
+            last_layer_activation_fn=None):
+        super().__init__()
+
+        layers = []
+        for i, in_dim, out_dim in zip(range(len(dims) - 1), dims[:-1], dims[1:]):
+            layers.append(nn.Linear(in_dim + embed_dim, out_dim))
+            if norm_layer:
+                layers.append(norm_layer(out_dim))
+
+            if dropout > 0.:
+                layers.append(nn.Dropout(dropout))
+
+            is_last_layer = (i == len(dims) - 2)
+            if not is_last_layer and activation_fn:
+                layers.append(get_activation_fn(activation_fn)())
+            elif is_last_layer and last_layer_activation_fn:
+                layers.append(get_activation_fn(last_layer_activation_fn)())
+
+        self.layers = nn.ModuleList(layers)
+
+    def __getitem__(self, item):
+        return self.layers[item]
+
+    def __len__(self):
+        return len(self.layers)
+
+    def forward(self, X: torch.FloatTensor, append_emb=None):
+        for layer in self.layers:
+            if append_emb is not None and type(layer) == nn.Linear:
+                X = torch.cat([X, append_emb], -1)
+            X = layer(X)
+        return X

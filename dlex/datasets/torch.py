@@ -19,15 +19,19 @@ class Dataset(PytorchDataset):
     def __init__(self, builder, mode: str):
         self.params = builder.params
         self.mode = mode
-        self.builder = builder
-        self._data = []
+        self._builder = builder
+        self._data = None
         self._sampler = None
 
     def __len__(self):
-        return len(self._data)
+        return len(self.data)
 
     def __getitem__(self, i):
-        return self._data[i]
+        return self.data[i]
+
+    @property
+    def builder(self):
+        return self._builder
 
     @property
     def input_shape(self) -> List[int]:
@@ -42,7 +46,15 @@ class Dataset(PytorchDataset):
         return self._data
 
     def shuffle(self):
-        random.shuffle(self._data)
+        random.shuffle(self.data)
+
+    @property
+    def processed_data_dir(self) -> str:
+        return self.builder.get_processed_data_dir()
+
+    @property
+    def raw_data_dir(self) -> str:
+        return self.builder.get_raw_data_dir()
 
     @property
     def configs(self):

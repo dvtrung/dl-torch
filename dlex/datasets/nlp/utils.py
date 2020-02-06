@@ -1,23 +1,18 @@
 """NLP Dataset"""
-import os
 import re
-import unicodedata
 from typing import List, Union, Dict
 
 import nltk
-import numpy as np
-import spacy as spacy
-from torchtext import data
-
+import unicodedata
 from dlex.configs import ModuleConfigs
 from dlex.utils.logging import logger
+
 
 # nltk.download('punkt')
 
 
 # Turn a Unicode string to plain ASCII, thanks to
 # https://stackoverflow.com/a/518232/2809427
-from dlex.utils import maybe_download, maybe_unzip
 
 
 def unicodeToAscii(s):

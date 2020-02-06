@@ -98,7 +98,7 @@ def load_model(mode, report: ModelReport, argv=None, params: MainConfig = None, 
     else:
         model = DataParellelModel(model, ['cpu'])
 
-    logger.info("Dataset: %s. Model: %s", str(dataset_builder), str(model_cls))
+    logger.debug("Dataset: %s. Model: %s", str(dataset_builder), str(model_cls))
     if use_cuda:
         logger.info("CUDA available: %s", torch.cuda.get_device_name(0))
 

@@ -50,9 +50,6 @@ def update_results(
 
 
 def write_report(reports: Dict[str, Dict[Tuple, ModelReport]], configs):
-    if configs.args.report:
-        os.system('clear')
-
     s = "\n# Report\n"
 
     #if report.param_details:

@@ -18,7 +18,7 @@ class VGG(ClassificationModel):
 
         cfg = params.model
         layers = []
-        in_channels = dataset.num_channels
+        in_channels = cfg.num_channels or dataset.num_channels
         for x in self.LAYERS[cfg.vgg_type or 'VGG11']:
             if x == 'M':
                 layers.append(nn.MaxPool2d(kernel_size=2, stride=2))
@@ -34,7 +34,7 @@ class VGG(ClassificationModel):
         self.softmax = nn.LogSoftmax(dim=0)
 
     def forward(self, batch: Batch):
-        out = self.features(batch.X)
+        out = self.features(batch.X['persistence_image'])
         out = out.view(out.size(0), -1)
         out = self.classifier(out)
         out = self.softmax(out)

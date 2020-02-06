@@ -29,17 +29,31 @@ def train(
         report: ModelReport,
         summary_writer: SummaryWriter,
         tqdm_desc="",
-        tqdm_position=None):
+        tqdm_position=None,
+        on_epoch_finished=None):
+    """
+    :param params:
+    :param configs:
+    :param model:
+    :param datasets:
+    :param report:
+    :param summary_writer:
+    :param tqdm_desc:
+    :param tqdm_position:
+    :param on_epoch_finished:
+    :return:
+    """
     args = configs.args
 
     epoch = model.global_step // len(datasets.train)
     num_samples = model.global_step % len(datasets.train)
-    report.results = {}
+    report.current_results = {}
 
     report.num_epochs = params.train.num_epochs
     report.epoch_losses = []
     report.epoch_valid_results = []
     report.epoch_test_results = []
+    report.current_results = {}
 
     # num_samples = 0
     for current_epoch in range(epoch + 1, params.train.num_epochs + 1):
@@ -79,14 +93,6 @@ def train(
                 summary_writer.add_scalar(
                     f"test_{metric}",
                     test_result['result'][metric], current_epoch)
-            if datasets.valid is None:
-                # there's no valid set, report test result with lowest loss
-                if loss <= min(report.epoch_losses):
-                    report.results = test_result['result']
-                    logger.info("Result updated (lowest loss reached: %.4f) - %s" % (
-                        loss,
-                        ", ".join(["%s: %.2f" % (metric, res) for metric, res in report.results.items()])
-                    ))
 
         if datasets.valid is not None:
             valid_result, valid_best_result, valid_outputs = _evaluate("valid")
@@ -98,19 +104,32 @@ def train(
                     f"valid_{metric}",
                     valid_result['result'][metric], current_epoch)
 
-            for metric in valid_best_result:
-                if valid_best_result[metric] == valid_result:
-                    if datasets.test is not None:
-                        # report test result of best model on valid set
-                        logger.info("Best result: %f", test_result['result'][metric])
-                        report.results[metric] = test_result['result'][metric]
-                        log_result(f"valid_test_{metric}", params, test_result, datasets.train.builder.is_better_result)
-                        log_outputs("valid_test", params, test_outputs)
-                    else:
-                        # there's no test set, report best valid result
-                        log_result(f"valid_{metric}", params, valid_result, datasets.train.builder.is_better_result)
-                        report.results[metric] = valid_result['result'][metric]
-                        log_outputs("valid", params, valid_outputs)
+        # results for reporting
+        if params.train.select_model == "last":
+            report.current_results = test_result['result']
+        elif params.train.select_model == "best":
+            if datasets.valid is None:
+                # there's no valid set, report test result with lowest loss
+                if loss <= min(report.epoch_losses):
+                    report.current_results = test_result['result']
+                    logger.info("Result updated (lowest loss reached: %.4f) - %s" % (
+                        loss,
+                        ", ".join(["%s: %.2f" % (metric, res) for metric, res in report.current_results.items()])
+                    ))
+            else:
+                for metric in valid_best_result:
+                    if valid_best_result[metric] == valid_result:
+                        if datasets.test is not None:
+                            # report test result of best model on valid set
+                            logger.info("Best result: %f", test_result['result'][metric])
+                            report.current_results[metric] = test_result['result'][metric]
+                            log_result(f"valid_test_{metric}", params, test_result, datasets.train.builder.is_better_result)
+                            log_outputs("valid_test", params, test_outputs)
+                        else:
+                            # there's no test set, report best valid result
+                            log_result(f"valid_{metric}", params, valid_result, datasets.train.builder.is_better_result)
+                            report.current_results[metric] = valid_result['result'][metric]
+                            log_outputs("valid", params, valid_outputs)
 
         if args.output_test_samples:
             logger.info("Random samples")
@@ -123,7 +142,7 @@ def train(
             "loss: %.4f" % log_dict['loss']
         ]
 
-        for metric in params.test.metrics:
+        for metric in report.metrics:
             if datasets.valid:
                 log_msgs.append(f"dev ({metric}): %.2f" % (
                     log_dict['valid_result'][metric],
@@ -134,7 +153,7 @@ def train(
                     log_dict['test_result'][metric],
                     # test_best_result[metric]['result'][metric],
                 ))
-        logger.info(f"[Epoch {current_epoch}] " + " - ".join(log_msgs))
+        logger.info(f"session {report.training_idx} - epoch {current_epoch}: " + " - ".join(log_msgs))
 
         # Early stopping
         if params.train.early_stop:
@@ -146,7 +165,7 @@ def train(
                     if all(
                             max([r[metric] for r in last_results[-ne:]]) <=
                             max([r[metric] for r in last_results[:-ne]])
-                            for metric in params.test.metrics):
+                            for metric in report.metrics):
                         logger.info("Early stop at epoch %s", current_epoch)
                         break
             else:
@@ -158,7 +177,10 @@ def train(
                         logger.info("Early stop at epoch %s", current_epoch)
                         break
 
-    return report.results
+        if on_epoch_finished:
+            on_epoch_finished(report)
+
+    return report.current_results
 
 
 def check_interval_passed(last_done: float, interval: str, progress) -> (bool, float):
@@ -247,10 +269,10 @@ def train_epoch(
                     continue
                 else:
                     t.set_postfix(
-                        loss=loss,
-                        epoch_loss=model.epoch_loss,
+                        # loss="%.4f" % loss,
+                        loss="%.4f" % model.epoch_loss,
                         # lr=mean(model.learning_rates())
-                        **(report.results or {})
+                        **(report.current_results or {})
                     )
 
                 # if args.debug and epoch_step > DEBUG_NUM_ITERATIONS:
@@ -295,12 +317,13 @@ def main(
         params=None,
         configs: Configs = None,
         training_idx: int = None,
-        report_queue = None):
+        report_queue=None):
     """Read config and train model."""
     logger.info(f"Training started ({training_idx}).")
-    report = ModelReport()
+
+    report = ModelReport(training_idx)
     report.metrics = params.test.metrics
-    report.results = {m: None for m in params.test.metrics}
+    report.results = {m: None for m in report.metrics}
 
     if params.train.cross_validation:
         set_seed(params.random_seed)
@@ -311,7 +334,7 @@ def main(
             report.cv_num_folds = params.train.cross_validation
             params.dataset.cv_current_fold = i + 1
             params.dataset.cross_validation = params.train.cross_validation
-            report_queue.put((training_idx, report))
+            report_queue.put(report)
 
             params, args, model, datasets = load_model("train", report, argv, params, configs)
 
@@ -323,9 +346,11 @@ def main(
             results.append(res)
             report.results = {
                 metric: [r[metric] for r in results] for metric in results[0]}
-            report_queue.put((training_idx, report))
+            report_queue.put(report)
 
-        report.finished = True
+        logger.info(f"Training finished. Results: {str(report.results)}")
+
+        report.finish()
         summary_writer.close()
     else:
         summary_writer = SummaryWriter(os.path.join(configs.log_dir, "runs", str(training_idx)))
@@ -334,24 +359,12 @@ def main(
         res = train(
             params, configs, model, datasets,
             report, summary_writer,
-            tqdm_position=training_idx * 3 + 1)
+            tqdm_position=training_idx,
+            on_epoch_finished=lambda r: report_queue.put(r))
         report.results = res
-        report.finished = True
+        report.finish()
 
     return report
-
-    #else:
-    #    model.share_memory()
-    #    # TODO: Implement multiprocessing
-    #    mp.set_start_method('spawn')
-    #    processes = []
-    #    for rank in range(args.num_processes):
-    #        p = mp.Process(target=train, args=(model, datasets))
-    #        # We first train the model across `num_processes` processes
-    #        p.start()
-    #        processes.append(p)
-    #    for p in processes:
-    #        p.join()
 
 
 if __name__ == "__main__":

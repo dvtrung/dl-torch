@@ -6,6 +6,7 @@ from typing import List
 import numpy as np
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
 from dlex.configs import ModuleConfigs, AttrDict, MainConfig
 from dlex.datasets.torch import Dataset
@@ -224,6 +225,7 @@ class ClassificationModel(BaseModel):
 
     def infer(self, batch):
         logits = self.forward(batch)
+        logits = F.softmax(logits, -1)
         return torch.max(logits, 1)[1].tolist(), batch.Y.tolist()
 
     def get_loss(self, batch, output):

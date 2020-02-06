@@ -73,14 +73,23 @@ class DatasetBuilder:
                 self._download_and_extract(url, self.get_raw_data_dir())
 
     @abc.abstractmethod
-    def maybe_preprocess(self, force=False):
-        os.makedirs(self.get_processed_data_dir(), exist_ok=True)
-        return
+    def maybe_preprocess(self, force=False) -> bool:
+        """
+        :param force:
+        :return: true if the dataset needs to be prepared
+        """
+
+        if not os.path.exists(self.get_processed_data_dir()):
+            os.makedirs(self.get_processed_data_dir(), exist_ok=True)
+            return True
         if force:
-            logger.info("Removing preprocessed data...")
-            shutil.rmtree(self.get_processed_data_dir(), ignore_errors=True)
-            while os.path.exists(self.get_processed_data_dir()):
-                pass
+            if input("Do you want to remove preprocessed data? [y/N] ") in ['y']:
+                logger.info("Removing preprocessed data...")
+                shutil.rmtree(self.get_processed_data_dir(), ignore_errors=True)
+                while os.path.exists(self.get_processed_data_dir()):
+                    pass
+            return True
+        return False
 
     @abc.abstractmethod
     def get_tensorflow_wrapper(self, mode: str):
