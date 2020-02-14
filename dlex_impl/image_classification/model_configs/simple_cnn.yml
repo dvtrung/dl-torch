@@ -23,5 +23,6 @@ train:
     name: adam
     lr: 0.001
   max_grad_norm: 1.0
+  log_every: 0.1e
 test:
   metrics: [err]
