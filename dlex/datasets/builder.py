@@ -8,7 +8,7 @@ from sklearn.metrics import accuracy_score, average_precision_score, f1_score
 from dlex.configs import ModuleConfigs, MainConfig
 from dlex.torch import BatchItem
 from dlex.utils.logging import logger
-from dlex.utils.utils import maybe_download, maybe_unzip
+from dlex.utils.utils import maybe_download, maybe_unzip, prompt
 
 
 class DatasetBuilder:
@@ -83,7 +83,7 @@ class DatasetBuilder:
             os.makedirs(self.get_processed_data_dir(), exist_ok=True)
             return True
         if force:
-            if input("Do you want to remove preprocessed data? [y/N] ") in ['y']:
+            if prompt("Do you want to remove preprocessed data?", False):
                 logger.info("Removing preprocessed data...")
                 shutil.rmtree(self.get_processed_data_dir(), ignore_errors=True)
                 while os.path.exists(self.get_processed_data_dir()):

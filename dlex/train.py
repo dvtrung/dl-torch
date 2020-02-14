@@ -1,8 +1,11 @@
+import curses
 import logging
 import multiprocessing
 import os
 import runpy
 import shutil
+import signal
+import subprocess
 import threading
 import traceback
 from collections import defaultdict
@@ -12,9 +15,13 @@ from time import sleep
 from typing import Dict, Tuple, Any, List
 
 from dlex.datatypes import ModelReport
-from dlex.utils import logger, table2str, get_unused_gpus, subprocess, sys
+from dlex.utils import logger, table2str, get_unused_gpus, sys
+from dlex.utils.curses import CursesManager
+from dlex.utils.tmux import TmuxManager
 
 from .configs import Configs, Environment
+
+LOG_WINDOWS_HEIGHT = 10
 
 manager = multiprocessing.Manager()
 all_reports: Dict[str, Dict[Tuple, ModelReport]] = manager.dict()
@@ -189,7 +196,7 @@ def write_report():
                 _short_report(f"\n{table2str(data)}\n")
 
     # logger.info(short_report)
-    # if configs.args.report:
+    # if configs.args.gui:
     #     refresh_display()
 
     with open(configs.report_path, "w") as f:
@@ -202,9 +209,61 @@ def get_training_idx(v_vals):
     return 0
 
 
-def main():
-    args = configs.args
+def _exit():
+    pool.terminate()
+    pool.join()
+    tmux.close_all_panes()
+    sys.exit()
 
+
+def _add_thread(name, target, args=()):
+    threads[name] = threading.Thread(target=target, args=args)
+    threads[name].setDaemon(True)
+    threads[name].start()
+
+
+def _on_key_pressed(c):
+    if c in ["i", "d"]:
+        log = dict(i="info", d="debug")[c]
+        if tmux.is_tmux_session:
+            if tmux.is_pane_visible(log):
+                tmux.close_pane(log)
+                for name in ['info', 'debug']:
+                    if tmux.is_pane_visible(name):
+                        tmux.resize_pane(name, height=LOG_WINDOWS_HEIGHT)
+            else:
+                tmux.split_window(
+                    log, cmd=f"tail --retry -f {configs.log_dir}/{log}.log",
+                    height=LOG_WINDOWS_HEIGHT)
+        else:
+            # def refresh_fn():
+            #     return "test"
+            # curses.show_info_dialog(refresh_fn)
+            curses.show_info_dialog(["tail", "--retry", "-n", "100", "-f", f"{configs.log_dir}/{log}.log"])
+    elif c == "g":
+        def refresh_fn():
+            return "test"
+        curses.show_info_dialog(refresh_fn)
+    elif c == "m":
+        selection = curses.select(dict(
+            i="[i] Show/Hide Info Log",
+            d="[d] Show/Hide Debug Log",
+            g="[g] GPU Usage",
+            t="[t] Training Details",
+            q="[q] Exit Training"
+        ), "i", title="Menu")
+        _on_key_pressed(selection)
+    elif c == "q":
+        _exit()
+
+
+def main(scr=None, *args):
+    args = configs.args
+    # tmux.split_window(f"tail --retry -f {configs.log_dir}/info.log")
+    if scr:
+        # _on_key_pressed("i")
+        # _on_key_pressed("d")
+        pass
     if args.debug:
         logger.setLevel(logging.DEBUG)
 
@@ -220,11 +279,14 @@ def main():
             all_reports[env.name][variable_values] = None
 
     write_report()
-    threading.Thread(target=refresh_display).start()
-    # threading.Thread(target=listen_to_keyboard).start()
+
+    def _refresh_display():
+        while True:
+            refresh_display()
+            sleep(1)
+    _add_thread("refresh_display", _refresh_display)
 
     if args.num_processes >= 1:
-        pool = multiprocessing.Pool(processes=args.num_processes)
         gpu = args.gpu or get_unused_gpus(args)
         results = []
         callbacks = []
@@ -244,18 +306,33 @@ def main():
                 args=(params, idx + 1),
                 callback=callback,
                 error_callback=_error_callback)
-            sleep(10)
+            # sleep(10)
             results.append(r)
+
         pool.close()
 
-        while not all(r.ready() for r in results):
-            report = report_queue.get()
+        def _update_results():
+            while not all(r.ready() for r in results):
+                r = report_queue.get()
+                update_results(r, process_args[r.training_idx - 1][0].name, process_args[r.training_idx - 1][2])
+                refresh_display()
+        _add_thread("update_results", _update_results)
 
-            update_results(report, process_args[report.training_idx - 1][0].name, process_args[report.training_idx - 1][2])
+        while True:
+            try:
+                c = scr.getkey()
+                if c:
+                    _on_key_pressed(c)
+            except (KeyboardInterrupt, SystemExit):
+                _exit()
+            except:
+                pass
+            # if c == "m":
+            #     build_menu(tmux, scr)
 
         # for r in results:
         #     r.get()
-        pool.join()
+        # pool.join()
     else:
         gpu = args.gpu or get_unused_gpus(args)
         idx = 0
@@ -300,32 +377,20 @@ def print_fixed_size(s, height, width):
 def get_display_text():
     output = ""
     total_col, total_row = shutil.get_terminal_size()
-    report_row = min(total_row - 5, int(9 * total_row / 10))
-    log_row = total_row - report_row
+    output += print_fixed_size(short_report, total_row, total_col)
 
-    output += print_fixed_size(short_report, report_row, total_col)
-    output += '-' * total_col
-
-    f = subprocess.Popen(
-        ['tail', '-n', str(log_row), os.path.join(configs.log_dir, "info.log")],
-        stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    output += print_fixed_size(f.stdout.read().decode().strip(), log_row, total_col)
     return output
 
 
 def refresh_display():
-    global configs, short_report
-    if configs.args.report:
-        while True:
-            output = get_display_text()
-            os.system('clear')
-            print(output, end="")
-            sleep(5)
+    if configs.args.gui:
+        curses.main_text = get_display_text()
+        curses.refresh()
 
 
 def listen_to_keyboard():
     global configs, short_report
-    if configs.args.report:
+    if configs.args.gui:
         while True:
             pass
             #key = sys.stdin.readline()
@@ -337,7 +402,20 @@ def listen_to_keyboard():
             #    exit()
 
 
+def signal_handler(signal, frame):
+    print("Program killed")
+    # _exit()
+
+
 if __name__ == "__main__":
+    # signal.signal(signal.SIGINT, signal_handler)
     launch_time = datetime.now()
+    tmux = TmuxManager()
+    curses = CursesManager()
     configs = Configs(mode="train")
-    main()
+    pool = multiprocessing.Pool(processes=configs.args.num_processes)
+    threads = {}
+    if configs.args.gui:
+        curses.wrapper(main)
+    else:
+        main()

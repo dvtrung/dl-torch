@@ -7,7 +7,6 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-
 from dlex.configs import ModuleConfigs, AttrDict, MainConfig
 from dlex.datasets.torch import Dataset
 from dlex.torch import Batch

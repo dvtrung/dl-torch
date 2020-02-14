@@ -1,18 +1,17 @@
 import os
 import random
 import traceback
-from typing import Tuple
+from typing import Tuple, List, Dict
 
 import torch
-from dlex.datatypes import ModelReport
-from dlex.utils.utils import get_unused_gpus
-from tqdm import tqdm
-
 from dlex.configs import MainConfig, Configs
 from dlex.datasets.torch import Dataset
+from dlex.datatypes import ModelReport
 from dlex.torch.models.base import BaseModel
 from dlex.torch.utils.utils import load_model
 from dlex.utils.logging import logger
+from dlex.utils.utils import get_unused_gpus, check_interval_passed
+from tqdm import tqdm
 
 
 def evaluate(
@@ -23,18 +22,22 @@ def evaluate(
         output_path,
         report: ModelReport = None,
         tqdm_desc="Eval",
-        tqdm_position=None) -> Tuple[dict, list]:
+        tqdm_position=None) -> Tuple[Dict, List]:
     """
     Evaluate model and save result.
     :param model:
     :param dataset:
     :param params:
+    :param configs:
     :param output_path: path without extension
     :param report:
+    :param tqdm_desc:
+    :param tqdm_position:
     :return:
     """
     model.module.eval()
     torch.cuda.empty_cache()
+    last_log = 0
     with torch.no_grad():
         data_iter = dataset.get_iter(
             batch_size=params.test.batch_size or params.train.batch_size)
@@ -56,7 +59,6 @@ def evaluate(
 
                 inference_outputs = model.infer(batch)
                 y_pred, y_ref, others = inference_outputs[0], inference_outputs[1], inference_outputs[2:]
-
                 y_pred_all += y_pred
                 y_ref_all += y_ref
                 # for metric in params.test.metrics:
@@ -75,7 +77,14 @@ def evaluate(
                         input=str_input,
                         reference=str_ground_truth,
                         hypothesis=str_predicted))
-                    # logger.info(outputs[-1])
+
+                    is_passed, last_log = check_interval_passed(last_log, params.test.log_every)
+                    if is_passed:
+                        logger.debug(
+                            "sample %d - ref: %s - hyp: %s",
+                            len(outputs),
+                            str(outputs[-1]['reference']),
+                            str(outputs[-1]['hypothesis']))
 
                 if report.summary_writer is not None:
                     model.write_summary(report.summary_writer, batch, (y_pred, others))
@@ -95,8 +104,9 @@ def evaluate(
 
 def main(params=None, configs: Configs = None, report=None):
     """Main program."""
-    report = ModelReport()
-    params, args, model, datasets = load_model("test", report, None, params, args)
+    if not report:
+        report = ModelReport()
+    params, args, model, datasets = load_model("test", report, None, params, configs)
 
     gpu = args.gpu or get_unused_gpus(args)
     params.gpu = gpu
@@ -106,8 +116,8 @@ def main(params=None, configs: Configs = None, report=None):
             model, datasets.get_dataset(mode), params, configs,
             output_path=os.path.join(configs.log_dir, "results", f"{args.load}_{mode}"), report=report)
 
-        for output in random.choices(outputs, k=50):
-            logger.info(str(output))
+        # for output in random.choices(outputs, k=50):
+        #     logger.info(str(output))
 
     logger.info(str(result))
 

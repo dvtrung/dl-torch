@@ -7,7 +7,7 @@ import tarfile
 import time
 import zipfile
 from subprocess import call
-from typing import List, Union
+from typing import List, Union, Dict
 
 import requests
 from tqdm import tqdm
@@ -135,6 +135,7 @@ def get_unused_gpus(args):
         gpu_df = gpu_df[gpu_df['memory.used'] <= args.gpu_memory_max]
         gpu_df = gpu_df[gpu_df['memory.free'] >= args.gpu_memory_min]
         idx = gpu_df.index.tolist()[:args.num_gpus]
+        logger.info("List of GPU(s): %s" % str(idx))
         return idx
     except Exception:
         return []
@@ -146,3 +147,37 @@ def get_file_size(filepath: str) -> float:
 
 def split_ints(s: Union[str, int]) -> List[int]:
     return [int(n.strip()) for n in str(s).split(',')]
+
+
+def prompt(msg: str, default=True) -> bool:
+    """
+    Prompt yes/no question
+    :param msg:
+    :param default:
+    :return:
+    """
+    options = "[Y/n]" if default else "[y/N]"
+    inp = input(f"{msg} {options}")
+    if inp.lower() == 'y':
+        return True
+    elif inp.lower() == 'n':
+        return False
+    else:
+        return default
+
+
+def check_interval_passed(last_done: float, interval: str, progress: int = None) -> (bool, float):
+    unit = interval[-1]
+    value = float(interval[:-1])
+    if unit == "e":  # epoch progress (percentage)
+        assert progress
+        if progress - last_done >= value:
+            return True, progress
+        else:
+            return False, last_done
+    elif unit in ["s", "m", "h"]:
+        d = dict(s=1, m=60, h=3600)[unit]
+        if time.time() / d - last_done > value:
+            return True, time.time() / d
+        else:
+            return False, last_done

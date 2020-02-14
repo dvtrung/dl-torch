@@ -81,8 +81,10 @@ def load_model(mode, report: ModelReport, argv=None, params: MainConfig = None, 
 
     s = table2str(parameter_details)
     logger.debug(f"Model parameters\n{s}")
-    logger.debug(f"No. parameters: {num_params:,}")
-    logger.debug(f"No. trainable parameters: {num_trainable_params:,}")
+    logger.debug(" - ".join([
+        f"No. parameters: {num_params:,}",
+        f"No. trainable parameters: {num_trainable_params:,}"
+    ]))
     report.param_details = s
     report.num_params = num_params
     report.num_trainable_params = num_trainable_params
@@ -119,4 +121,4 @@ def set_seed(seed):
     numpy.random.seed(seed)
     import torch
     torch.manual_seed(seed)
-    logger.info("Seed set to %d", seed)
+    logger.info("Random seed reset to %d", seed)

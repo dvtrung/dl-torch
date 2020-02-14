@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+import re
 
 import numpy as np
 from tqdm import tqdm
@@ -14,12 +15,21 @@ warnings.filterwarnings(action='ignore', category=FutureWarning)
 class TqdmLoggingHandler(logging.Handler):
     def __init__(self, level=logging.NOTSET):
         super().__init__(level)
-        self.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
 
     def emit(self, record):
         try:
             msg = self.format(record)
-            tqdm.write(msg)
+            if record.levelname == "INFO":
+                color = logger.OKBLUE
+            elif record.levelname == "DEBUG":
+                color = logger.WARNING
+            else:
+                color = ""
+
+            # highlight number
+            # msg = re.sub(r"\[([A-Z_]*)\]", "\033[35;1m" + r"\1" + "\033[m", msg)
+
+            tqdm.write(f"{color}[{record.levelname.ljust(5)}]{logger.ENDC} {msg}")
             self.flush()
         except (KeyboardInterrupt, SystemExit):
             raise
@@ -56,6 +66,16 @@ bold_seq = '\033[1m'
 #))
 
 logger = logging.getLogger('dlex')
+
+logger.HEADER = '\033[95m'
+logger.OKBLUE = '\033[1;36m'
+logger.OKGREEN = '\033[92m'
+logger.WARNING = '\033[93m'
+logger.FAIL = '\033[91m'
+logger.ENDC = '\033[0m'
+logger.BOLD = '\033[1m'
+logger.UNDERLINE = '\033[4m'
+
 logger.setLevel(logging.DEBUG)
 
 

@@ -2,10 +2,8 @@
 import os
 import random
 import sys
-import time
 from datetime import datetime
 
-import numpy as np
 import torch
 from dlex.configs import MainConfig, Configs
 from dlex.datatypes import ModelReport
@@ -13,6 +11,7 @@ from dlex.torch.datatypes import Datasets
 from dlex.torch.evaluate import evaluate
 from dlex.torch.models.base import DataParellelModel
 from dlex.torch.utils.utils import load_model, set_seed
+from dlex.utils import check_interval_passed
 from dlex.utils.logging import logger, epoch_info_logger, epoch_step_info_logger, log_result, json_dumps, \
     log_outputs
 from torch.utils.tensorboard import SummaryWriter
@@ -183,22 +182,6 @@ def train(
     return report.current_results
 
 
-def check_interval_passed(last_done: float, interval: str, progress) -> (bool, float):
-    unit = interval[-1]
-    value = float(interval[:-1])
-    if unit == "e":  # epoch progress (percentage)
-        if progress - last_done >= value:
-            return True, progress
-        else:
-            return False, last_done
-    elif unit in ["s", "m", "h"]:
-        d = dict(s=1, m=60, h=3600)[unit]
-        if time.time() / d - last_done > value:
-            return True, time.time() / d
-        else:
-            return False, last_done
-
-
 def train_epoch(
         current_epoch: int,
         params: MainConfig,
@@ -298,11 +281,11 @@ def train_epoch(
                 # Log
                 is_passed, last_log = check_interval_passed(last_log, params.train.log_every, progress)
                 if is_passed:
-                    epoch_step_info_logger.info(json_dumps(dict(
-                        epoch=current_epoch + progress - 1,
-                        loss=loss,
-                        overall_loss=model.epoch_loss
-                    )))
+                    logger.info(", ".join([
+                        f"epoch: {current_epoch}",
+                        f"progress: {int(progress * 100)}%",
+                        f"epoch_loss: {model.epoch_loss:.4f}",
+                    ]))
 
                 if args.debug:
                     input("Press any key to continue...")

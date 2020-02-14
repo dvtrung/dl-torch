@@ -12,16 +12,16 @@ from dlex.utils import logger, table2str, logging
 from .configs import Configs, Environment
 
 
-def launch_evaluating(backend: str, params, args, report_callback=None):
+def launch_evaluating(backend: str, params, configs, report=None):
     if backend is None:
         raise ValueError("No backend specified. Please add it in config file.")
     if backend == "sklearn":
         from dlex.sklearn.train import train
-        train(params, args, report_callback)
+        train(params, configs, report)
         # runpy.run_module("dlex.sklearn.train", run_name=__name__)
     elif backend == "pytorch" or backend == "torch":
         from dlex.torch.evaluate import main
-        main(params, args, report_callback)
+        main(params, configs, report)
     elif backend == "tensorflow" or backend == "tf":
         runpy.run_module("dlex.tf.train", run_name=__name__)
     else:
@@ -98,7 +98,7 @@ def write_report(reports: Dict[str, Dict[Tuple, ModelReport]], configs):
                 s += f"\n{table2str(data)}\n"
 
     print(s)
-    if configs.args.report:
+    if configs.args.gui:
         os.makedirs("model_reports", exist_ok=True)
         with open(os.path.join("model_reports", f"{configs.config_name}.md"), "w") as f:
             f.write(s)
@@ -121,14 +121,13 @@ def main():
         for variable_values, params in zip(env.variables_list, env.configs_list):
             all_reports[env.name][variable_values] = None
 
-    gpu = [f"cuda:{g}" for g in args.gpu] if args.gpu else get_unused_gpus(args)
+    gpu = args.gpu or get_unused_gpus(args)
     for env in envs:
         for variable_values, params in zip(env.variables_list, env.configs_list):
             params.gpu = gpu
             launch_evaluating(
-                configs.backend, params, args,
-                report_callback=lambda report: update_results(
-                    env, variable_values, report, all_reports, configs))
+                configs.backend, params, configs,
+                report=None)
 
 
 if __name__ == "__main__":

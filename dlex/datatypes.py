@@ -6,7 +6,7 @@ import numpy as np
 
 @dataclass
 class ModelReport:
-    training_idx: int
+    training_idx: int = None
 
     current_epoch: int = None
     num_epochs: int = None

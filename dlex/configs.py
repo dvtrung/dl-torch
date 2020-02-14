@@ -8,7 +8,7 @@ from datetime import datetime
 from typing import List, Tuple, Dict, Any, Union
 
 import yaml
-from dlex.utils.logging import set_log_level, set_log_dir
+from dlex.utils.logging import set_log_level, set_log_dir, logger
 
 DEFAULT_TMP_PATH = os.path.expanduser(os.path.join("~", "tmp"))
 DEFAULT_DATASETS_PATH = os.path.expanduser(os.path.join("~", "tmp", "datasets"))
@@ -172,6 +172,7 @@ class TestConfig:
     """
     batch_size: int = None
     metrics: list = field(default_factory=lambda: ["acc"])
+    log_every: str = "5s"
 
 
 class MainConfig(AttrDict):
@@ -313,12 +314,12 @@ class Configs:
         self.init_dirs()
 
     def init_dirs(self):
+        logger.info("Log dir: %s" % self.log_dir)
         os.makedirs(self.log_dir, exist_ok=True)
         os.makedirs(os.path.join(self.log_dir, "results"), exist_ok=True)
         # shutil.rmtree(params.output_dir, ignore_errors=True)
         os.makedirs(self.output_dir, exist_ok=True)
-        if self.mode == "train":
-            set_log_dir(self)
+        set_log_dir(self)
 
     @property
     def config_path(self):
@@ -369,8 +370,8 @@ class Configs:
             '--env', default=["default"],
             nargs='+', dest="env", help="List of environments")
         parser.add_argument(
-            '--report', action="store_true",
-            help="Show clean screen with report")
+            '--gui', action="store_true",
+            help="GUI mode")
         parser.add_argument(
             '--show-logs',
             help="One of [none, debug, info, error, warn]", default="")
