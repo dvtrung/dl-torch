@@ -1,0 +1,15 @@
+backend: tensorflow
+model:
+  name: src.models.bert.BERT
+dataset:
+  name: src.datasets.imdb.IMDB
+  max_len: 128
+train:
+  batch_size: 32
+  optimizer:
+    name: adam
+    lr: 2e-5
+  num_epochs: 3
+  log_every: 1s
+test:
+  metrics: [acc]

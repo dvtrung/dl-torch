@@ -1,6 +1,5 @@
 import curses
 import subprocess
-from time import sleep
 
 from typing import Dict
 
@@ -72,11 +71,10 @@ class CursesManager:
 
     def refresh(self):
         try:
-            pass
             # os.system('clear')
             # self.main_screen.clear()
-            # self.main_screen.move(0, 0)
-            # self.main_screen.addstr(0, 0, self.main_text)
+            self.main_screen.move(0, 0)
+            self.main_screen.addstr(0, 0, self.main_text)
         except Exception:
             pass
         finally:

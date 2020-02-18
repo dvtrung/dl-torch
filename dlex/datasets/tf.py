@@ -1,23 +1,30 @@
-from dlex.tf import Batch
-
-
-class TensorflowDataset:
-    def __init__(self, dataset, mode, params):
-        self.params = params
+class Dataset:
+    def __init__(self, builder, mode: str):
+        self.params = builder.params
         self.mode = mode
-        self.dataset = dataset
+        self._builder = builder
+        self._data = None
+        self._sampler = None
 
-    @abc.abstractmethod
-    def evaluate_batch(self, y_pred, batch: Batch, metric: str):
-        if metric == "bleu":
-            target_variables = batch.Y
-            score, total = 0, 0
-            for k, _y_pred in enumerate(y_pred):
-                target = target_variables[k].cpu().detach().numpy().tolist()
-                predicted = _y_pred
-                s, t = self.dataset.evaluate(target, predicted, metric)
-                score += s
-                total += t
-            return score, total
-        else:
-            raise Exception("Unsupported metric.")
+    @property
+    def builder(self):
+        return self._builder
+
+    @property
+    def data(self):
+        return self._data
+
+    @property
+    def processed_data_dir(self) -> str:
+        return self.builder.get_processed_data_dir()
+
+    @property
+    def raw_data_dir(self) -> str:
+        return self.builder.get_raw_data_dir()
+
+    @property
+    def configs(self):
+        return self.params.dataset
+
+    def __len__(self):
+        return len(self.data)

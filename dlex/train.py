@@ -46,7 +46,8 @@ def launch_training(params, training_idx):
             from dlex.torch.train import main
             return main(None, params, configs, training_idx, report_queue)
         elif backend == "tensorflow" or backend == "tf":
-            runpy.run_module("dlex.tf.train", run_name=__name__)
+            from dlex.tf.train import main
+            return main(None, params, configs, training_idx, report_queue)
         else:
             raise ValueError("Backend is not valid.")
     except Exception as e:
@@ -413,7 +414,8 @@ if __name__ == "__main__":
     tmux = TmuxManager()
     curses = CursesManager()
     configs = Configs(mode="train")
-    pool = multiprocessing.Pool(processes=configs.args.num_processes)
+    if configs.args.num_processes:
+        pool = multiprocessing.Pool(processes=configs.args.num_processes)
     threads = {}
     if configs.args.gui:
         curses.wrapper(main)

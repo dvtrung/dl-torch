@@ -10,6 +10,7 @@ from tqdm import tqdm
 import warnings
 warnings.filterwarnings(action='ignore', category=DeprecationWarning)
 warnings.filterwarnings(action='ignore', category=FutureWarning)
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
 
 class TqdmLoggingHandler(logging.Handler):
@@ -122,7 +123,7 @@ def set_log_dir(configs):
     log_error_handler.setFormatter(formatter)
     logger.addHandler(log_error_handler)
 
-    if configs.args.show_logs:
+    if not configs.args.gui:
         logger.addHandler(TqdmLoggingHandler())
 
 

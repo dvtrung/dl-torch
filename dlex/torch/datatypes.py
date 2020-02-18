@@ -19,7 +19,10 @@ class Batch(dict):
 
     def item(self, i: int) -> BatchItem:
         try:
-            X = self.X[i].cpu().detach().numpy()
+            if type(self.X) == tuple:
+                X = [it[i].cpu().detach().numpy() for it in self.X]
+            else:
+                X = self.X[i].cpu().detach().numpy()
         except Exception:
             X = None
 
@@ -36,23 +39,3 @@ class Batch(dict):
 
     def __len__(self):
         return self.Y.shape[0]
-
-
-@dataclass
-class Datasets:
-    def __init__(self, train=None, valid=None, test=None):
-        self.train = train
-        self.valid = valid
-        self.test = test
-
-    def load_dataset(self, builder, mode):
-        if mode == "test":
-            self.test = builder.get_pytorch_wrapper(mode)
-        if mode in {"valid", "dev"}:
-            self.valid = builder.get_pytorch_wrapper(mode)
-
-    def get_dataset(self, mode):
-        if mode == "test":
-            return self.test
-        elif mode in {"valid", "dev"}:
-            return self.valid

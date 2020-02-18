@@ -1,10 +1,16 @@
 import pickle
 import time
 import os
+from datetime import datetime
 
 import tensorflow as tf
+from dlex.datatypes import ModelReport
+from dlex.tf import BaseModel_v1
+from dlex.tf.utils.utils import load_model
+from dlex.utils import set_seed, Datasets, get_num_iters_from_interval, get_num_seconds_from_interval
 from tensorflow.python.keras.callbacks import LearningRateScheduler, History, ModelCheckpoint, TensorBoard
 from tensorflow.python.keras.optimizers import SGD
+from tensorflow.python.training.basic_session_run_hooks import SecondOrStepTimer
 from tqdm import tqdm
 import numpy as np
 
@@ -13,10 +19,18 @@ from .utils.model_utils import get_model, get_dataset
 from dlex.configs import Configs, ModuleConfigs
 
 
-def main(argv=None):
-    """Read config and train model."""
-    configs = Configs(mode="train", argv=argv)
-    params, args = configs.params, configs.args
+def main(
+        argv=None,
+        params=None,
+        configs: Configs = None,
+        training_idx: int = None,
+        report_queue=None):
+    # tf.compat.v1.logging.set_verbosity(tf.logging.ERROR)
+    logger.info(f"Training started ({training_idx}).")
+
+    report = ModelReport(training_idx)
+    report.metrics = params.test.metrics
+    report.results = {m: None for m in report.metrics}
 
     # tf.enable_eager_execution()
     # tf.random.set_random_seed(params.seed)
@@ -32,31 +46,87 @@ def main(argv=None):
 
     # tf.logging.set_verbosity(tf.logging.FATAL)
 
-    # train_tensorflow(params, args)
-    train_keras(params, args)
+    set_seed(params.random_seed)
+    params, args, model, datasets = load_model("train", report, argv, params, configs)
+
+    if isinstance(model, BaseModel_v1):
+        train_tensorflow_v1(params, args, model, datasets, report)
+    else:
+        train_tensorflow(params, args, model, datasets, report)
+    # train_keras(params, args)
 
 
-def train_tensorflow(params, args):
-    dataset = get_dataset(params)
-    dataset.prepare(download=args.download, preprocess=args.preprocess)
+class TqdmHook(tf.train.SessionRunHook):
+    def __init__(self, loss, total, batch_size):
+        self.loss = loss
+        # self._timer = SecondOrStepTimer(every_steps=1)
+        self._should_trigger = False
+        self._iter_count = 0
+        self._pbar = tqdm(desc="Train", total=total)
+        self.batch_size = batch_size
 
-    dataset_train = dataset.get_tensorflow_wrapper("train")
-    dataset_test = dataset.get_tensorflow_wrapper("test")
+    def begin(self):
+        # self._timer.reset()
+        pass
 
-    model_cls = get_model(params)
-    model = model_cls(params, dataset_train)
+    def before_run(self, run_context):
+        # self._should_trigger = self._timer.should_trigger_for_step(self._iter_count)
+        return tf.train.SessionRunArgs(dict(loss=self.loss))
 
-    for current_epoch in range(1, params.train.num_epochs + 1):
-        total_loss = 0
+    def after_run(self, run_context, run_values):
+        # if self._should_trigger:
+        res = run_values.results
+        self._pbar.update(self.batch_size)
+        self._pbar.set_postfix(dict(loss=f"{res['loss']:.4f}"))
+        self._pbar.refresh()
 
-        with tqdm(dataset_train.all(), desc="Epoch %d" % current_epoch) as t:
-            for step, batch in enumerate(t):
-                batch_loss = model.training_step(batch)
-                total_loss += batch_loss
-                t.set_postfix(loss=total_loss.numpy() / (step + 1))
 
-        res, best_res, outputs = evaluate(model, dataset_test, params, save_result=True, output=True,
-                                          summary_writer=summary_writer)
+def train_tensorflow_v1(params, args, model, datasets: Datasets, report: ModelReport):
+    run_config = tf.estimator.RunConfig(
+        model_dir=ModuleConfigs.SAVED_MODELS_PATH
+    )
+
+    def model_fn(features, labels, mode, params):
+        model.model_fn(features, labels, mode, params)
+        train_hooks = [TqdmHook(model.loss, len(datasets.train), params['batch_size'])]
+        # if params.train.log_every:
+        #     train_hooks.append(tf.estimator.LoggingTensorHook(
+        #         tensors=dict(global_step=tf.compat.v1.train.get_global_step()),
+        #         every_n_iter=get_num_iters_from_interval(params.train.log_every),
+        #         every_n_secs=get_num_seconds_from_interval(params.train.log_every)))
+        if mode == tf.estimator.ModeKeys.TRAIN:
+            return tf.estimator.EstimatorSpec(
+                mode=tf.estimator.ModeKeys.TRAIN,
+                loss=model.loss,
+                train_op=model.train_op,
+                training_hooks=train_hooks)
+        else:
+            return tf.estimator.EstimatorSpec(
+                mode=mode, loss=model.loss,
+                eval_metric_ops=model.metric_fn())
+
+    estimator = tf.estimator.Estimator(
+        model_fn=model_fn,
+        config=run_config,
+        params=dict(
+            batch_size=params.train.batch_size
+        ))
+    report.launch_time = datetime.now()
+    num_train_steps = int(len(datasets.train) / params.train.batch_size * params.train.num_epochs)
+
+    logger.info("Training started.")
+    estimator.train(
+        input_fn=datasets.train.input_fn,
+        max_steps=num_train_steps)
+    logger.info("Training took time %s", str(datetime.now() - report.launch_time))
+    results = estimator.evaluate(
+        input_fn=datasets.test.input_fn,
+        steps=None)
+    logger.debug(str(results))
+
+
+def train_tensorflow(params, args, model, datasets: Datasets, report: ModelReport):
+    pass
 
 
 def train_keras(params, args):

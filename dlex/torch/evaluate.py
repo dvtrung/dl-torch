@@ -81,8 +81,9 @@ def evaluate(
                     is_passed, last_log = check_interval_passed(last_log, params.test.log_every)
                     if is_passed:
                         logger.debug(
-                            "sample %d - ref: %s - hyp: %s",
+                            "sample %d\n\t[inp] %s\n\t[ref] %s\n\t[hyp] %s",
                             len(outputs),
+                            str(outputs[-1]['input']),
                             str(outputs[-1]['reference']),
                             str(outputs[-1]['hypothesis']))
 

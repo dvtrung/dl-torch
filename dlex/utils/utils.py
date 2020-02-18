@@ -7,7 +7,7 @@ import tarfile
 import time
 import zipfile
 from subprocess import call
-from typing import List, Union, Dict
+from typing import List, Union
 
 import requests
 from tqdm import tqdm
@@ -181,3 +181,41 @@ def check_interval_passed(last_done: float, interval: str, progress: int = None)
             return True, time.time() / d
         else:
             return False, last_done
+
+
+def get_num_seconds_from_interval(interval: str) -> Union[int, None]:
+    unit = interval[-1]
+    value = float(interval[:-1])
+    if unit in ["s", "m", "h"]:
+        d = dict(s=1, m=60, h=3600)[unit]
+        return int(d * value)
+    else:
+        return None
+
+
+def get_num_iters_from_interval(interval: str) -> Union[int, None]:
+    unit = interval[-1]
+    value = float(interval[:-1])
+    if unit == "i":
+        return int(value)
+    else:
+        return None
+
+
+def set_seed(seed):
+    import random
+    random.seed(seed)
+    import numpy
+    numpy.random.seed(seed)
+    try:
+        import torch
+        torch.manual_seed(seed)
+    except ModuleNotFoundError:
+        pass
+
+    try:
+        import tensorflow
+        tensorflow.compat.v1.set_random_seed(seed)
+    except ModuleNotFoundError:
+        pass
+    logger.info("Random seed reset to %d", seed)

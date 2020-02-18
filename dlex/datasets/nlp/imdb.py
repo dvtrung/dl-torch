@@ -48,7 +48,6 @@ class PytorchIMDB(Dataset):
             batch_size=batch_size,
             sort_key=lambda x: len(x.text),
             repeat=False, shuffle=True)
-        print(len(iter), len(self.builder.train_data[0]))
         return map(lambda item: Batch(
             X=item.text[0].cuda(),
             X_len=item.text[1].cuda(),

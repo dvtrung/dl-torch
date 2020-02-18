@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Dict, List
 
 import numpy as np
@@ -7,6 +8,7 @@ import numpy as np
 @dataclass
 class ModelReport:
     training_idx: int = None
+    launch_time: datetime = None
 
     current_epoch: int = None
     num_epochs: int = None

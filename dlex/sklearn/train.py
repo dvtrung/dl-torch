@@ -4,7 +4,7 @@ from collections import defaultdict
 from datetime import datetime
 
 import numpy as np
-from dlex.torch.utils.utils import set_seed
+from dlex.utils import set_seed
 from sklearn.model_selection import KFold
 
 from dlex.configs import Configs
@@ -50,7 +50,7 @@ def train(params, args, report_callback=None):
     # Load checkpoint or initialize new training
     if args.load:
         model.load_checkpoint(args.load)
-        logger.info("Saved model loaded: %s", args.load)
+        logger.info("Loaded checkpoint: %s", args.load)
         logger.info("Epoch: %f", model.global_step / len(dataset.X_train))
 
     logger.debug("Dataset: %s. Model: %s", str(dataset_builder), str(model_cls))

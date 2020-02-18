@@ -8,7 +8,7 @@ from dlex.configs import MainConfig
 from dlex.datasets.builder import DatasetBuilder
 
 
-def get_model(params: MainConfig):
+def get_model(params):
     """Return the model class by its name."""
     module_name, class_name = params.model.name.rsplit('.', 1)
     i = importlib.import_module(module_name)

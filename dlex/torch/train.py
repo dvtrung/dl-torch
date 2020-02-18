@@ -10,8 +10,8 @@ from dlex.datatypes import ModelReport
 from dlex.torch.datatypes import Datasets
 from dlex.torch.evaluate import evaluate
 from dlex.torch.models.base import DataParellelModel
-from dlex.torch.utils.utils import load_model, set_seed
-from dlex.utils import check_interval_passed
+from dlex.torch.utils.utils import load_model
+from dlex.utils import set_seed, check_interval_passed
 from dlex.utils.logging import logger, epoch_info_logger, epoch_step_info_logger, log_result, json_dumps, \
     log_outputs
 from torch.utils.tensorboard import SummaryWriter

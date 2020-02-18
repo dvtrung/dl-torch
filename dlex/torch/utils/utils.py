@@ -2,10 +2,9 @@ import numpy as np
 import torch
 from dlex.configs import Configs, MainConfig
 from dlex.datatypes import ModelReport
-from dlex.torch.datatypes import Datasets
 from dlex.torch.models.base import DataParellelModel
 from dlex.torch.utils.model_utils import get_model
-from dlex.utils import logger, table2str
+from dlex.utils import logger, table2str, Datasets
 from dlex.utils.model_utils import get_dataset
 
 DEBUG_BATCH_SIZE = 4
@@ -44,16 +43,18 @@ def load_model(mode, report: ModelReport, argv=None, params: MainConfig = None, 
     if not args.no_prepare:
         dataset_builder.prepare(download=args.download, preprocess=args.preprocess)
     if mode == "test":
-        datasets = Datasets()
+        datasets = Datasets("pytorch")
         for mode in params.train.eval:
             datasets.load_dataset(dataset_builder, mode)
     elif mode == "train":
         if args.debug:
             datasets = Datasets(
+                "pytorch",
                 train=dataset_builder.get_pytorch_wrapper("test"),
                 test=dataset_builder.get_pytorch_wrapper("test"))
         else:
             datasets = Datasets(
+                "pytorch",
                 train=dataset_builder.get_pytorch_wrapper("train"),
                 valid=dataset_builder.get_pytorch_wrapper("valid") if "valid" in params.train.eval else
                 dataset_builder.get_pytorch_wrapper("dev") if "dev" in params.train.eval else
@@ -107,18 +108,8 @@ def load_model(mode, report: ModelReport, argv=None, params: MainConfig = None, 
     # Load checkpoint or initialize new training
     if args.load:
         configs.training_id = model.load_checkpoint(args.load)
-        logger.info("Saved model loaded: %s", args.load)
+        logger.info("Loaded checkpoint: %s", args.load)
         if mode == "train":
             logger.info("EPOCH: %f", model.global_step / len(datasets.train))
 
     return params, args, model, datasets
-
-
-def set_seed(seed):
-    import random
-    random.seed(seed)
-    import numpy
-    numpy.random.seed(seed)
-    import torch
-    torch.manual_seed(seed)
-    logger.info("Random seed reset to %d", seed)
