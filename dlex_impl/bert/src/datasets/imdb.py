@@ -1,9 +1,10 @@
 import os
+import pickle
 import re
 from typing import List
 
 import tensorflow as tf
-from dlex.utils import logger
+from dlex.utils import logger, dump_pkl, load_pkl
 from tensorflow import keras
 import tensorflow_hub as hub
 import pandas as pd
@@ -77,32 +78,40 @@ class TensorflowIMDB(Dataset):
     def __init__(self, builder, mode):
         super().__init__(builder, mode)
 
-        DATA_COLUMN = 'sentence'
-        LABEL_COLUMN = 'polarity'
-        label_list = [0, 1]
-
-        pos_df = load_directory_data(os.path.join(self.raw_data_dir, "aclImdb", mode, "pos"))
-        neg_df = load_directory_data(os.path.join(self.raw_data_dir, "aclImdb", mode, "neg"))
-        pos_df["polarity"] = 1
-        neg_df["polarity"] = 0
-
-        data = pd.concat([pos_df, neg_df]).sample(frac=1).reset_index(drop=True)
-        # data = data.sample(100)
-        data = data.apply(lambda x: bert.run_classifier.InputExample(
-            guid=None,  # Globally unique ID for bookkeeping, unused in this example
-            text_a=x[DATA_COLUMN],
-            text_b=None,
-            label=x[LABEL_COLUMN]), axis=1)
-        logger.info("Dataset %s: %d samples", mode, len(data))
-        self._data = bert.run_classifier.convert_examples_to_features(
-            data, label_list, self.configs.max_len, self.tokenizer)
-
         self._input_fn = bert.run_classifier.input_fn_builder(
-            features=self._data,
+            features=self.data,
             seq_length=self.configs.max_len,
             is_training=mode == "train",
             drop_remainder=False)
         logger.info("Finished loading data")
+
+    @property
+    def data(self):
+        if not self._data:
+            pkl_filepath = os.path.join(self.processed_data_dir, self.mode + ".pkl")
+            if os.path.exists(pkl_filepath):
+                self._data = load_pkl(pkl_filepath)
+            else:
+                label_list = [0, 1]
+
+                pos_df = load_directory_data(os.path.join(self.raw_data_dir, "aclImdb", self.mode, "pos"))
+                neg_df = load_directory_data(os.path.join(self.raw_data_dir, "aclImdb", self.mode, "neg"))
+                pos_df["polarity"] = 1
+                neg_df["polarity"] = 0
+
+                data = pd.concat([pos_df, neg_df]).sample(frac=1).reset_index(drop=True)
+                # data = data.sample(1000)
+                data = data.apply(lambda x: bert.run_classifier.InputExample(
+                    guid=None,  # Globally unique ID for bookkeeping, unused in this example
+                    text_a=x['sentence'],
+                    text_b=None,
+                    label=x['polarity']), axis=1)
+                self._data = bert.run_classifier.convert_examples_to_features(
+                    data, label_list, self.configs.max_len, self.tokenizer)
+                logger.info("Saving data to %s...", pkl_filepath)
+                dump_pkl(self._data, pkl_filepath)
+            logger.info("Dataset %s: %d samples", self.mode, len(self._data))
+        return self._data
 
     @property
     def tokenizer(self):

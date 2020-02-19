@@ -2,10 +2,7 @@ import curses
 import logging
 import multiprocessing
 import os
-import runpy
 import shutil
-import signal
-import subprocess
 import threading
 import traceback
 from collections import defaultdict
@@ -42,12 +39,17 @@ def launch_training(params, training_idx):
             train(params, configs.args)
             # runpy.run_module("dlex.sklearn.train", run_name=__name__)
         elif backend == "pytorch" or backend == "torch":
-            # runpy.run_module("dlex.torch.train", run_name=__name__)
-            from dlex.torch.train import main
-            return main(None, params, configs, training_idx, report_queue)
+            from dlex.torch import PytorchBackend
+            ins = PytorchBackend(None, params, configs, training_idx, report_queue)
+            return ins.run_train()
         elif backend == "tensorflow" or backend == "tf":
-            from dlex.tf.train import main
-            return main(None, params, configs, training_idx, report_queue)
+            from dlex.tf import TensorflowV1Backend
+            ins = TensorflowV1Backend(None, params, configs, training_idx, report_queue)
+            return ins.run_train()
+        elif backend == "tff":
+            from dlex.tf import TensorflowFederatedBackend
+            backend = TensorflowFederatedBackend(None, params, configs, training_idx, report_queue)
+            return backend.run_train()
         else:
             raise ValueError("Backend is not valid.")
     except Exception as e:

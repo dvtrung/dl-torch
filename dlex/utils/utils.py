@@ -1,5 +1,6 @@
 """General utils"""
 import os
+import pickle
 import re
 import subprocess
 import sys
@@ -39,24 +40,35 @@ def maybe_download(download_dir: str, source_url: str, filename: str = None) -> 
     if not os.path.exists(download_dir):
         os.makedirs(download_dir)
     filepath = os.path.join(download_dir, filename or source_url[source_url.rfind("/")+1:])
-    if not os.path.exists(filepath):
-        with open(filepath, 'wb') as f:
-            logger.info("Downloading file at %s to %s", source_url, filepath)
+    if os.path.exists(filepath):
+        return filepath
+
+    with open(filepath, 'wb') as f:
+        logger.info("Downloading file at %s to %s", source_url, filepath)
+
+        re_gdrive = r"^https://drive.google.com/[\w]*\?id=([\w\d]*)$"
+        if re.match(re_gdrive, source_url):
+            m = re.match(re_gdrive, source_url)
+            file_id = m[1]
+            r = requests.get(
+                "https://drive.google.com/uc?export=download", params={'id': file_id},
+                stream=True, allow_redirects=True)
+        else:
             r = requests.get(source_url, stream=True, allow_redirects=True)
 
-            total_length = r.headers.get('content-length')
-            if total_length is None:  # no content length header
-                for data in r.iter_content(chunk_size=128):
-                    f.write(data)
-                    print(len(data))
-            elif r.status_code == 200:
-                total_length = int(total_length)
-                logger.info("File size: %.1fMB", total_length / 1024 / 1024)
+        total_length = r.headers.get('content-length')
+        if total_length is None:  # no content length header
+            for data in r.iter_content(chunk_size=128):
+                f.write(data)
+        elif r.status_code == 200:
+            total_length = int(total_length)
+            logger.info("File size: %.1fMB", total_length / 1024 / 1024)
 
-                with tqdm(desc="Downloading", total=int(total_length), unit="B", unit_scale=True, unit_divisor=1024) as pbar:
-                    for data in r.iter_content(chunk_size=4096):
-                        f.write(data)
-                        pbar.update(len(data))
+            with tqdm(desc="Downloading", total=int(total_length), unit="B", unit_scale=True,
+                      unit_divisor=1024) as pbar:
+                for data in r.iter_content(chunk_size=4096):
+                    f.write(data)
+                    pbar.update(len(data))
     return filepath
 
 
@@ -84,6 +96,19 @@ def maybe_unzip(file_path, folder_path):
         process.communicate()
     else:
         logger.warning("File type is not supported (%s). Not a zip file?" % ext)
+
+
+def load_pkl(filepath: str):
+    if os.path.exists(filepath):
+        logger.info("Loading from %s...", filepath)
+        return pickle.load(open(filepath, "rb"))
+    else:
+        return None
+
+
+def dump_pkl(obj, filepath: str):
+    logger.info("Saving to %s...", filepath)
+    pickle.dump(obj, open(filepath, "wb"))
 
 
 def camel2snake(name: str) -> str:

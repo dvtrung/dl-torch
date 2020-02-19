@@ -1,0 +1,9 @@
+backend: tff
+model:
+  name: src.models.image_classifier_tff.ImageClassifier
+dataset:
+  name: src.datasets.emnist.EMNIST
+  shuffle_buffer: 500
+train:
+  num_epochs: 20
+  batch_size: 20

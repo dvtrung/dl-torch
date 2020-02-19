@@ -13,12 +13,13 @@ class BERT(BaseModel_v1):
     def __init__(self, params: MainConfig, dataset: Dataset):
         super().__init__(params, dataset)
         self._optimizer = None
+        self._metric_ops = None
+        self._train_op = None
 
-    def model_fn(self, features, labels, mode, params):
-        input_ids = features["input_ids"]
-        input_mask = features["input_mask"]
-        segment_ids = features["segment_ids"]
-        self.label_ids = features["label_ids"]
+    def forward(self, batch):
+        input_ids = batch["input_ids"]
+        input_mask = batch["input_mask"]
+        segment_ids = batch["segment_ids"]
 
         bert_module = hub.Module(BERT_MODEL_HUB, trainable=True)
         bert_inputs = dict(input_ids=input_ids, input_mask=input_mask, segment_ids=segment_ids)
@@ -40,32 +41,27 @@ class BERT(BaseModel_v1):
 
             logits = tf.matmul(output_layer, output_weights, transpose_b=True)
             logits = tf.nn.bias_add(logits, output_bias)
-            log_probs = tf.nn.log_softmax(logits, axis=-1)
 
-            one_hot_labels = tf.one_hot(self.label_ids, depth=self.dataset.num_labels, dtype=tf.float32)
+        return tf.nn.log_softmax(logits, axis=-1)
 
-            self.predicted_labels = tf.squeeze(tf.argmax(log_probs, axis=-1, output_type=tf.int32))
-            if mode != tf.estimator.ModeKeys.PREDICT:
-                per_example_loss = -tf.reduce_sum(one_hot_labels * log_probs, axis=-1)
-                loss = tf.reduce_mean(per_example_loss)
-                self._loss = loss
+    def get_train_op(self, loss):
+        train_cfg = self.params.train
+        num_train_steps = int(len(self.dataset) / train_cfg.batch_size * train_cfg.num_epochs)
+        num_warmup_steps = int(num_train_steps * 0.1)
+        return bert.optimization.create_optimizer(
+            loss, train_cfg.optimizer.lr,
+            num_train_steps, num_warmup_steps, use_tpu=False
+        )
 
-        if mode == tf.estimator.ModeKeys.TRAIN:
-            train_cfg = self.params.train
-            num_train_steps = int(len(self.dataset) / train_cfg.batch_size * train_cfg.num_epochs)
-            num_warmup_steps = int(num_train_steps * 0.1)
-            self._train_op = bert.optimization.create_optimizer(
-                loss, train_cfg.optimizer.lr,
-                num_train_steps, num_warmup_steps, use_tpu=False
-            )
+    def get_loss(self, batch, output):
+        log_probs = tf.nn.log_softmax(output, axis=-1)
+        one_hot_labels = tf.one_hot(batch["label_ids"], depth=self.dataset.num_labels, dtype=tf.float32)
+        per_example_loss = -tf.reduce_sum(one_hot_labels * log_probs, axis=-1)
+        return tf.reduce_mean(per_example_loss)
 
-    @property
-    def train_op(self):
-        return self._train_op
-
-    def metric_fn(self):
-        ref = self.label_ids
-        pred = self.predicted_labels
+    def get_metric_ops(self, batch, output):
+        ref = batch["label_ids"]
+        pred = tf.squeeze(tf.argmax(output, axis=-1, output_type=tf.int32))
         return dict(
             acc=tf.compat.v1.metrics.accuracy(ref, pred),
             f1=tf.contrib.metrics.f1_score(ref, pred),

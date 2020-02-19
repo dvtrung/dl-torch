@@ -10,7 +10,6 @@ from tqdm import tqdm
 import warnings
 warnings.filterwarnings(action='ignore', category=DeprecationWarning)
 warnings.filterwarnings(action='ignore', category=FutureWarning)
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
 
 class TqdmLoggingHandler(logging.Handler):
@@ -67,6 +66,7 @@ bold_seq = '\033[1m'
 #))
 
 logger = logging.getLogger('dlex')
+logger.propagate = False
 
 logger.HEADER = '\033[95m'
 logger.OKBLUE = '\033[1;36m'

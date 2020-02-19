@@ -1,16 +1,14 @@
-backend: pytorch
+backend: tensorflow
 env:
   default:
     title: Results on image datasets
     variables:
       dataset:
-        - dlex.datasets.image.MNIST
-        - dlex.datasets.image.CIFAR10
+        - src.datasets.mnist.MNIST
       num_channels:
         - 20, 50
-        - 10, 20
 model:
-  name: src.models.torch.simple_cnn.SimpleCNN
+  name: src.models.tf.dnn.DNN
   kernel_size: 3
   num_channels: ~num_channels
 dataset:

@@ -59,20 +59,20 @@ def load_model(mode, report: ModelReport, argv=None, params: MainConfig = None, 
     # model.summary()
 
     # log model summary
-    parameter_details = [["Name", "Shape", "Trainable"]]
+    # parameter_details = [["Name", "Shape", "Trainable"]]
     # num_params = 0
     # num_trainable_params = 0
-    for n in tf.get_default_graph().as_graph_def().node:
-        parameter_details.append([
-            n.name,
-            "test",
-            "✓" if False else ""])
+    # for n in tf.get_default_graph().as_graph_def().node:
+    #     parameter_details.append([
+    #         n.name,
+    #         "test",
+    #         "✓" if False else ""])
     #     num_params += np.prod(list(parameter.shape))
     #     if parameter.requires_grad:
     #         num_trainable_params += np.prod(list(parameter.shape))
 
-    s = table2str(parameter_details)
-    logger.debug(f"Model parameters\n{s}")
+    # s = table2str(parameter_details)
+    # logger.debug(f"Model parameters\n{s}")
     # logger.debug(" - ".join([
     #     f"No. parameters: {num_params:,}",
     #     f"No. trainable parameters: {num_trainable_params:,}"
@@ -92,7 +92,7 @@ def load_model(mode, report: ModelReport, argv=None, params: MainConfig = None, 
     # else:
     #     model = DataParellelModel(model, ['cpu'])
 
-    logger.debug("Dataset: %s. Model: %s", str(dataset_builder), str(model_cls))
+    # logger.debug("Dataset: %s. Model: %s", str(dataset_builder), str(model_cls))
     # if use_cuda:
     #     logger.info("CUDA available: %s", torch.cuda.get_device_name(0))
 

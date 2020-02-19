@@ -1,12 +1,12 @@
 import abc
 import os
 import shutil
-from typing import Tuple, List
+from typing import Tuple, List, Union
 
 from sklearn.metrics import accuracy_score, average_precision_score, f1_score
 
 from dlex.configs import ModuleConfigs, MainConfig
-from dlex.torch import BatchItem
+# from dlex.torch import BatchItem
 from dlex.utils.logging import logger
 from dlex.utils.utils import maybe_download, maybe_unzip, prompt
 
@@ -16,10 +16,18 @@ class DatasetBuilder:
     required for training.
     """
 
-    def __init__(self, params: MainConfig, downloads: List[str] = None):
+    def __init__(
+            self,
+            params: MainConfig,
+            downloads: List[Union[str, Tuple[str, str]]] = None,
+            pytorch_cls=None,
+            tensorflow_cls=None,
+            sklearn_cls=None):
         self.params = params
-
         self.downloads = downloads
+        self.pytorch_cls = pytorch_cls
+        self.tensorflow_cls = tensorflow_cls
+        self.sklearn_cls = sklearn_cls
 
     def get_working_dir(self) -> str:
         """Get the working directory"""
@@ -70,7 +78,11 @@ class DatasetBuilder:
 
         if self.downloads:
             for url in self.downloads:
-                self._download_and_extract(url, self.get_raw_data_dir())
+                if type(url) == str:
+                    self._download_and_extract(url, self.get_raw_data_dir())
+                else:
+                    assert len(url) == 2
+                    self._download_and_extract(url[0], self.get_raw_data_dir(), url[1])
 
     @abc.abstractmethod
     def maybe_preprocess(self, force=False) -> bool:
@@ -93,10 +105,14 @@ class DatasetBuilder:
 
     @abc.abstractmethod
     def get_tensorflow_wrapper(self, mode: str):
+        if self.tensorflow_cls:
+            return self.tensorflow_cls(self, mode)
         raise NotImplementedError
 
     @abc.abstractmethod
     def get_pytorch_wrapper(self, mode: str):
+        if self.pytorch_cls:
+            return self.pytorch_cls(self, mode)
         raise NotImplementedError
 
     @abc.abstractmethod
@@ -105,6 +121,8 @@ class DatasetBuilder:
 
     @abc.abstractmethod
     def get_sklearn_wrapper(self, mode: str):
+        if self.sklearn_cls:
+            return self.sklearn_cls(self, mode)
         raise NotImplementedError
 
     @abc.abstractmethod
@@ -151,7 +169,7 @@ class DatasetBuilder:
             raise Exception("Result comparison is not defined: %s" % metric)
 
     @abc.abstractmethod
-    def format_output(self, y_pred, batch_item: BatchItem) -> Tuple[str, str, str]:
+    def format_output(self, y_pred, batch_item) -> Tuple[str, str, str]:
         """Get representations of model inputs and results in readable format
 
         :param y_pred:
