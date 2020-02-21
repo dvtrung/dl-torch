@@ -3,7 +3,7 @@ import os
 import shutil
 from typing import Tuple, List, Union
 
-from sklearn.metrics import accuracy_score, average_precision_score, f1_score
+import sklearn.metrics as metrics
 
 from dlex.configs import ModuleConfigs, MainConfig
 # from dlex.torch import BatchItem
@@ -31,7 +31,7 @@ class DatasetBuilder:
 
     def get_working_dir(self) -> str:
         """Get the working directory"""
-        return os.path.join(ModuleConfigs.DATASETS_PATH, self.__class__.__name__)
+        return os.path.join(ModuleConfigs.get_datasets_path(), self.__class__.__name__)
 
     def get_raw_data_dir(self) -> str:
         """Get the directory to store raw data set"""
@@ -128,7 +128,6 @@ class DatasetBuilder:
     @abc.abstractmethod
     def evaluate(self, pred, ref, metric: str, output_path: str):
         """
-
         :param pred:
         :param ref:
         :param metric:
@@ -136,16 +135,18 @@ class DatasetBuilder:
         :return:
         """
         if metric == "acc":
-            return float(accuracy_score(ref, pred)) * 100
+            return float(metrics.accuracy_score(ref, pred)) * 100
         elif metric == "precision":
-            return float(average_precision_score(ref, pred))
+            return float(metrics.average_precision_score(ref, pred))
         elif metric == "recall":
             pass
         elif metric == "f1":
-            return float(f1_score(ref, pred)) * 100
+            return float(metrics.f1_score(ref, pred)) * 100
         elif metric == "err":
             ret = self.evaluate(pred, ref, "acc", output_path)
             return 100 - ret
+        elif metric == "mse":
+            return metrics.mean_squared_error(ref, pred)
         else:
             raise NotImplementedError
 

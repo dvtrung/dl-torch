@@ -23,6 +23,10 @@ class Dataset(PytorchDataset):
         self._data = None
         self._sampler = None
 
+    @abc.abstractmethod
+    def load_data(self):
+        raise NotImplemented
+
     def __len__(self):
         return len(self.data)
 
@@ -43,6 +47,8 @@ class Dataset(PytorchDataset):
 
     @property
     def data(self):
+        if not self._data:
+            self._data = self.load_data()
         return self._data
 
     def shuffle(self):

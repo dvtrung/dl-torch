@@ -41,6 +41,10 @@ class BaseModel(nn.Module):
         return self.params.model
 
     @abc.abstractmethod
+    def forward(self, batch):
+        raise NotImplemented
+
+    @abc.abstractmethod
     def infer(self, batch):
         """Infer from batch
 
@@ -52,7 +56,7 @@ class BaseModel(nn.Module):
             others
         :rtype: tuple
         """
-        raise NotImplementedError()
+        raise NotImplemented
 
     def train_log(self, batch, output, verbose):
         d = dict()
@@ -154,7 +158,7 @@ class DataParellelModel(nn.DataParallel):
         return self.params.model
 
     def load(self, tag):
-        path = os.path.join(ModuleConfigs.SAVED_MODELS_PATH, self.params.config_path_prefix, tag + ".pt")
+        path = os.path.join(ModuleConfigs.get_saved_models_dir(), self.params.config_path_prefix, tag + ".pt")
         self.load_state_dict(torch.load(path))
 
     @property
@@ -183,7 +187,7 @@ class DataParellelModel(nn.DataParallel):
 
     def save_checkpoint(self, tag):
         """Save current training state"""
-        os.makedirs(os.path.join(ModuleConfigs.SAVED_MODELS_PATH, self.params.config_path_prefix), exist_ok=True)
+        os.makedirs(os.path.join(ModuleConfigs.get_saved_models_dir(), self.params.config_path_prefix), exist_ok=True)
         state = {
             'training_id': self.params.training_id,
             'global_step': self.global_step,
@@ -192,13 +196,13 @@ class DataParellelModel(nn.DataParallel):
             'model': self.state_dict(),
             'optimizers': [optimizer.state_dict() for optimizer in self.optimizers]
         }
-        fn = os.path.join(ModuleConfigs.SAVED_MODELS_PATH, self.params.config_path_prefix, tag + ".pt")
+        fn = os.path.join(ModuleConfigs.get_saved_models_dir(), self.params.config_path_prefix, tag + ".pt")
         torch.save(state, fn)
         logger.debug("Checkpoint saved to %s", fn)
 
     def load_checkpoint(self, tag, load_optimizers=True):
         """Load from saved state"""
-        file_name = os.path.join(ModuleConfigs.SAVED_MODELS_PATH, self.params.config_path_prefix, tag + ".pt")
+        file_name = os.path.join(ModuleConfigs.get_saved_models_dir(), self.params.config_path_prefix, tag + ".pt")
         logger.info("Load checkpoint from %s" % file_name)
         if os.path.exists(file_name):
             checkpoint = torch.load(file_name, map_location='cpu')

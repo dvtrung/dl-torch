@@ -53,7 +53,7 @@ class TensorflowV1Backend(FrameworkBackend):
 
     def train(self):
         run_config = tf.estimator.RunConfig(
-            model_dir=ModuleConfigs.SAVED_MODELS_PATH,
+            model_dir=ModuleConfigs.get_saved_models_dir(),
             save_checkpoints_steps=get_num_iters_from_interval(self.params.train.save_every),
             save_checkpoints_secs=get_num_seconds_from_interval(self.params.train.save_every),
             save_summary_steps=100,
@@ -136,6 +136,9 @@ class TensorflowV1Backend(FrameworkBackend):
         best_result = add_result(params, result) if save_result else None
 
         return result, best_result, outputs
+
+    def set_seed(self, seed):
+        tf.compat.v1.set_random_seed(seed)
 
 
 class TqdmHook(tf.estimator.SessionRunHook):

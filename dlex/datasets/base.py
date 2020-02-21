@@ -45,7 +45,7 @@ class BaseDataset:
         """
         :return: Current working directory
         """
-        return os.path.join(ModuleConfigs.DATASETS_PATH, camel2snake(self.__class__.__name__))
+        return os.path.join(ModuleConfigs.get_datasets_path(), camel2snake(self.__class__.__name__))
 
     def get_raw_data_dir(self) -> str:
         """

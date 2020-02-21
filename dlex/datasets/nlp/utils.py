@@ -126,8 +126,8 @@ def spacy_tokenize(s):
     from spacy.symbols import ORTH
     global spacy_nlp
     if spacy_nlp is None:
-        # sputnik.install('spacy', spacy.about.__version__, 'en_default', data_path=ModuleConfigs.TMP_PATH)
-        spacy_nlp = spacy.load('en_core_web_sm', via=ModuleConfigs.TMP_PATH)
+        # sputnik.install('spacy', spacy.about.__version__, 'en_default', data_path=ModuleConfigs.get_tmp_path())
+        spacy_nlp = spacy.load('en_core_web_sm', via=ModuleConfigs.get_tmp_path())
         spacy_nlp.tokenizer.add_special_case('<eos>', [{ORTH: '<eos>'}])
         spacy_nlp.tokenizer.add_special_case('<bos>', [{ORTH: '<bos>'}])
         spacy_nlp.tokenizer.add_special_case('<unk>', [{ORTH: '<unk>'}])

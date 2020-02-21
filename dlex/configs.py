@@ -12,13 +12,26 @@ from dlex.utils.logging import set_log_level, set_log_dir, logger
 
 DEFAULT_TMP_PATH = os.path.expanduser(os.path.join("~", "tmp"))
 DEFAULT_DATASETS_PATH = os.path.expanduser(os.path.join("~", "tmp", "datasets"))
-DEFAULT_SAVED_MODELS_PATH = "saved_models"
+DEFAULT_SAVED_MODELS_DIR = "saved_models"
+DEFAULT_LOG_DIR = "logs"
 
 
 class ModuleConfigs:
-    DATASETS_PATH = os.getenv("DLEX_DATASETS_PATH", DEFAULT_DATASETS_PATH)
-    TMP_PATH = os.path.join(os.getenv("DLEX_TMP_PATH", DEFAULT_TMP_PATH), "dlex")
-    SAVED_MODELS_PATH = os.getenv("DLEX_SAVED_MODELS_PATH", DEFAULT_SAVED_MODELS_PATH)
+    @staticmethod
+    def get_datasets_path():
+        return os.getenv("DLEX_DATASETS_PATH", DEFAULT_DATASETS_PATH)
+
+    @staticmethod
+    def get_tmp_path():
+        return os.path.join(os.getenv("DLEX_TMP_PATH", DEFAULT_TMP_PATH), "dlex")
+
+    @staticmethod
+    def get_saved_models_dir():
+        return os.getenv("DLEX_SAVED_MODELS_DIR", DEFAULT_SAVED_MODELS_DIR)
+
+    @staticmethod
+    def get_log_dir():
+        return os.getenv("DLEX_LOG_DIR", DEFAULT_LOG_DIR)
 
 
 class AttrDict(dict):
@@ -146,10 +159,10 @@ class TrainConfig:
     :type early_stop: int
     :param select_model: One of [best, last]
     """
+    optimizer: OptimizerConfig
     num_epochs: int = None
     num_workers: int = None
     batch_size: int = None
-    optimizer: OptimizerConfig = None
     lr_scheduler: dict = None
     eval: list = field(default_factory=lambda: ["test"])
     max_grad_norm: float = 5.0
@@ -272,7 +285,7 @@ class Environment:
     variable_values: List[List[Any]] = None
     variables_list: List[Tuple[Any]] = None
 
-    configs_list: List = None
+    configs_list: List[MainConfig] = None
     report: Any = None
     desc: str = None
 
@@ -293,25 +306,30 @@ class Configs:
                 self.yaml_params = yaml.load(stream, Loader=Loader)
             except yaml.YAMLError:
                 raise Exception("Invalid config syntax.")
-            self.backend = self.yaml_params['backend']
-            if self.args.configs:
-                overridden_values = [s.split('=') for s in self.args.configs]
 
-                def _override_value(d: dict, prop: list, val):
-                    if len(prop) == 1:
-                        d[prop[0]] = val
-                    else:
-                        _override_value(d[prop[0]], prop[1:], val)
+        self.backend = self.yaml_params['backend']
+        if self.args.configs:
+            overridden_values = [s.split('=') for s in self.args.configs]
 
-                for key, value in overridden_values:
-                    key = key.split('.')
-                    _override_value(self.yaml_params, key, value)
+            def _override_value(d: dict, prop: list, val):
+                if len(prop) == 1:
+                    d[prop[0]] = val
+                else:
+                    _override_value(d[prop[0]], prop[1:], val)
+
+            for key, value in overridden_values:
+                key = key.split('.')
+                _override_value(self.yaml_params, key, value)
 
         self._environments = []
         self.load_configs()
 
         # set_log_level(self.args.log)
         self.init_dirs()
+
+    @classmethod
+    def from_dict(cls):
+        return cls()
 
     def init_dirs(self):
         logger.info("Log dir: %s" % self.log_dir)
@@ -324,11 +342,11 @@ class Configs:
     @property
     def config_path(self):
         args = self.args
-        paths = [
+        paths = {
             args.config_path,
             os.path.join("model_configs", args.config_path),
             os.path.join("model_configs", args.config_path + ".yml")
-        ]
+        }
         paths = [p for p in paths if os.path.exists(p)]
         if not paths:
             raise Exception("Config file '%s' not found." % args.config_path)
@@ -467,13 +485,13 @@ class Configs:
     @property
     def log_dir(self):
         """Get logging directory based on model configs."""
-        log_dir = os.path.join("logs", self.config_name, "_".join(self.args.env))
+        log_dir = os.path.join(ModuleConfigs.get_log_dir(), self.config_name, "_".join(self.args.env))
         return os.path.join(log_dir, *self.training_id.split('-'))
 
     @property
     def output_dir(self):
         """Get output directory based on model configs"""
-        result_dir = os.path.join(ModuleConfigs.TMP_PATH, "model_outputs", self.config_name)
+        result_dir = os.path.join(ModuleConfigs.get_tmp_path(), "model_outputs", self.config_name)
         return result_dir
 
     @property
@@ -484,7 +502,7 @@ class Configs:
             "model_reports",
             f"{self.config_name}_{'_'.join(self.args.env)}_{self.training_id.replace('-', '_')}.md")
 
-    def load_configs(self) -> List[Tuple[Dict[str, Any], MainConfig]]:
+    def load_configs(self):
         if 'env' in self.yaml_params:
             for env_name, env_prop in self.yaml_params['env'].items():
                 # Unfold params for every variable combination
@@ -561,6 +579,7 @@ class Configs:
             configs.config_path = self.config_path
             configs.config_path_prefix = self.config_path_prefix
             configs.config_name = self.config_name
+            configs.log_dir = self.log_dir
             configs.verbose = bool(self.args.verbose)
             configs.dataset.num_workers = self.args.num_workers
             if configs.train is not None and configs.train.num_workers is None:

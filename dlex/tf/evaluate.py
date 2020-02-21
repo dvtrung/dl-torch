@@ -64,7 +64,7 @@ def main(argv=None):
         metrics=["acc"])
 
     # checkpoint
-    checkpoint_path = os.path.join(ModuleConfigs.SAVED_MODELS_PATH, params.config_path, "latest.h5")
+    checkpoint_path = os.path.join(ModuleConfigs.get_saved_models_dir(), params.config_path, "latest.h5")
     logger.info("Load checkpoint from %s" % checkpoint_path)
     model.load_weights(checkpoint_path)
 

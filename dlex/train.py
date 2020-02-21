@@ -32,7 +32,6 @@ def launch_training(params, training_idx):
 
     if backend is None:
         raise ValueError("No backend specified. Please add it in config file.")
-
     try:
         if backend == "sklearn":
             from dlex.sklearn.train import train
@@ -42,10 +41,14 @@ def launch_training(params, training_idx):
             from dlex.torch import PytorchBackend
             ins = PytorchBackend(None, params, configs, training_idx, report_queue)
             return ins.run_train()
-        elif backend == "tensorflow" or backend == "tf":
+        elif backend == "tensorflow_v1" or backend == "tf_v1":
             from dlex.tf import TensorflowV1Backend
             ins = TensorflowV1Backend(None, params, configs, training_idx, report_queue)
             return ins.run_train()
+        elif backend == "tensorflow" or backend == "tf":
+            from dlex.tf import TensorflowV2Backend
+            be = TensorflowV2Backend(None, params, configs, training_idx, report_queue)
+            return be.run_train()
         elif backend == "tff":
             from dlex.tf import TensorflowFederatedBackend
             backend = TensorflowFederatedBackend(None, params, configs, training_idx, report_queue)

@@ -35,7 +35,7 @@ class NLPDataset(Dataset):
                 from torchtext.vocab import GloVe
                 vocab = GloVe(
                     name=emb.name, dim=emb.dim,
-                    cache=os.path.join(ModuleConfigs.TMP_PATH, "torchtext"))
+                    cache=os.path.join(ModuleConfigs.get_tmp_path(), "torchtext"))
             elif emb.pretrained.lower() == 'fasttext':
                 from torchtext.vocab import FastText
                 return FastText()

@@ -232,15 +232,4 @@ def set_seed(seed):
     random.seed(seed)
     import numpy
     numpy.random.seed(seed)
-    try:
-        import torch
-        torch.manual_seed(seed)
-    except ModuleNotFoundError:
-        pass
-
-    try:
-        import tensorflow
-        tensorflow.compat.v1.set_random_seed(seed)
-    except ModuleNotFoundError:
-        pass
     logger.info("Random seed reset to %d", seed)

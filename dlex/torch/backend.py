@@ -4,7 +4,7 @@ import random
 import sys
 import traceback
 from datetime import datetime
-from typing import Tuple, Dict, List
+from typing import Tuple, Dict, List, Callable
 
 import numpy as np
 from tqdm import tqdm
@@ -47,7 +47,7 @@ class PytorchBackend(FrameworkBackend):
                 self.report.cv_num_folds = train_cfg.cross_validation
                 self.params.dataset.cv_current_fold = i + 1
                 self.params.dataset.cross_validation = train_cfg.cross_validation
-                self.report_queue.put(self.report)
+                self.update_report()
 
                 model, datasets = self.load_model("train")
 
@@ -58,7 +58,7 @@ class PytorchBackend(FrameworkBackend):
                 results.append(res)
                 report.results = {
                     metric: [r[metric] for r in results] for metric in results[0]}
-                self.report_queue.put(report)
+                self.update_report()
                 summary_writer.close()
 
             logger.info(f"Training finished. Results: {str(report.results)}")
@@ -70,7 +70,7 @@ class PytorchBackend(FrameworkBackend):
             res = self.train(
                 model, datasets, summary_writer,
                 tqdm_position=self.training_idx,
-                on_epoch_finished=lambda r: self.report_queue.put(r))
+                on_epoch_finished=self.update_report)
             report.results = res
             report.finish()
             summary_writer.close()
@@ -167,8 +167,8 @@ class PytorchBackend(FrameworkBackend):
         self.report.num_params = num_params
         self.report.num_trainable_params = num_trainable_params
 
-        use_cuda = torch.cuda.is_available()
-        if use_cuda and params.gpu:
+        if torch.cuda.is_available() and params.gpu:
+            logger.info("CUDA available: %s", torch.cuda.get_device_name(0))
             gpus = [f"cuda:{g}" for g in params.gpu]
             model = DataParellelModel(model, gpus)
             logger.info("Start training using %d GPU(s): %s", len(params.gpu), str(params.gpu))
@@ -179,8 +179,6 @@ class PytorchBackend(FrameworkBackend):
             model = DataParellelModel(model, ['cpu'])
 
         logger.debug("Dataset: %s. Model: %s", str(dataset_builder), str(model_cls))
-        if use_cuda:
-            logger.info("CUDA available: %s", torch.cuda.get_device_name(0))
 
         # Load checkpoint or initialize new training
         if args.load:
@@ -198,7 +196,7 @@ class PytorchBackend(FrameworkBackend):
             summary_writer: SummaryWriter,
             tqdm_desc="",
             tqdm_position=None,
-            on_epoch_finished=None):
+            on_epoch_finished: Callable[[], None] = None):
         """
         :param model:
         :param datasets:
@@ -344,7 +342,7 @@ class PytorchBackend(FrameworkBackend):
                             break
 
             if on_epoch_finished:
-                on_epoch_finished(report)
+                on_epoch_finished()
 
         return report.current_results
 
@@ -546,3 +544,6 @@ class PytorchBackend(FrameworkBackend):
         }
 
         return result, outputs
+
+    def set_seed(self, seed):
+        torch.manual_seed(seed)

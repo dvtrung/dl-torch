@@ -10,7 +10,13 @@ def get_model(params):
     """Return the model class by its name."""
     module_name, class_name = params.model.name.rsplit('.', 1)
     i = importlib.import_module(module_name)
-    return getattr(i, class_name)
+    try:
+        return getattr(i, class_name)
+    except AttributeError:
+        import inspect
+        class_names = [m[0] for m in inspect.getmembers(i, inspect.isclass) if m[1].__module__ == module_name]
+        raise AttributeError(
+            "%s not found in %s. Available class: %s" % (class_name, module_name, ', '.join(class_names)))
 
 
 def get_loss_fn(params):

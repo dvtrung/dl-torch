@@ -11,7 +11,7 @@ from dlex.utils.logging import logger
 from tensorflow.python.keras.callbacks import LearningRateScheduler, History, ModelCheckpoint, TensorBoard
 
 
-class TensorflowV2Instance(FrameworkBackend):
+class TensorflowV2Backend(FrameworkBackend):
     def __init__(
             self,
             argv=None,
@@ -62,19 +62,17 @@ class TensorflowV2Instance(FrameworkBackend):
         hist = History()
 
         # checkpoint
-        checkpoint_path = os.path.join(ModuleConfigs.SAVED_MODELS_PATH, params.config_path_prefix)
+        checkpoint_path = os.path.join(ModuleConfigs.get_saved_models_dir(), params.config_path_prefix)
         os.makedirs(checkpoint_path, exist_ok=True)
         model_checkpoint_latest = ModelCheckpoint(os.path.join(checkpoint_path, "latest.h5"))
         model_checkpoint_best = ModelCheckpoint(os.path.join(checkpoint_path, "best.h5"), save_best_only=True)
 
         # tensorboard
-        log_path = os.path.join("logs", params.config_path_prefix)
-        os.makedirs(log_path, exist_ok=True)
-        tensorboard_callback = TensorBoard(log_dir=log_path)
+        tensorboard_callback = TensorBoard(log_dir=self.configs.log_dir)
 
         start_time = time.time()
 
-        checkpoint_path = os.path.join(ModuleConfigs.SAVED_MODELS_PATH, params.config_path, "latest.h5")
+        checkpoint_path = os.path.join(ModuleConfigs.get_saved_models_dir(), params.config_path, "latest.h5")
         logger.info("Load checkpoint from %s" % checkpoint_path)
         model.load_weights(checkpoint_path)
 
