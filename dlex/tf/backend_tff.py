@@ -148,3 +148,7 @@ class TensorflowFederatedBackend(FrameworkBackend):
         for round in tqdm(range(self.params.train.num_epochs), desc="Round"):
             state, metrics = iterative_process.next(state, datasets.train.data)
             logger.info("Round %d: %s", round + 1, str(metrics))
+
+        evaluation = tff.learning.build_federated_evaluation(model_fn)
+        test_metrics = evaluation(state.model, datasets.test.data)
+        logger.info(str(test_metrics))
