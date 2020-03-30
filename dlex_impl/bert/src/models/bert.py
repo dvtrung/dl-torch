@@ -1,7 +1,7 @@
 import bert
-from dlex import MainConfig
+from dlex import Params
 from dlex.datasets.tf import Dataset
-from dlex.tf import BaseModel_v1
+from dlex.tf.models import BaseModelV1
 import tensorflow_hub as hub
 import tensorflow as tf
 from dlex.utils import logger
@@ -9,8 +9,8 @@ from dlex.utils import logger
 BERT_MODEL_HUB = "https://tfhub.dev/google/bert_uncased_L-12_H-768_A-12/1"
 
 
-class BERT(BaseModel_v1):
-    def __init__(self, params: MainConfig, dataset: Dataset):
+class BERT(BaseModelV1):
+    def __init__(self, params: Params, dataset: Dataset):
         super().__init__(params, dataset)
         self._optimizer = None
         self._metric_ops = None

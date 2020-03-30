@@ -1,9 +1,9 @@
-from dlex import MainConfig
+from dlex import Params
 from dlex.datasets.tf import Dataset
-from dlex.tf import BaseModel_v1
+from dlex.tf import BaseModelV1
 
 
-class DNN(BaseModel_v1):
-    def __init__(self, params: MainConfig, dataset: Dataset):
+class DNN(BaseModelV1):
+    def __init__(self, params: Params, dataset: Dataset):
         super().__init__(params, dataset)
 

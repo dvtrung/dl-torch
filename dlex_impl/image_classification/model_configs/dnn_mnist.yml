@@ -5,7 +5,7 @@ dataset:
   name: dlex.datasets.image.mnist.MNIST
   output_format: default
 train:
-  eval: [valid, test]
+  valid_set: valid
   batch_size: 256
   num_epochs: 30
   optimizer:
@@ -13,4 +13,5 @@ train:
     lr: 0.001
   max_grad_norm: 1.0
 test:
+  test_sets: [test]
   metrics: [acc]

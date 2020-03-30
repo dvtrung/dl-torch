@@ -16,7 +16,7 @@ model:
 dataset:
   name: ~dataset
 train:
-  eval: [dev, test]
+  valid_set: dev
   batch_size: 1024
   num_epochs: 30
   optimizer:
@@ -25,4 +25,5 @@ train:
   max_grad_norm: 1.0
   log_every: 0.1e
 test:
+  test_sets: test
   metrics: [err]

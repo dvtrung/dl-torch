@@ -1,13 +1,13 @@
 from typing import List, Union, Tuple
 
-from dlex import MainConfig
+from dlex import Params
 from dlex.datasets import DatasetBuilder
 from dlex.datasets.tf import Dataset
 from tensorflow import keras
 
 
 class MNIST(DatasetBuilder):
-    def __init__(self, params: MainConfig):
+    def __init__(self, params: Params):
         super().__init__(params, tensorflow_cls=TensorflowMNIST)
 
 

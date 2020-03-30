@@ -11,7 +11,7 @@ import pandas as pd
 import bert
 from bert import run_classifier, optimization, tokenization
 
-from dlex import MainConfig
+from dlex import Params
 from dlex.datasets import DatasetBuilder
 from dlex.datasets.tf import Dataset
 
@@ -45,7 +45,7 @@ def create_tokenizer_from_hub_module():
 
 
 class IMDB(DatasetBuilder):
-    def __init__(self, params: MainConfig):
+    def __init__(self, params: Params):
         super().__init__(params, [
             'http://ai.stanford.edu/~amaas/data/sentiment/aclImdb_v1.tar.gz'
         ])
