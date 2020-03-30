@@ -4,7 +4,7 @@ import importlib
 import json
 import os
 
-from dlex.configs import MainConfig
+from dlex.configs import Params
 from dlex.datasets.builder import DatasetBuilder
 
 
@@ -12,10 +12,12 @@ def get_model(params):
     """Return the model class by its name."""
     module_name, class_name = params.model.name.rsplit('.', 1)
     i = importlib.import_module(module_name)
-    return getattr(i, class_name)
+    model_cls = getattr(i, class_name)
+    assert model_cls, "Model not found."
+    return model_cls
 
 
-def get_dataset(params: MainConfig) -> DatasetBuilder:
+def get_dataset(params: Params) -> DatasetBuilder:
     """Return the dataset class by its name."""
     if '.' in params.dataset.name:
         module_name, class_name = params.dataset.name.rsplit('.', 1)

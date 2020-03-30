@@ -2,7 +2,7 @@ import abc
 import random
 from typing import List
 
-from dlex.utils import logger
+import torch
 from torch.utils.data import Dataset as PytorchDataset
 from torch.utils.data.dataloader import default_collate, DataLoader
 
@@ -82,4 +82,18 @@ class Dataset(PytorchDataset):
             self[start:end] if start != 0 or (end != -1 and end != len(self)) else self,
             batch_size=batch_size,
             collate_fn=self.collate_fn, sampler=self._sampler,
-            num_workers=self.params.dataset.num_workers)
+            num_workers=self.params.args.num_workers)
+
+    @property
+    def input_shape(self):
+        return self.builder.input_shape
+
+    @property
+    def output_shape(self):
+        return self.builder.output_shape
+
+    def maybe_cuda(self, x):
+        if self.params.gpu and torch.cuda.is_available():
+            return x.cuda()
+        else:
+            return x

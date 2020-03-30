@@ -1,14 +1,18 @@
 import abc
 import os
 import shutil
+from collections import namedtuple
 from typing import Tuple, List, Union
 
 import sklearn.metrics as metrics
 
-from dlex.configs import ModuleConfigs, MainConfig
+from dlex.configs import ModuleConfigs, Params
 # from dlex.torch import BatchItem
 from dlex.utils.logging import logger
 from dlex.utils.utils import maybe_download, maybe_unzip, prompt
+
+
+ModelStringOutput = namedtuple("ModelOutput", "input reference prediction")
 
 
 class DatasetBuilder:
@@ -18,7 +22,7 @@ class DatasetBuilder:
 
     def __init__(
             self,
-            params: MainConfig,
+            params: Params,
             downloads: List[Union[str, Tuple[str, str]]] = None,
             pytorch_cls=None,
             tensorflow_cls=None,
@@ -42,7 +46,7 @@ class DatasetBuilder:
         return os.path.join(self.get_working_dir(), "processed")
 
     @property
-    def configs(self) -> MainConfig:
+    def configs(self) -> Params:
         return self.params.dataset
 
     def prepare(self, download=False, preprocess=False):
@@ -100,6 +104,7 @@ class DatasetBuilder:
                 shutil.rmtree(self.get_processed_data_dir(), ignore_errors=True)
                 while os.path.exists(self.get_processed_data_dir()):
                     pass
+            os.makedirs(self.get_processed_data_dir(), exist_ok=True)
             return True
         return False
 
@@ -148,7 +153,7 @@ class DatasetBuilder:
         elif metric == "mse":
             return metrics.mean_squared_error(ref, pred)
         else:
-            raise NotImplementedError
+            raise ValueError(f"Metric {metric} is not defined")
 
     @staticmethod
     def is_better_result(metric: str, best_result: float, new_result: float) -> bool:
@@ -170,7 +175,7 @@ class DatasetBuilder:
             raise Exception("Result comparison is not defined: %s" % metric)
 
     @abc.abstractmethod
-    def format_output(self, y_pred, batch_item) -> Tuple[str, str, str]:
+    def format_output(self, y_pred, batch_item) -> ModelStringOutput:
         """Get representations of model inputs and results in readable format
 
         :param y_pred:
@@ -179,13 +184,19 @@ class DatasetBuilder:
         :return: A tuple containing string representations of input, ground-truth and predicted values
         """
         if self.params.dataset.output_format is None:
-            return str(batch_item.X), str(batch_item.Y), str(y_pred)
+            return ModelStringOutput(str(batch_item.X), str(batch_item.Y), str(y_pred))
         else:
             raise Exception("Dataset method 'format_output' must be implemented")
 
+    def run_evaluation_script(
+            self,
+            result_path,
+            **kwargs):
+        raise NotImplemented
+
 
 class KaggleDatasetBuilder(DatasetBuilder):
-    def __init__(self, params: MainConfig, competition: str):
+    def __init__(self, params: Params, competition: str):
         super().__init__(params)
 
         import kaggle

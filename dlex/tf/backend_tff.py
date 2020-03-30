@@ -3,7 +3,7 @@ import logging
 import tensorflow as tf
 import tensorflow_federated as tff
 from dlex import FrameworkBackend
-from dlex.configs import Configs
+from dlex.configs import Configs, Params
 from dlex.tf.models.base_tff import TensorflowFederatedModel
 from dlex.tf.utils.model_utils import get_model
 from dlex.utils import Datasets, logger, set_seed
@@ -14,20 +14,14 @@ from tqdm import tqdm
 class TensorflowFederatedBackend(FrameworkBackend):
     def __init__(
             self,
-            argv=None,
-            params=None,
-            configs: Configs = None,
+            params: Params = None,
             training_idx: int = None,
             report_queue=None):
-        super().__init__(argv, params, configs, training_idx, report_queue)
-        self.params = params
-        self.configs = configs
-        self.args = configs.args
+        super().__init__(params, training_idx, report_queue)
 
         logging.getLogger("tensorflow").setLevel(logging.INFO)
         logger.info(f"Training started ({training_idx}).")
 
-        self.report.metrics = params.test.metrics
         self.report.results = {m: None for m in self.report.metrics}
 
     def run_train(self):

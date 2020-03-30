@@ -5,7 +5,12 @@ from dlex.torch.utils.ops_utils import maybe_cuda
 from torch import LongTensor
 
 
-def pad_sequence(data: List[List[Any]], padding_value, output_tensor=False, dim: int = 2):
+def pad_sequence(
+        data: List[List[Any]],
+        padding_value,
+        max_len: int = None,
+        output_tensor: bool = False,
+        dim: int = 2):
     if dim == 3:
         values = []
         lengths = []
@@ -15,9 +20,9 @@ def pad_sequence(data: List[List[Any]], padding_value, output_tensor=False, dim:
             lengths.append(length_)
         max_len = max(val.shape[1] for val in values)
         values = [torch.cat([val, maybe_cuda(torch.zeros([val.shape[0], max_len - val.shape[1], val.shape[2]]))], 1) for val in values]
-        return maybe_cuda(torch.stack(values)), maybe_cuda(torch.stack(lengths))
+        return torch.stack(values), torch.stack(lengths)
     else:
-        max_len = max([len(seq) for seq in data])
+        max_len = max_len or max([len(seq) for seq in data])
 
         i = 0
         while len(data[i]) == 0:
@@ -37,7 +42,7 @@ def pad_sequence(data: List[List[Any]], padding_value, output_tensor=False, dim:
         else:
             lengths = [max(len(seq), 1) for seq in data]
             data = [seq + [padding_value] * (max_len - len(seq)) for seq in data]
-            return maybe_cuda(torch.tensor(data)), maybe_cuda(LongTensor(lengths))
+            return torch.tensor(data), LongTensor(lengths)
 
 
 def get_mask(

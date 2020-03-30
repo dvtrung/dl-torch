@@ -12,6 +12,10 @@ from dlex.utils import logger, table2str, logging
 from .configs import Configs, Environment
 
 
+manager = multiprocessing.Manager()
+report_queue = manager.Queue()
+
+
 def launch_evaluating(backend: str, params, configs, report=None):
     if backend is None:
         raise ValueError("No backend specified. Please add it in config file.")
@@ -20,8 +24,13 @@ def launch_evaluating(backend: str, params, configs, report=None):
         train(params, configs, report)
         # runpy.run_module("dlex.sklearn.train", run_name=__name__)
     elif backend == "pytorch" or backend == "torch":
-        from dlex.torch.evaluate import main
-        main(params, configs, report)
+        from dlex.torch import PytorchBackend
+        be = PytorchBackend(params, 0, report_queue)
+        be.run_evaluate()
+    elif backend == "tensorflow_v1":
+        from dlex.tf.instance_v1 import TensorflowV1Backend
+        be = TensorflowV1Backend(params)
+        be.run_evaluate()
     elif backend == "tensorflow" or backend == "tf":
         runpy.run_module("dlex.tf.train", run_name=__name__)
     else:
@@ -110,11 +119,7 @@ def main():
     manager = multiprocessing.Manager()
     all_reports = manager.dict()
 
-    if configs.args.env:
-        envs = [e for e in configs.environments if e.name in args.env]
-    else:
-        envs = [env for env in configs.environments if env.default]
-
+    envs = [e for e in configs.environments if e.name in configs.env_names]
     for env in envs:
         all_reports[env.name] = manager.dict()
         # init result list

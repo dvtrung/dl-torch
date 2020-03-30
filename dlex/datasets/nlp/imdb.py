@@ -2,7 +2,7 @@ import os
 
 from torchtext import data, datasets
 
-from dlex.configs import MainConfig, ModuleConfigs
+from dlex.configs import Params, ModuleConfigs
 from dlex.datasets.nlp.builder import NLPDataset
 from dlex.datasets.torch import Dataset
 from dlex.torch import Batch
@@ -10,7 +10,7 @@ from dlex.torch import BatchItem
 
 
 class IMDB(NLPDataset):
-    def __init__(self, params: MainConfig):
+    def __init__(self, params: Params):
         super().__init__(params)
 
     def maybe_preprocess(self, force=False):

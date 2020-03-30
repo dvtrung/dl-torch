@@ -7,7 +7,7 @@ import nltk
 import numpy as np
 from tqdm import tqdm
 
-from dlex.configs import MainConfig
+from dlex.configs import Params
 from dlex.datasets.builder import DatasetBuilder
 from dlex.datasets.nlp.utils import Vocab
 from dlex.utils.logging import logger, beautify
@@ -15,7 +15,7 @@ from .utils import read_htk, wav2htk, audio2wav
 
 
 class VoiceDataset(DatasetBuilder):
-    def __init__(self, params: MainConfig):
+    def __init__(self, params: Params):
         super().__init__(params)
         self._mean = None
         self._variance = None

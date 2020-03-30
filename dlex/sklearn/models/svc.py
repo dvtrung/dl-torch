@@ -1,10 +1,10 @@
 from sklearn.svm import SVC as _SVC
 
-from dlex.configs import MainConfig
+from dlex.configs import Params
 
 
 class SVC(_SVC):
-    def __init__(self, params: MainConfig, dataset):
+    def __init__(self, params: Params, dataset):
         super().__init__(
             gamma='scale',
             kernel=params.model.kernel or 'rbf')

@@ -1,13 +1,13 @@
 import torch.nn as nn
 
 import torch
-from dlex.configs import MainConfig
+from dlex.configs import Params
 from dlex.torch.models.base import BaseModel
 from dlex.torch import Batch
 
 
 class SequenceClassifier(BaseModel):
-    def __init__(self, params: MainConfig, dataset):
+    def __init__(self, params: Params, dataset):
         super().__init__(params, dataset)
 
         embedding_dim = self.params.model.embedding_dim or self.params.dataset.embedding_dim

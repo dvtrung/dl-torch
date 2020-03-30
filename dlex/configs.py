@@ -3,39 +3,44 @@ import argparse
 import itertools
 import os
 import re
+import tempfile
+from collections import OrderedDict, defaultdict
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import List, Tuple, Dict, Any, Union
+from typing import List, Tuple, Any, Union
 
 import yaml
-from dlex.utils.logging import set_log_level, set_log_dir, logger
+from dlex.utils.logging import set_log_dir, logger
 
 DEFAULT_TMP_PATH = os.path.expanduser(os.path.join("~", "tmp"))
-DEFAULT_DATASETS_PATH = os.path.expanduser(os.path.join("~", "tmp", "datasets"))
-DEFAULT_SAVED_MODELS_DIR = "saved_models"
-DEFAULT_LOG_DIR = "logs"
+DEFAULT_DATASET_PATH = os.path.expanduser(os.path.join("~", "tmp", "datasets"))
 
 
 class ModuleConfigs:
     @staticmethod
     def get_datasets_path():
-        return os.getenv("DLEX_DATASETS_PATH", DEFAULT_DATASETS_PATH)
+        return os.getenv("DLEX_DATASET_PATH", DEFAULT_DATASET_PATH)
 
     @staticmethod
     def get_tmp_path():
         return os.path.join(os.getenv("DLEX_TMP_PATH", DEFAULT_TMP_PATH), "dlex")
 
     @staticmethod
-    def get_saved_models_dir():
-        return os.getenv("DLEX_SAVED_MODELS_DIR", DEFAULT_SAVED_MODELS_DIR)
+    def get_checkpoint_dir():
+        return os.getenv("DLEX_CHECKPOINT_PATH", "checkpoints")
 
     @staticmethod
     def get_log_dir():
-        return os.getenv("DLEX_LOG_DIR", DEFAULT_LOG_DIR)
+        return os.getenv("DLEX_LOG_DIR", "logs")
+
+    @staticmethod
+    def get_output_dir():
+        return os.getenv("DLEX_OUTPUT_DIR", "outputs")
 
 
 class AttrDict(dict):
     _variables = None
+    _overridden_params = None
 
     """Dictionary with key as property."""
     def __init__(self, *args, **kwargs):
@@ -45,8 +50,18 @@ class AttrDict(dict):
         else:
             variables = {}
 
+        overridden_params = None
+        if '_overridden_params' in kwargs:
+            overridden_params = kwargs['_overridden_params']  # type: dict
+            del kwargs['_overridden_params']
+
         super(AttrDict, self).__init__(*args, **kwargs)
         self.__dict__ = self
+
+        if overridden_params:
+            for key in overridden_params:
+                if key not in self or not isinstance(self[key], dict):
+                    self[key] = overridden_params[key]
 
         for key in self:
             if isinstance(self[key], Placeholder):
@@ -54,13 +69,17 @@ class AttrDict(dict):
                     self[key] = variables[self[key].name]
                 else:
                     self[key] = None
-            if isinstance(self[key], dict):
-                self[key] = AttrDict(self[key], _variables=variables)
+            elif isinstance(self[key], dict):
+                self[key] = AttrDict(
+                    self[key],
+                    _variables=variables,
+                    _overridden_params=overridden_params.get(key, None) if overridden_params else None)
 
         self._variables = variables
+        self._overridden_params = overridden_params
 
     def __getattr__(self, item: str):
-        # logger.warning("Access to unset param %s", item)
+        logger.warning("Access to unset param %s", item)
         return None
 
     def set(self, prop: Union[str, list], value):
@@ -102,7 +121,7 @@ class AttrDict(dict):
     def to_dict(self, level=1):
         d = {}
         for key in self:
-            if key == '_variables':
+            if key in ['_variables', '_overridden_params']:
                 continue
             if isinstance(self[key], AttrDict) and level > 1:
                 d[key] = self[key].to_dict(level=level - 1)
@@ -164,15 +183,17 @@ class TrainConfig:
     num_workers: int = None
     batch_size: int = None
     lr_scheduler: dict = None
-    eval: list = field(default_factory=lambda: ["test"])
+    train_set: str = "train"
+    valid_set: str = None
     max_grad_norm: float = 5.0
     save_every: str = "1e"
-    log_every: str = "5s"
+    log_every: str = None
     cross_validation: int = None
     early_stop: int = None
     select_model: str = "best"
     show_report: bool = False
     show_progress: bool = False
+    ema_decay_rate: float = None
 
 
 @dataclass
@@ -184,38 +205,67 @@ class TestConfig:
     :type metrics: list
     """
     batch_size: int = None
-    metrics: list = field(default_factory=lambda: ["acc"])
+    metrics: List[str] = field(default_factory=lambda: ["acc"])
     log_every: str = "5s"
+    output: str = None
+    test_sets: List[str] = None
 
 
-class MainConfig(AttrDict):
+class Params(AttrDict):
     """Dictionary with key as property."""
     model = None
-    training_id = "default"
+    tag = "default"
     random_seed = 1
     shuffle = False
-    batch_size = None
-    config_path = None
-    config_name = None
     train: TrainConfig
     test: TestConfig
-    verbose: bool
     gpu: List[int] = None
 
-    def __init__(self, *args, **kwargs):
-        train = TrainConfig(**AttrDict(args[0]['train'], _variables=kwargs.get('_variables')).to_dict()) \
-            if "train" in args[0] else None
-        test = TestConfig(**AttrDict(args[0]['test'], _variables=kwargs.get('_variables')).to_dict()) \
-            if "test" in args[0] else TestConfig()
+    def __init__(
+            self,
+            configs,
+            env_name,
+            yaml_configs,
+            _variables: OrderedDict = None,
+            _overridden_params: AttrDict = None):
+        train_attr_dict = AttrDict(
+            yaml_configs['train'],
+            _variables=_variables,
+            _overridden_params=_overridden_params.get('train', None))
+        train = TrainConfig(**train_attr_dict.to_dict()) if "train" in yaml_configs else TrainConfig()
 
-        super().__init__(*args, **kwargs)
+        test_attr_dict = AttrDict(
+            yaml_configs['test'],
+            _variables=_variables,
+            _overridden_params=_overridden_params.get('test', None))
+        test = TestConfig(**test_attr_dict.to_dict()) if "test" in yaml_configs else TestConfig()
+
+        super().__init__(yaml_configs, _variables=_variables, _overridden_params=_overridden_params)
 
         self.train = train
         self.test = test
+        self.configs = configs
+        self.env_name = env_name
+        self.variable_values = list(_variables.values()) if _variables else None
 
-    def __getattr__(self, item: str):
-        # logger.warning("Access to unset param %s", item)
-        return None
+        self.tag = ",".join(sorted([f"{name}={str(val)}" for name, val in _variables.items()])) if _variables else None
+
+    @property
+    def args(self):
+        return self.configs.args
+
+    @property
+    def log_dir(self):
+        return self.configs.log_dir
+
+    @property
+    def checkpoint_dir(self):
+        path = self.configs.checkpoint_dir
+        if self.env_name != "default":
+            path = os.path.join(path, self.env_name)
+            if self.tag:
+                path = os.path.join(path, self.tag)
+        return path
 
 
 class Loader(yaml.SafeLoader):
@@ -285,7 +335,7 @@ class Environment:
     variable_values: List[List[Any]] = None
     variables_list: List[Tuple[Any]] = None
 
-    configs_list: List[MainConfig] = None
+    configs_list: List[Params] = None
     report: Any = None
     desc: str = None
 
@@ -299,7 +349,8 @@ class Configs:
         self.mode = mode
         self.parse_args(argv)
 
-        self.training_id = self.args.training_id or datetime.now().strftime('%Y%m%d-%H%M%S')
+        # self.training_id = self.args.training_id or datetime.now().strftime('%Y%m%d-%H%M%S')
+        self.training_id = datetime.now().strftime('%Y%m%d-%H%M%S')
 
         with open(self.config_path, 'r') as stream:
             try:
@@ -332,7 +383,6 @@ class Configs:
         return cls()
 
     def init_dirs(self):
-        logger.info("Log dir: %s" % self.log_dir)
         os.makedirs(self.log_dir, exist_ok=True)
         os.makedirs(os.path.join(self.log_dir, "results"), exist_ok=True)
         # shutil.rmtree(params.output_dir, ignore_errors=True)
@@ -385,8 +435,7 @@ class Configs:
             help="Values to override configs read from file"
         )
         parser.add_argument(
-            '--env', default=["default"],
-            nargs='+', dest="env", help="List of environments")
+            '--env', type=str, dest="env", help="List of environments")
         parser.add_argument(
             '--gui', action="store_true",
             help="GUI mode")
@@ -401,7 +450,7 @@ class Configs:
         parser.add_argument(
             '--gpu_memory_max',
             help="Maximum used memory (MiB) available for the device to be used", default=100)
-        parser.add_argument('--training_id', help="Training ID")
+        # parser.add_argument('--training_id', help="Training ID")
 
         if self.mode == "train":
             parser.add_argument(
@@ -444,6 +493,9 @@ class Configs:
 
         if self.mode == "train":
             parser.add_argument(
+                '--checkpoint-tag', type=str, default=None,
+                help="Tag of the checkpoint")
+            parser.add_argument(
                 '-p, --num-processes', type=int, default=0, metavar='N', dest='num_processes',
                 help="number of training processes running at a time")
             parser.add_argument(
@@ -457,10 +509,15 @@ class Configs:
                 '--output_test_samples', action="store_true",
                 help="Output samples after evaluation."
             )
+
+            parser.add_argument(
+                "--test-set", default=None, dest="test_sets", nargs='+',
+                help="Set to evaluate"
+            )
         elif self.mode == "test":
             parser.add_argument(
-                "--eval-set", default="test",
-                help="Set to evaluate on (test / valid / train)"
+                "--set", default=None, dest="test_sets", nargs='+',
+                help="Set to evaluate"
             )
         elif self.mode == "infer":
             parser.add_argument(
@@ -483,16 +540,34 @@ class Configs:
         return self._environments
 
     @property
+    def env_names(self) -> List[str]:
+        if self.args.env:
+            return sorted(self.args.env.split(' '))
+        else:
+            return ['default']
+
+    @property
     def log_dir(self):
         """Get logging directory based on model configs."""
-        log_dir = os.path.join(ModuleConfigs.get_log_dir(), self.config_name, "_".join(self.args.env))
-        return os.path.join(log_dir, *self.training_id.split('-'))
+        env_name = "_".join(self.env_names)
+        if env_name == "default":
+            log_dir = os.path.join(ModuleConfigs.get_log_dir(), self.config_name)
+        else:
+            log_dir = os.path.join(ModuleConfigs.get_log_dir(), self.config_name, env_name)
+
+        if self.training_id:
+            return os.path.join(log_dir, *self.training_id.split('-'))
+        else:
+            return log_dir
+
+    @property
+    def checkpoint_dir(self):
+        return os.path.join(ModuleConfigs.get_checkpoint_dir(), self.config_name)
 
     @property
     def output_dir(self):
         """Get output directory based on model configs"""
-        result_dir = os.path.join(ModuleConfigs.get_tmp_path(), "model_outputs", self.config_name)
-        return result_dir
+        return os.path.join(ModuleConfigs.get_output_dir(), self.config_name)
 
     @property
     def report_path(self):
@@ -500,17 +575,39 @@ class Configs:
             os.makedirs("model_reports")
         return os.path.join(
             "model_reports",
-            f"{self.config_name}_{'_'.join(self.args.env)}_{self.training_id.replace('-', '_')}.md")
+            f"{self.config_name}_{'_'.join(self.env_names)}_{self.training_id.replace('-', '_')}.md")
+
+    def create_params(self, env_name, variables=None, overridden_params: dict = None) -> Params:
+        params = Params(
+            self,
+            env_name,
+            self.yaml_params,
+            _variables=variables,
+            _overridden_params=overridden_params or {})
+
+        args = self.args
+        params.test.test_sets = args.test_sets or params.test.test_sets
+
+        return params
 
     def load_configs(self):
         if 'env' in self.yaml_params:
+            for env_name in self.env_names:
+                if env_name not in self.yaml_params['env'].keys():
+                    logger.warn("Environment %s not found" % env_name)
+
             for env_name, env_prop in self.yaml_params['env'].items():
+                if env_name not in self.env_names:
+                    continue
+
                 # Unfold params for every variable combination
                 configs_list = []  # there are multiple configs if variables are chosen from lists
 
                 variables_list = []
                 variable_names = list(env_prop['variables'].keys()) if 'variables' in env_prop else []
                 variable_values = list(env_prop['variables'].values()) if 'variables' in env_prop else []
+                overridden_params = env_prop['params'] if 'params' in env_prop \
+                    else defaultdict(default_factory=lambda: None)
 
                 # fill default values
                 if 'default' in self.yaml_params['env'] and 'variables' in self.yaml_params['env']['default']:
@@ -523,26 +620,13 @@ class Configs:
                 variable_values = [val if isinstance(val, list) else [val] for val in variable_values]
 
                 for variable_values_combination in itertools.product(*variable_values):
-                    variables = {name: val for name, val in zip(variable_names, variable_values_combination)}
-                    configs = MainConfig(self.yaml_params, _variables=variables)
-
-                    # Assign extra parameters from args
-                    configs.mode = self.mode
-                    configs.config_path = self.config_path
-                    configs.config_path_prefix = self.config_path_prefix
-                    configs.config_name = self.config_name
-                    configs.verbose = bool(self.args.verbose)
-                    configs.dataset.num_workers = self.args.num_workers
-                    configs.log_dir = os.path.join(self.log_dir, env_name)
-                    if configs.train is not None and configs.train.num_workers is None:
-                        configs.train.num_workers = self.args.num_workers
-
-                    # Some config values are overwritten by command arguments
-                    if self.args.batch_size is not None:
-                        configs.train.batch_size = self.args.batch_size
+                    variables = OrderedDict()
+                    for name, val in zip(variable_names, variable_values_combination):
+                        variables[name] = val
+                    params = self.create_params(env_name, variables, overridden_params)
 
                     variables_list.append(tuple([variables[name] for name in variable_names]))
-                    configs_list.append(configs)
+                    configs_list.append(params)
 
                 report = {}
 
@@ -574,20 +658,10 @@ class Configs:
                     report=report
                 ))
         else:
-            configs = MainConfig(self.yaml_params)
-            configs.mode = self.mode
-            configs.config_path = self.config_path
-            configs.config_path_prefix = self.config_path_prefix
-            configs.config_name = self.config_name
-            configs.log_dir = self.log_dir
-            configs.verbose = bool(self.args.verbose)
-            configs.dataset.num_workers = self.args.num_workers
-            if configs.train is not None and configs.train.num_workers is None:
-                configs.train.num_workers = self.args.num_workers
-
-            # Some config values are overwritten by command arguments
-            if self.args.batch_size is not None:
-                configs.train.batch_size = self.args.batch_size
+            params = self.create_params("default")
+            params.mode = self.mode
+            params.config_path = self.config_path
+            params.tag = "default"
 
             self._environments.append(Environment(
                 name="default",
@@ -595,7 +669,42 @@ class Configs:
                 variable_names=[],
                 variable_values=[],
                 variables_list=[tuple()],
-                configs_list=[configs],
+                configs_list=[params],
                 report=dict(type='raw', reduce=[])
             ))
 
+    def get_default_params(self):
+        return self.environments[0].configs_list[0]
+
+
+def yaml_configs(content: str, argv=None):
+    """
+    Decorator to load configs from string
+    :param content:
+    :param argv:
+    :return:
+    """
+    def init_configs(func):
+        def wrapper(*args, **kwargs):
+            with tempfile.NamedTemporaryFile("w", suffix=".yml") as f:
+                f.write(content)
+                f.flush()
+                configs = Configs("train", ["-c", f.name, *(argv or [])])
+                func(*args, **kwargs, configs=configs)
+        return wrapper
+    return init_configs
+
+
+class YamlConfigs:
+    def __init__(self, content, argv):
+        f = tempfile.NamedTemporaryFile("w", suffix=".yml")
+        f.write(content)
+        f.flush()
+        self.configs = Configs("train", ["-c", f.name, *(argv or [])])
+        self.f = f
+
+    def __enter__(self):
+        return self.configs
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.f.close()

@@ -1,6 +1,6 @@
 import random
 
-from dlex.utils import logger
+from dlex.utils import logger, set_seed
 from sklearn.model_selection import train_test_split
 
 
@@ -23,13 +23,16 @@ class SklearnDataset:
     def init_dataset(self, X, y):
         self.X, self.y = X, y
 
-        if self.params.dataset.cross_validation:
+        if self.params.train.cross_validation:
             data = list(zip(X, y))
             random.shuffle(data)
             X, y = zip(*data)
+
             logger.info("Initializing fold %d...", self.configs.cv_current_fold)
-            pos_start = len(y) * (self.params.dataset.cv_current_fold - 1) // self.params.dataset.cross_validation
-            pos_end = pos_start + len(y) // self.params.dataset.cross_validation
+
+            pos_start = len(y) * (self.configs.cv_current_fold - 1) // self.configs.cv_num_folds
+            pos_end = pos_start + len(y) // self.configs.cv_num_folds
+
             self.X_train = X[:pos_start] + X[pos_end:]
             self.X_test = X[pos_start:pos_end]
             self.y_train = y[:pos_start] + y[pos_end:]

@@ -1,29 +1,46 @@
 from dataclasses import dataclass
+from typing import List, Dict, Any
 
 
 @dataclass
 class Datasets:
-    def __init__(self, backend, train=None, valid=None, test=None):
+    def __init__(
+            self,
+            backend: str,
+            builder,
+            train_set: str,
+            valid_set: str,
+            test_sets: List[str]):
         self.backend = backend
-        self.train = train
-        self.valid = valid
-        self.test = test
+        self.builder = builder  # type: dlex.datasets.DatasetBuilder
+        self._train = None
+        self._valid = None
+        self._tests = {}
+        self._train_set = train_set
+        self._valid_set = valid_set
+        self._test_sets = test_sets
 
-    def load_dataset(self, builder, mode):
+    @property
+    def wrapper_fn(self):
         if self.backend == "tensorflow":
-            fn = builder.get_tensorflow_wrapper
+            return self.builder.get_tensorflow_wrapper
         elif self.backend == "pytorch":
-            fn = builder.get_pytorch_wrapper
+            return self.builder.get_pytorch_wrapper
 
-        if mode == "train":
-            self.train = fn(mode)
-        elif mode == "test":
-            self.test = fn(mode)
-        elif mode in {"valid", "dev"}:
-            self.valid = fn(mode)
+    @property
+    def train_set(self):
+        if self._train_set and not self._train:
+            self._train = self.wrapper_fn(self._train_set)
+        return self._train
 
-    def get_dataset(self, mode):
-        if mode == "test":
-            return self.test
-        elif mode in {"valid", "dev"}:
-            return self.valid
+    @property
+    def valid_set(self):
+        if self._valid_set and not self._valid:
+            self._valid = self.wrapper_fn(self._valid_set)
+        return self._valid
+
+    @property
+    def test_sets(self) -> Dict[str, Any]:
+        if self._test_sets and not self._tests:
+            self._tests = {ts: self.wrapper_fn(ts) for ts in self._test_sets}
+        return self._tests

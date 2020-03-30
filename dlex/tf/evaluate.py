@@ -4,7 +4,7 @@ from typing import Tuple
 from tensorflow.python.keras.optimizers import SGD
 from tqdm import tqdm
 
-from dlex.configs import Configs, MainConfig, ModuleConfigs
+from dlex.configs import Configs, Params, ModuleConfigs
 from dlex.datasets.torch import Dataset
 from dlex.tf.models import BaseModel
 from dlex.utils.logging import logger
@@ -15,7 +15,7 @@ from dlex.tf.utils.model_utils import get_model, get_dataset
 def evaluate(
         model: BaseModel,
         dataset: Dataset,
-        params: MainConfig,
+        params: Params,
         save_result=False,
         output=False,
         summary_writer=None) -> Tuple[dict, dict, list]:
@@ -64,7 +64,7 @@ def main(argv=None):
         metrics=["acc"])
 
     # checkpoint
-    checkpoint_path = os.path.join(ModuleConfigs.get_saved_models_dir(), params.config_path, "latest.h5")
+    checkpoint_path = os.path.join(configs.checkpoint_dir, "latest.h5")
     logger.info("Load checkpoint from %s" % checkpoint_path)
     model.load_weights(checkpoint_path)
 

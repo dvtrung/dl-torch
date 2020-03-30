@@ -69,10 +69,11 @@ class CursesManager:
         self.main_screen.refresh()
         return idx_to_key[selection] if selection is not None else None
 
-    def refresh(self):
+    def refresh(self, clear=False):
         try:
             # os.system('clear')
-            # self.main_screen.clear()
+            if clear:
+                self.main_screen.clear()
             self.main_screen.move(0, 0)
             self.main_screen.addstr(0, 0, self.main_text)
         except Exception:

@@ -1,6 +1,5 @@
 from dlex.datasets.torch import Dataset
 from dlex.torch import Batch
-from dlex.torch.utils.ops_utils import maybe_cuda
 
 
 class PytorchImageDataset(Dataset):
@@ -9,7 +8,7 @@ class PytorchImageDataset(Dataset):
 
     def collate_fn(self, batch) -> Batch:
         ret = super().collate_fn(batch)
-        return Batch(X=maybe_cuda(ret[0]), Y=maybe_cuda(ret[1]))
+        return Batch(X=self.maybe_cuda(ret[0]), Y=self.maybe_cuda(ret[1]))
 
     @property
     def num_channels(self):

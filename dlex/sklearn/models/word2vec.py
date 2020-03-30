@@ -1,10 +1,10 @@
 from gensim.sklearn_api import W2VTransformer
 
-from dlex.configs import MainConfig
+from dlex.configs import Params
 
 
 class Word2Vec(W2VTransformer):
-    def __init__(self, params: MainConfig):
+    def __init__(self, params: Params):
         cfg = params.model
         super().__init__(
             size=cfg.dimensions,

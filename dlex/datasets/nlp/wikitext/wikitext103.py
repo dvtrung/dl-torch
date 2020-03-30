@@ -3,7 +3,7 @@ import os
 from sklearn.metrics import accuracy_score
 from torchtext import data, datasets
 
-from dlex.configs import MainConfig
+from dlex.configs import Params
 from dlex.datasets.nlp.builder import NLPDataset
 from dlex.datasets.nlp.utils import spacy_tokenize
 from dlex.datasets.torch import Dataset
@@ -13,7 +13,7 @@ from dlex.utils import logger
 
 
 class WikiText103(NLPDataset):
-    def __init__(self, params: MainConfig):
+    def __init__(self, params: Params):
         super().__init__(params)
 
     def maybe_download_and_extract(self, force=False):

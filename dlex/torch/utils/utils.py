@@ -1,6 +1,6 @@
 import numpy as np
 import torch
-from dlex.configs import Configs, MainConfig
+from dlex.configs import Configs, Params
 from dlex.datatypes import ModelReport
 from dlex.torch.models.base import DataParellelModel
 from dlex.torch.utils.model_utils import get_model

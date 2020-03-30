@@ -2,6 +2,7 @@ import json
 import logging
 import os
 import re
+from typing import List
 
 import numpy as np
 from tqdm import tqdm
@@ -20,16 +21,21 @@ class TqdmLoggingHandler(logging.Handler):
         try:
             msg = self.format(record)
             if record.levelname == "INFO":
-                color = logger.OKBLUE
+                color = logger.INFO
             elif record.levelname == "DEBUG":
+                color = logger.DEBUG
+            elif record.levelname == "WARNING":
                 color = logger.WARNING
             else:
                 color = ""
 
             # highlight number
             # msg = re.sub(r"\[([A-Z_]*)\]", "\033[35;1m" + r"\1" + "\033[m", msg)
-
-            tqdm.write(f"{color}[{record.levelname.ljust(5)}]{logger.ENDC} {msg}")
+            s = f"{color}{record.levelname.ljust(5)}{logger.ENDC} "
+            if record.processName != "MainProcess":
+                s += f"({record.processName}) "
+            s += msg
+            tqdm.write(s)
             self.flush()
         except (KeyboardInterrupt, SystemExit):
             raise
@@ -69,8 +75,8 @@ logger = logging.getLogger('dlex')
 logger.propagate = False
 
 logger.HEADER = '\033[95m'
-logger.OKBLUE = '\033[1;36m'
-logger.OKGREEN = '\033[92m'
+logger.DEBUG = '\033[1;36m'
+logger.INFO = '\033[92m'
 logger.WARNING = '\033[93m'
 logger.FAIL = '\033[91m'
 logger.ENDC = '\033[0m'
@@ -101,7 +107,7 @@ epoch_step_info_logger.propagate = False
 
 def set_log_dir(configs):
     os.makedirs(configs.log_dir, exist_ok=True)
-    formatter = logging.Formatter('%(asctime)s - %(message)s')
+    formatter = logging.Formatter('%(asctime)s - %(processName)s - %(message)s')
     sym_path = os.path.abspath(os.path.join(configs.log_dir, os.pardir, "latest"))
     if os.path.exists(sym_path):
         os.unlink(sym_path)

@@ -5,7 +5,7 @@ from torchvision.datasets import ImageNet as TorchImageNet
 from sklearn.metrics import accuracy_score
 from torchvision import transforms
 
-from dlex.configs import MainConfig
+from dlex.configs import Params
 from torch.models.base import Batch, BatchItem
 from ..base import BaseDataset
 from dlex.torch.utils.ops_utils import maybe_cuda

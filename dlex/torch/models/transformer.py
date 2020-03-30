@@ -2,7 +2,7 @@ import math
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from dlex.configs import MainConfig
+from dlex.configs import Params
 from dlex.datasets.seq2seq.torch import PytorchSeq2SeqDataset
 from dlex.torch import Batch
 from dlex.torch.models.base import BaseModel
@@ -41,7 +41,7 @@ class Embedding(nn.Module):
 
 
 class Transformer(BaseModel):
-    def __init__(self, params: MainConfig, dataset: PytorchSeq2SeqDataset):
+    def __init__(self, params: Params, dataset: PytorchSeq2SeqDataset):
         super().__init__(params, dataset)
         self.src_mask = None
         cfg = params.model
@@ -99,7 +99,7 @@ class Transformer(BaseModel):
 
 
 class NMT(Transformer):
-    def __init__(self, params: MainConfig, dataset: PytorchSeq2SeqDataset):
+    def __init__(self, params: Params, dataset: PytorchSeq2SeqDataset):
         super().__init__(params, dataset)
         cfg = params.model
         self.embedding = Embedding(self.dataset.input_size, cfg.dim_model)

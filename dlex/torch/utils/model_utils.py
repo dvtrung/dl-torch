@@ -76,9 +76,7 @@ def linear_layers(
             linear_layers.append(nn.Dropout(dropout))
         if not (ignore_last_layer and i == len(dims) - 2):
             if activation_fn:
-                linear_layers.append(dict(
-                    relu=nn.ReLU
-                )[activation_fn]())
+                linear_layers.append(get_activation_fn(activation_fn)())
     return nn.Sequential(*linear_layers)
 
 
@@ -131,3 +129,32 @@ class MultiLinear(nn.Module):
                 X = torch.cat([X, append_emb], -1)
             X = layer(X)
         return X
+
+
+class RNN(nn.Module):
+    def __init__(
+            self,
+            rnn_type: str,
+            input_dim: int,
+            hidden_dim: int,
+            bidirectional: bool,
+            dropout: float):
+        super().__init__()
+
+        if rnn_type in ["rnn", "lstm", "gru"]:
+            rnn_cls = getattr(nn, rnn_type.upper())
+
+        self.bidirectional = bidirectional
+        if not bidirectional:
+            self.rnn = rnn_cls(input_dim, hidden_dim, batch_first=True, dropout=dropout)
+        else:
+            self.rnn = rnn_cls(input_dim, hidden_dim // 2, batch_first=True, bidirectional=True, dropout=dropout)
+
+    def forward(self, inputs, input_lengths):
+        self.rnn.flatten_parameters()
+        inputs = nn.utils.rnn.pack_padded_sequence(inputs, input_lengths, batch_first=True)
+        if self.bidirectional:
+            c, (h, _) = self.rnn(inputs)
+            c, _ = nn.utils.rnn.pad_packed_sequence(c, batch_first=True)
+            h = h.permute(1, 0, 2).contiguous().view(c.shape[0], -1)
+            return c, h

@@ -4,7 +4,7 @@ import os
 import tensorflow as tf
 from sklearn.model_selection import train_test_split
 
-from dlex.configs import MainConfig
+from dlex.configs import Params
 from dlex.datasets.base import NLPDataset, TensorflowDataset, Dataset
 from datasets.nlp.nlp import normalize_string
 from dlex.tf.models.base import Batch

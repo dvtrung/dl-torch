@@ -4,7 +4,7 @@ import time
 
 import numpy as np
 from dlex import FrameworkBackend
-from dlex.configs import Configs, ModuleConfigs
+from dlex.configs import Configs, ModuleConfigs, Params
 from dlex.tf.utils.utils import load_model
 from dlex.utils import set_seed, Datasets
 from dlex.utils.logging import logger
@@ -14,12 +14,10 @@ from tensorflow.python.keras.callbacks import LearningRateScheduler, History, Mo
 class TensorflowV2Backend(FrameworkBackend):
     def __init__(
             self,
-            argv=None,
-            params=None,
-            configs: Configs = None,
+            params: Params = None,
             training_idx: int = None,
             report_queue=None):
-        super().__init__(argv, params, configs, training_idx, report_queue)
+        super().__init__(params, training_idx, report_queue)
         logging.getLogger("tensorflow").setLevel(logging.INFO)
         logger.info(f"Training started ({training_idx}).")
 
@@ -44,6 +42,9 @@ class TensorflowV2Backend(FrameworkBackend):
         params, args, self.model, self.datasets = load_model("train", self.report, argv, params, configs)
 
     def train_tensorflow_v2(self, model, datasets: Datasets):
+        params = self.params
+        configs = self.configs
+
         compiled_model = model.compile()
         model.summary()
 
@@ -62,7 +63,7 @@ class TensorflowV2Backend(FrameworkBackend):
         hist = History()
 
         # checkpoint
-        checkpoint_path = os.path.join(ModuleConfigs.get_saved_models_dir(), params.config_path_prefix)
+        checkpoint_path = os.path.join(ModuleConfigs.get_saved_models_dir(), configs.config_path_prefix)
         os.makedirs(checkpoint_path, exist_ok=True)
         model_checkpoint_latest = ModelCheckpoint(os.path.join(checkpoint_path, "latest.h5"))
         model_checkpoint_best = ModelCheckpoint(os.path.join(checkpoint_path, "best.h5"), save_best_only=True)

@@ -2,17 +2,19 @@ import curses
 import logging
 import multiprocessing
 import os
+import sys
 import shutil
 import threading
 import traceback
 from collections import defaultdict
 from datetime import datetime
 from functools import partial
+from multiprocessing import Queue
 from time import sleep
 from typing import Dict, Tuple, Any, List
 
 from dlex.datatypes import ModelReport
-from dlex.utils import logger, table2str, get_unused_gpus, sys
+from dlex.utils import logger, table2str, get_unused_gpus
 from dlex.utils.curses import CursesManager
 from dlex.utils.tmux import TmuxManager
 
@@ -21,7 +23,7 @@ from .configs import Configs, Environment
 LOG_WINDOWS_HEIGHT = 10
 
 manager = multiprocessing.Manager()
-all_reports: Dict[str, Dict[Tuple, ModelReport]] = manager.dict()
+all_reports: Dict[str, Dict[int, ModelReport]] = manager.dict()
 report_queue = manager.Queue()
 short_report = None
 long_report = None
@@ -32,52 +34,38 @@ def launch_training(params, training_idx):
 
     if backend is None:
         raise ValueError("No backend specified. Please add it in config file.")
-    try:
-        if backend == "sklearn":
-            from dlex.sklearn.train import train
-            train(params, configs.args)
-            # runpy.run_module("dlex.sklearn.train", run_name=__name__)
-        elif backend == "pytorch" or backend == "torch":
-            from dlex.torch import PytorchBackend
-            ins = PytorchBackend(None, params, configs, training_idx, report_queue)
-            return ins.run_train()
-        elif backend == "tensorflow_v1" or backend == "tf_v1":
-            from dlex.tf import TensorflowV1Backend
-            ins = TensorflowV1Backend(None, params, configs, training_idx, report_queue)
-            return ins.run_train()
-        elif backend == "tensorflow" or backend == "tf":
-            from dlex.tf import TensorflowV2Backend
-            be = TensorflowV2Backend(None, params, configs, training_idx, report_queue)
-            return be.run_train()
-        elif backend == "tff":
-            from dlex.tf import TensorflowFederatedBackend
-            backend = TensorflowFederatedBackend(None, params, configs, training_idx, report_queue)
-            return backend.run_train()
-        else:
-            raise ValueError("Backend is not valid.")
-    except Exception as e:
-        logger.error(e)
-        logger.error(traceback.format_exc())
-        if configs.args.notify:
-            msg = "Error (%s): %s" % (configs.config_name, str(e))
-            os.system(configs.args.notify_cmd % msg)
 
+    report = ModelReport(training_idx)
+    all_reports[params.env_name][training_idx] = report
+    if backend == "sklearn":
+        from dlex.sklearn.train import train
+        train(params, configs.args)
+        # runpy.run_module("dlex.sklearn.train", run_name=__name__)
+    elif backend == "pytorch" or backend == "torch":
+        from dlex.torch import PytorchBackend
+        be = PytorchBackend(params, training_idx, report_queue)
+        return be.run_train()
+    elif backend == "tensorflow_v1" or backend == "tf_v1":
+        from dlex.tf.instance_v1 import TensorflowV1Backend
+        be = TensorflowV1Backend(params, training_idx, report_queue)
+        return be.run_train()
+    elif backend == "tensorflow" or backend == "tf":
+        from dlex.tf.instance_v2 import TensorflowV2Backend
+        be = TensorflowV2Backend(params, training_idx, report_queue)
+        return be.run_train()
+    elif backend == "tff":
+        from dlex.tf.tff import TensorflowFederatedBackend
+        be = TensorflowFederatedBackend(params, training_idx, report_queue)
+        return be.run_train()
+    else:
+        raise ValueError("Backend is not valid.")
 
-def update_results(
-        report: ModelReport,
-        env_name: str,
-        variable_values: Tuple[Any]):
-    """
-    :param env_name:
-    :param variable_values:
-    :param report: an instance of ModelReport
-    :return:
-    """
-
-    # all_reports are not always initialized
-    if report:
-        all_reports[env_name][variable_values] = report
-    write_report()
+    #except Exception as e:
+    #    logger.error(e)
+    #    logger.error(traceback.format_exc())
+    #    if configs.args.notify:
+    #        msg = "Error (%s): %s" % (configs.config_name, str(e))
+    #        os.system(configs.args.notify_cmd % msg)
 
 
 def _error_callback(e: Exception):
@@ -100,7 +88,8 @@ def _reduce_results(
     variable_names = [name for name in env.variable_names if name not in reduced_variable_names]
 
     reports = defaultdict(lambda: [])
-    for v_vals, report in all_reports[env.name].items():
+    for training_idx, report in all_reports[env.name].items():
+        v_vals = report.params.variable_values
         reduced_v_vals = tuple(
             [v_vals[i] for i, name in enumerate(env.variable_names) if name not in reduced_variable_names])
         reports[reduced_v_vals].append(report)
@@ -109,7 +98,6 @@ def _reduce_results(
     infos = defaultdict(lambda: [])
     for reduced_v_vals in reports:
         results[reduced_v_vals] = [" ~ ".join([
-            # f"{report.get_result_text(m, True)} [{report.training_idx}]" for report in reports[reduced_v_vals] if report
             f"{report.get_result_text(m, True)}" for report in reports[reduced_v_vals] if report
         ]) for m in metrics]
         infos[reduced_v_vals] = [' ~ '.join([report.get_status_text() for report in reports[reduced_v_vals] if report])]
@@ -129,6 +117,7 @@ def _long_report(s):
 
 
 def write_report():
+    logger.debug("Report refreshed")
     global short_report, long_report
     short_report = ""
     long_report = ""
@@ -156,7 +145,6 @@ def write_report():
         _short_report(f"\n## {env.title or env.name}")
         metrics = _gather_metrics(all_reports[env.name])
         reduce = {name for name, vals in zip(env.variable_names, env.variable_values) if len(vals) <= 1}
-
         single_val = [f"\n- {name} = {vals[0]}" for name, vals in zip(env.variable_names, env.variable_values) if len(vals) == 1]
         if single_val:
             _short_report("\n### Configs: \n" + "".join(single_val))
@@ -180,7 +168,6 @@ def write_report():
                     f"[{report.training_idx}] " + ", ".join([f"{m}: {report.get_result_text(m, full=True)}" for m in report.metrics]) + \
                     f"\n{report.param_details}"
                 )
-
         elif env.report['type'] == 'table':
             val_row = env.variable_names.index(env.report['row'])
             val_col = env.variable_names.index(env.report['col'])
@@ -190,7 +177,8 @@ def write_report():
                     [None for _ in range(len(env.variable_values[val_col]))]
                     for _ in range(len(env.variable_values[val_row]))
                 ]
-                for variable_values, report in all_reports[env.name].items():
+                for report in all_reports[env.name].values():
+                    variable_values = report.params.variable_values
                     _val_row = env.variable_values[val_row].index(variable_values[val_row])
                     _val_col = env.variable_values[val_col].index(variable_values[val_col])
                     if data[_val_row][_val_col] is None:
@@ -202,8 +190,8 @@ def write_report():
                 _short_report(f"\n{table2str(data)}\n")
 
     # logger.info(short_report)
-    # if configs.args.gui:
-    #     refresh_display()
+    if configs.args.gui:
+        refresh_display()
 
     with open(configs.report_path, "w") as f:
         f.write(long_report)
@@ -218,7 +206,8 @@ def get_training_idx(v_vals):
 def _exit():
     pool.terminate()
     pool.join()
-    tmux.close_all_panes()
+    if configs.args.gui:
+        tmux.close_all_panes()
     sys.exit()
 
 
@@ -259,6 +248,9 @@ def _on_key_pressed(c):
             q="[q] Exit Training"
         ), "i", title="Menu")
         _on_key_pressed(selection)
+    elif c == "r":
+        write_report()
+        refresh_display()
     elif c == "q":
         _exit()
 
@@ -273,16 +265,8 @@ def main(scr=None, *args):
     if args.debug:
         logger.setLevel(logging.DEBUG)
 
-    if configs.args.env:
-        envs = [e for e in configs.environments if e.name in args.env]
-    else:
-        envs = [env for env in configs.environments if env.default]
-
-    for env in envs:
+    for env in configs.environments:
         all_reports[env.name] = manager.dict()
-        # init result list
-        for variable_values, params in zip(env.variables_list, env.configs_list):
-            all_reports[env.name][variable_values] = None
 
     write_report()
 
@@ -298,18 +282,19 @@ def main(scr=None, *args):
         callbacks = []
         process_args = []
 
-        for env in envs:
-            for variable_values, params in zip(env.variables_list, env.configs_list):
-                params.gpu = gpu
-                callback = partial(update_results, env_name=env.name, variable_values=variable_values)
+        for env in configs.environments:
+            for idx, (variable_values, params) in enumerate(zip(env.variables_list, env.configs_list)):
+                params.gpu = [gpu[idx % len(gpu)]]
+                callback = partial(update_results, env_name=env.name, training_idx=idx)
                 callbacks.append(callback)
-                process_args.append((env, params, variable_values))
+                process_args.append((env.name, params, idx))
 
-        for idx, (pargs, callback) in enumerate(zip(process_args, callbacks)):
-            _, params, _ = pargs
+        for pargs, callback in zip(process_args, callbacks):
+            env_name, params, idx = pargs
+            process_names.put(f"{env_name}-{idx}")
             r = pool.apply_async(
                 launch_training,
-                args=(params, idx + 1),
+                args=(params, idx),
                 callback=callback,
                 error_callback=_error_callback)
             # sleep(10)
@@ -318,9 +303,10 @@ def main(scr=None, *args):
         pool.close()
 
         def _update_results():
-            while not all(r.ready() for r in results):
-                r = report_queue.get()
-                update_results(r, process_args[r.training_idx - 1][0].name, process_args[r.training_idx - 1][2])
+            while not all(res.ready() for res in results):
+                report = report_queue.get()
+                env_name, _, training_idx = process_args[report.training_idx]
+                update_results(report, env_name, training_idx)
                 refresh_display()
         _add_thread("update_results", _update_results)
 
@@ -342,12 +328,13 @@ def main(scr=None, *args):
     else:
         gpu = args.gpu or get_unused_gpus(args)
         idx = 0
-        for env in envs:
+        for env in configs.environments:
             for variable_values, params in zip(env.variables_list, env.configs_list):
                 idx += 1
                 params.gpu = gpu
                 report = launch_training(params, idx)
-                update_results(report, env.name, variable_values)
+                all_reports[env.name][variable_values] = report
+                write_report()
 
     _, report = write_report()
 
@@ -391,21 +378,14 @@ def get_display_text():
 def refresh_display():
     if configs.args.gui:
         curses.main_text = get_display_text()
-        curses.refresh()
+        curses.refresh(clear=True)
 
 
-def listen_to_keyboard():
-    global configs, short_report
-    if configs.args.gui:
-        while True:
-            pass
-            #key = sys.stdin.readline()
-            #print(key)
-            #output = get_display_text()
-            #os.system('clear')
-            #print(output, end="")
-            #if key == ":":
-            #    exit()
+def update_results(report: ModelReport, env_name: str, training_idx: int):
+    logger.debug("Results updated (env: %s, process id: %d)", env_name, training_idx)
+    logger.debug(report.current_results)
+    all_reports[env_name][training_idx] = report
+    write_report()
 
 
 def signal_handler(signal, frame):
@@ -419,8 +399,14 @@ if __name__ == "__main__":
     tmux = TmuxManager()
     curses = CursesManager()
     configs = Configs(mode="train")
+    process_names = Queue()
     if configs.args.num_processes:
-        pool = multiprocessing.Pool(processes=configs.args.num_processes)
+        def initialize(names):
+            multiprocessing.current_process().name = str(names.get())
+        pool = multiprocessing.Pool(
+            processes=configs.args.num_processes,
+            initializer=initialize,
+            initargs=(process_names,))
     threads = {}
     if configs.args.gui:
         curses.wrapper(main)

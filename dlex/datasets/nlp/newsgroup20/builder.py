@@ -6,7 +6,7 @@ from typing import List
 import torch.nn as nn
 from tqdm import tqdm
 
-from dlex.configs import MainConfig
+from dlex.configs import Params
 from dlex.datasets.nlp.builder import NLPDataset
 from dlex.datasets.nlp.utils import write_vocab, Vocab, nltk_tokenize
 from dlex.datasets.torch import Dataset
@@ -19,7 +19,7 @@ DOWNLOAD_URL = "http://www.cs.cmu.edu/afs/cs.cmu.edu/project/theo-20/www/data/ne
 
 
 class Newsgroup20(NLPDataset):
-    def __init__(self, params: MainConfig):
+    def __init__(self, params: Params):
         super().__init__(params)
 
     @property

@@ -10,7 +10,7 @@ import os
 import io
 import time
 
-from dlex.configs import MainConfig
+from dlex.configs import Params
 from dlex.datasets import TensorflowDataset as Dataset
 from dlex.tf.models.base import BaseModel, Batch
 
@@ -104,7 +104,7 @@ class Decoder(tf.keras.Model):
 
 
 class Attention(BaseModel):
-    def __init__(self, params: MainConfig, dataset: Dataset):
+    def __init__(self, params: Params, dataset: Dataset):
         super().__init__(params, dataset)
         print(type(params))
 
@@ -169,5 +169,5 @@ class Attention(BaseModel):
 
 
 class NMT(Attention):
-    def __init__(self, params: MainConfig, dataset: Dataset):
+    def __init__(self, params: Params, dataset: Dataset):
         super().__init__(params, dataset)

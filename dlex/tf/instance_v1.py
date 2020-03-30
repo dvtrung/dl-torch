@@ -1,38 +1,37 @@
 import logging
 import os
-import time
-from collections import OrderedDict
+import random
+from collections import OrderedDict, namedtuple
 from datetime import datetime
-from typing import Tuple
 
-import numpy as np
-import tensorflow as tf
-from dlex import FrameworkBackend
-from dlex.configs import Configs, ModuleConfigs
-from dlex.datatypes import ModelReport
-from dlex.tf.utils.utils import load_model
-from dlex.utils import set_seed, Datasets, get_num_iters_from_interval, get_num_seconds_from_interval
+import tensorflow.compat.v1 as tf
+from dlex import FrameworkBackend, TrainingProgress
+from dlex.configs import Params
+from dlex.datasets.tf import Dataset
+from dlex.tf.models.base_v1 import BaseModelV1
+from dlex.tf.utils.model_utils import get_model
+from dlex.utils import get_num_iters_from_interval, get_num_seconds_from_interval, Datasets
 from dlex.utils.logging import logger
+from dlex.utils.model_utils import get_dataset
 from tensorflow.estimator import LoggingTensorHook, CheckpointSaverListener, \
     EstimatorSpec, TrainSpec, EvalSpec
-from tensorflow.python.keras.callbacks import LearningRateScheduler, History, ModelCheckpoint, TensorBoard
 from tqdm import tqdm
+
+tf.disable_v2_behavior()
+
+
+EvaluationResults = namedtuple("EvaluationResults", "results outputs")
 
 
 class TensorflowV1Backend(FrameworkBackend):
     def __init__(
             self,
-            argv=None,
-            params=None,
-            configs: Configs = None,
+            params: Params = None,
             training_idx: int = None,
             report_queue=None):
-        super().__init__(argv, params, configs, training_idx, report_queue)
+        super().__init__(params, training_idx, report_queue)
         logging.getLogger("tensorflow").setLevel(logging.INFO)
         logger.info(f"Training started ({training_idx}).")
-
-        self.report.metrics = params.test.metrics
-        self.report.results = {m: None for m in self.report.metrics}
 
         # tf.enable_eager_execution()
         # tf.random.set_random_seed(params.seed)
@@ -46,14 +45,277 @@ class TensorflowV1Backend(FrameworkBackend):
         # y_train = to_categorical(y_train)
         # y_test = to_categorical(y_test)
 
-        # tf.logging.set_verbosity(tf.logging.FATAL)
+    def load_model(self, mode) -> (BaseModelV1, Datasets):
+        """
+        Load model and dataset
+        :param mode: train, test, dev
+        :param report:
+        :param argv:
+        :param params: if None, configs will be read from file
+        :param args:
+        :return:
+        """
 
-        set_seed(params.random_seed)
-        params, args, self.model, self.datasets = load_model("train", self.report, argv, params, configs)
+        args = self.configs.args
+        params = self.params
 
-    def train(self):
+        # Init dataset
+        dataset_builder = get_dataset(params)
+        assert dataset_builder, "Dataset not found."
+        if not args.no_prepare:
+            dataset_builder.prepare(download=args.download, preprocess=args.preprocess)
+
+        datasets = Datasets(
+            "tensorflow", dataset_builder,
+            train_set=params.train.train_set,
+            valid_set=params.train.valid_set,
+            test_sets=params.test.test_sets)
+
+        # Init model
+        model_cls = get_model(params)
+        model = model_cls(params, datasets.train_set)  # type: BaseModelV1
+
+        # model.summary()
+
+        # log model summary
+        # parameter_details = [["Name", "Shape", "Trainable"]]
+        # num_params = 0
+        # num_trainable_params = 0
+        # for n in tf.get_default_graph().as_graph_def().node:
+        #     parameter_details.append([
+        #         n.name,
+        #         "test",
+        #         "✓" if False else ""])
+        #     num_params += np.prod(list(parameter.shape))
+        #     if parameter.requires_grad:
+        #         num_trainable_params += np.prod(list(parameter.shape))
+
+        # s = table2str(parameter_details)
+        # logger.debug(f"Model parameters\n{s}")
+        # logger.debug(" - ".join([
+        #     f"No. parameters: {num_params:,}",
+        #     f"No. trainable parameters: {num_trainable_params:,}"
+        # ]))
+        # report.param_details = s
+        # report.num_params = num_params
+        # report.num_trainable_params = num_trainable_params
+
+        # use_cuda = torch.cuda.is_available()
+        # if use_cuda and params.gpu:
+        #     gpus = [f"cuda:{g}" for g in params.gpu]
+        #     model = DataParellelModel(model, gpus)
+        #     logger.info("Start training using %d GPU(s): %s", len(params.gpu), str(params.gpu))
+        #     torch.cuda.set_device(torch.device(gpus[0]))
+        #     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+        #     model.to(gpus[0])
+        # else:
+        #     model = DataParellelModel(model, ['cpu'])
+
+        # logger.debug("Dataset: %s. Model: %s", str(dataset_builder), str(model_cls))
+        # if use_cuda:
+        #     logger.info("CUDA available: %s", torch.cuda.get_device_name(0))
+
+        return model, datasets
+
+    def run_train(self) -> None:
+        self.train_with_session()
+
+    def run_evaluate(self) -> None:
+        params = self.params
+        model, datasets = self.load_model("test")
+        model.build_graph()
+
+        saver = tf.train.Saver(max_to_keep=1)
+        if params.train.ema_decay_rate:
+            ema_saver = tf.train.Saver(model.ema.variables_to_restore(), max_to_keep=5)
+
+        with tf.Session(config=tf.ConfigProto(allow_soft_placement=True)) as sess:
+            local_init = tf.local_variables_initializer()
+            sess.run(local_init)
+
+            model.load_checkpoint(sess, saver, tag="latest")
+            model.load_checkpoint(sess, ema_saver, tag="latest")
+            for name, dataset in datasets.test_sets.items():
+                res = self.evaluate_with_session(
+                    sess,
+                    model,
+                    dataset,
+                    output_path=os.path.join(params.log_dir, "results"),
+                    output_tag=f"evaluate_val")
+                logger.info(f"[{name}]: {str(res.results)}")
+
+    def train_with_session(self) -> None:
+        params = self.params
+        args = self.args
+        model, datasets = self.load_model("train")
+
+        model.build_graph()
+        logger.info("Successfully built model")
+        logger.info("Training metrics: %s", list(model.metric_ops.keys()))
+
+        step = 0
+        if self.args.debug:
+            next_debug_step = 0
+            debug_ops = model.get_debug_ops()
+
+        saver = tf.train.Saver(
+            max_to_keep=1)
+        if params.train.ema_decay_rate:
+            ema_saver = tf.train.Saver(model.ema.variables_to_restore(), max_to_keep=5)
+
+        self.report.set_model_summary(
+            variable_names=[var.name for var in tf.trainable_variables()],
+            variable_shapes=[var.shape.as_list() for var in tf.trainable_variables()],
+            variable_trainable=[var.trainable for var in tf.trainable_variables()]
+        )
+
+        prog = TrainingProgress(params, len(datasets.train_set))
+
+        with tf.Session(config=tf.ConfigProto(allow_soft_placement=True)) as sess:
+            local_init = tf.local_variables_initializer()
+            global_init = tf.global_variables_initializer()
+            sess.graph.finalize()
+            sess.run(global_init)
+
+            if args.load:
+                model.load_checkpoint(args.load, sess, saver)
+                logger.info("Loaded checkpoint: %s", args.load)
+
+            for epoch in range(1, params.train.num_epochs + 1):
+                sess.run(local_init)
+                prog.new_epoch(epoch)
+
+                model.set_training(True)
+                batch_size = self.params.train.batch_size * len(params.gpu)
+
+                if self.params.dataset.shuffle:
+                    datasets.train_set.shuffle()
+                data = datasets.train_set.data
+                batches = []
+                for batch_start in range(0, len(data), batch_size):
+                    batches.append(data[batch_start:batch_start + batch_size])
+                # if self.params.shuffle:
+                #     random.shuffle(batches)
+                with tqdm(total=len(data), desc=f"Epoch {epoch}") as t:
+                    for batch in batches:
+                        feed = {}
+                        datasets.train_set.populate_feed_dict(feed, model.placeholders, batch)
+                        model.populate_feed_dict(feed, is_training=True)
+
+                        _, global_step, *metrics = sess.run([
+                            model.train_op,
+                            model.global_step,
+                            *list(model.metric_ops.values())], feed_dict=feed)
+
+                        if self.args.debug and step >= next_debug_step:
+                            vals = sess.run(list(debug_ops.values()), feed_dict=feed)
+                            for name, val in zip(debug_ops.keys(), vals):
+                                logger.debug(f"{name}\n{val}")
+                                input()
+                            num_steps = input("Number of steps do you want to run (default: 1): ") or 1
+                            next_debug_step += int(num_steps)
+
+                        t.update(len(batch))
+                        prog.update(len(batch))
+                        t.set_postfix(dict(
+                            **{key: val[0] for key, val in zip(model.metric_ops.keys(), metrics)}
+                        ))
+                        step += 1
+
+                        # Save model
+                        if prog.should_save():
+                            model.save_checkpoint(sess, saver, "latest")
+
+                        # Log
+                        if prog.should_log():
+                            logger.info(", ".join([
+                                f"epoch: {epoch}",
+                                f"global step: {global_step}",
+                                f"progress: {int(prog.epoch_progress * 100)}%",
+                                *[f"{name}: {val[0]:.4f}" for name, val in zip(model.metric_ops.keys(), metrics)]
+                            ]))
+
+                model.save_checkpoint(sess, saver, "latest")
+                # model.load_checkpoint(sess, saver, "latest")
+                for name, dataset in datasets.test_sets.items():
+                    res = self.evaluate_with_session(
+                        sess,
+                        model,
+                        dataset,
+                        output_path=params.checkpoint_dir,
+                        output_tag="latest")
+                    self.report.add_epoch_results(res.results)
+                    self.update_report()
+                    logger.info(res.results)
+        self.report.results = self.report.current_results
+        self.update_report()
+        return self.report
+
+    def evaluate_with_session(
+            self,
+            sess,
+            model: BaseModelV1,
+            dataset: Dataset,
+            output_path: str = None,
+            output_tag: str = None) -> EvaluationResults:
+        batch_size = self.params.train.batch_size
+        data = dataset.data
+
+        all_preds = []
+        all_refs = []
+
+        batches = []
+        outputs = []
+        for batch_start in range(0, len(data), batch_size):
+            batches.append(data[batch_start:batch_start + batch_size])
+
+        with tqdm(total=len(data), desc=f"Eval") as t:
+            for batch in batches:
+                feed = {}
+                dataset.populate_feed_dict(feed, model.placeholders, batch)
+                model.populate_feed_dict(feed, is_training=False)
+                pred, ref, *metrics = sess.run(
+                    [model.predictions, model.references, *list(model.metric_ops.values())],
+                    feed_dict=feed)
+                pred = pred if type(pred) == list else list(pred)
+                ref = ref if type(ref) == list else list(ref)
+                assert len(pred) == len(ref) == len(batch)
+                all_preds += pred
+                all_refs += ref
+                t.update(len(batch))
+                t.set_postfix(**{key: val[0] for key, val in zip(model.metric_ops.keys(), metrics)})
+
+                for p, b in zip(pred, batch):
+                    str_input, str_ground_truth, str_predicted = dataset.format_output(p, b)
+                    outputs.append(dict(
+                        input=str_input,
+                        reference=str_ground_truth,
+                        hypothesis=str_predicted))
+                    # logger.debug(outputs[-1])
+
+        results = {}
+        for metric in self.params.test.metrics:
+            results[metric] = dataset.evaluate(all_preds, all_refs, metric, output_path)
+
+        if self.params.test.output and output_path:
+            path = dataset.write_results_to_file(
+                all_preds,
+                # sample_ids,
+                output_path,
+                output_tag,
+                self.params.test.output)
+            dataset.builder.run_evaluation_script(path)
+
+        for output in random.choices(outputs, k=20):
+            logger.debug(output)
+
+        return EvaluationResults(
+            results={key: results[key] for key in results},
+            outputs=outputs)
+
+    def train_with_estimator(self):
         run_config = tf.estimator.RunConfig(
-            model_dir=ModuleConfigs.get_saved_models_dir(),
+            model_dir=self.params.checkpoint_dir,
             save_checkpoints_steps=get_num_iters_from_interval(self.params.train.save_every),
             save_checkpoints_secs=get_num_seconds_from_interval(self.params.train.save_every),
             save_summary_steps=100,
@@ -70,7 +332,7 @@ class TensorflowV1Backend(FrameworkBackend):
                 train_op=train_op,
                 eval_metric_ops=metric_ops,
                 training_hooks=[
-                    TqdmHook(OrderedDict(loss=loss), len(self.datasets.train), params['batch_size']),
+                    TqdmHook(OrderedDict(loss=loss), len(self.datasets.train_set), params['batch_size']),
                     tf.estimator.LoggingTensorHook(dict(loss=loss), every_n_iter=10)
                 ],
                 evaluation_hooks=[
@@ -82,13 +344,13 @@ class TensorflowV1Backend(FrameworkBackend):
             params=dict(batch_size=self.params.train.batch_size),
             config=run_config)
         self.report.launch_time = datetime.now()
-        num_train_steps = int(len(self.datasets.train) / self.params.train.batch_size * self.params.train.num_epochs)
+        num_train_steps = int(len(self.datasets.train_set) / self.params.train.batch_size * self.params.train.num_epochs)
 
         train_spec = TrainSpec(
-            input_fn=self.datasets.train._input_fn,
+            input_fn=self.datasets.train_set.input_fn,
             max_steps=num_train_steps)
         eval_spec = EvalSpec(
-            input_fn=self.datasets.test._input_fn,
+            input_fn=self.datasets.test.input_fn,
             steps=5,
             start_delay_secs=150,
             throttle_secs=200
@@ -106,39 +368,9 @@ class TensorflowV1Backend(FrameworkBackend):
         tf.estimator.train_and_evaluate(estimator, train_spec, eval_spec)
         logger.info("Training done.")
 
-    def evaluate(
-            self,
-            save_result=False,
-            output=False,
-            summary_writer=None) -> Tuple[dict, dict, list]:
-
-        total = {key: 0 for key in self.params.test.metrics}
-        acc = {key: 0. for key in self.params.test.metrics}
-        outputs = []
-        for batch in tqdm(self.dataset.all(), desc="Eval"):
-            y_pred, others = self.model.infer(batch)
-            for key in self.params.test.metrics:
-                _acc, _total = self.dataset.evaluate_batch(y_pred, batch, metric=key)
-                acc[key] += _acc
-                total[key] += _total
-            if output:
-                for i, predicted in enumerate(y_pred):
-                    str_input, str_ground_truth, str_predicted = self.dataset.format_output(
-                        predicted, batch.item(i))
-                    outputs.append('\n'.join([str_input, str_ground_truth, str_predicted]))
-            if summary_writer is not None:
-                self.model.write_summary(summary_writer, batch, (y_pred, others))
-
-        result = {
-            "epoch": "%.1f" % self.model.epoch,
-            "result": {key: acc[key] / total[key] for key in acc}
-        }
-        best_result = add_result(params, result) if save_result else None
-
-        return result, best_result, outputs
-
-    def set_seed(self, seed):
-        tf.compat.v1.set_random_seed(seed)
+    def set_seed(self):
+        super().set_seed()
+        tf.set_random_seed(self.params.random_seed)
 
 
 class TqdmHook(tf.estimator.SessionRunHook):

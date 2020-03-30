@@ -1,14 +1,13 @@
+from typing import List, Union, Tuple
+
+from dlex import Params
 from dlex.datasets.image import ImageDataset
+from .torch import PytorchMNIST
 
 
 class MNIST(ImageDataset):
-    def get_keras_wrapper(self, mode: str):
-        from .keras import KerasCIFAR10
-        return KerasCIFAR10(self, mode)
-
-    def get_pytorch_wrapper(self, mode: str):
-        from .torch import PytorchMNIST
-        return PytorchMNIST(self, mode)
+    def __init__(self, params: Params):
+        super().__init__(params, pytorch_cls=PytorchMNIST)
 
     @property
     def num_channels(self):
@@ -16,4 +15,8 @@ class MNIST(ImageDataset):
 
     @property
     def input_shape(self):
-        return 28, 28
+        return [28, 28]
+
+    @property
+    def output_shape(self):
+        return [10]
