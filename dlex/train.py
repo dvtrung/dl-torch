@@ -2,8 +2,8 @@ import curses
 import logging
 import multiprocessing
 import os
-import sys
 import shutil
+import sys
 import threading
 import traceback
 from collections import defaultdict
@@ -11,7 +11,7 @@ from datetime import datetime
 from functools import partial
 from multiprocessing import Queue
 from time import sleep
-from typing import Dict, Tuple, Any, List
+from typing import Dict, Tuple, List, Union
 
 from dlex.datatypes import ModelReport
 from dlex.utils import logger, table2str, get_unused_gpus
@@ -23,7 +23,7 @@ from .configs import Configs, Environment
 LOG_WINDOWS_HEIGHT = 10
 
 manager = multiprocessing.Manager()
-all_reports: Dict[str, Dict[int, ModelReport]] = manager.dict()
+all_reports: Dict[int, Union[ModelReport, None]] = {}
 report_queue = manager.Queue()
 short_report = None
 long_report = None
@@ -35,8 +35,6 @@ def launch_training(params, training_idx):
     if backend is None:
         raise ValueError("No backend specified. Please add it in config file.")
 
-    report = ModelReport(training_idx)
-    all_reports[params.env_name][training_idx] = report
     if backend == "sklearn":
         from dlex.sklearn.train import train
         train(params, configs.args)
@@ -88,7 +86,9 @@ def _reduce_results(
     variable_names = [name for name in env.variable_names if name not in reduced_variable_names]
 
     reports = defaultdict(lambda: [])
-    for training_idx, report in all_reports[env.name].items():
+    for training_idx, report in all_reports.items():
+        if report is None:
+            continue
         v_vals = report.params.variable_values
         reduced_v_vals = tuple(
             [v_vals[i] for i, name in enumerate(env.variable_names) if name not in reduced_variable_names])
@@ -117,7 +117,6 @@ def _long_report(s):
 
 
 def write_report():
-    logger.debug("Report refreshed")
     global short_report, long_report
     short_report = ""
     long_report = ""
@@ -140,10 +139,11 @@ def write_report():
     _long_report(f"- Test: {str(configs.yaml_params.get('test'))}")
 
     for env in configs.environments:
-        if env.name not in all_reports:
-            continue
+        for training_idx in all_reports:
+            all_reports[training_idx] = ModelReport.load(configs.log_dir, training_idx)
+
         _short_report(f"\n## {env.title or env.name}")
-        metrics = _gather_metrics(all_reports[env.name])
+        metrics = _gather_metrics(all_reports)
         reduce = {name for name, vals in zip(env.variable_names, env.variable_values) if len(vals) <= 1}
         single_val = [f"\n- {name} = {vals[0]}" for name, vals in zip(env.variable_names, env.variable_values) if len(vals) == 1]
         if single_val:
@@ -161,7 +161,7 @@ def write_report():
             _short_report(f"\n### Results\n\n{table2str(data)}")
 
             _long_report(f"\n### Details\n")
-            for report in all_reports[env.name].values():
+            for report in all_reports.values():
                 if not report:
                     continue
                 _long_report(
@@ -177,7 +177,7 @@ def write_report():
                     [None for _ in range(len(env.variable_values[val_col]))]
                     for _ in range(len(env.variable_values[val_row]))
                 ]
-                for report in all_reports[env.name].values():
+                for report in all_reports.values():
                     variable_values = report.params.variable_values
                     _val_row = env.variable_values[val_row].index(variable_values[val_row])
                     _val_col = env.variable_values[val_col].index(variable_values[val_col])
@@ -265,11 +265,6 @@ def main(scr=None, *args):
     if args.debug:
         logger.setLevel(logging.DEBUG)
 
-    for env in configs.environments:
-        all_reports[env.name] = manager.dict()
-
-    write_report()
-
     def _refresh_display():
         while True:
             refresh_display()
@@ -288,6 +283,7 @@ def main(scr=None, *args):
                 callback = partial(update_results, env_name=env.name, training_idx=idx)
                 callbacks.append(callback)
                 process_args.append((env.name, params, idx))
+                all_reports[idx] = None
 
         for pargs, callback in zip(process_args, callbacks):
             env_name, params, idx = pargs
@@ -300,7 +296,7 @@ def main(scr=None, *args):
             # sleep(10)
             results.append(r)
 
-        pool.close()
+        # pool.close()
 
         def _update_results():
             while not all(res.ready() for res in results):
@@ -327,13 +323,12 @@ def main(scr=None, *args):
         # pool.join()
     else:
         gpu = args.gpu or get_unused_gpus(args)
-        idx = 0
+        training_idx = 0
         for env in configs.environments:
             for variable_values, params in zip(env.variables_list, env.configs_list):
-                idx += 1
+                training_idx += 1
                 params.gpu = gpu
-                report = launch_training(params, idx)
-                all_reports[env.name][variable_values] = report
+                launch_training(params, training_idx)
                 write_report()
 
     _, report = write_report()
@@ -384,7 +379,7 @@ def refresh_display():
 def update_results(report: ModelReport, env_name: str, training_idx: int):
     logger.debug("Results updated (env: %s, process id: %d)", env_name, training_idx)
     logger.debug(report.current_results)
-    all_reports[env_name][training_idx] = report
+    # all_reports[env_name][training_idx] = report
     write_report()
 
 

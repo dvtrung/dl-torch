@@ -1,3 +1,5 @@
+import os
+import pickle
 import time
 from collections import defaultdict
 from datetime import datetime
@@ -14,7 +16,7 @@ class ModelReport:
 
     results: Union[Dict[str, float], List[Dict[str, float]]] = None
     epoch_results: Dict[str, List[Dict[str, float]]] = None
-    current_results: Dict[str, float] = None
+    current_test_results: Dict[str, Dict[str, float]] = None
     epoch_valid_results: List[Dict[str, float]] = None
     epoch_test_results: List[Dict[str, float]] = None
     epoch_losses: List[float] = None
@@ -28,7 +30,7 @@ class ModelReport:
         self.training_idx = training_idx
 
     def add_epoch_results(self, results):
-        self.current_results = results
+        self.current_test_results = results
 
     @property
     def current_epoch(self) -> int:
@@ -86,7 +88,8 @@ class ModelReport:
             status = f"{pbar} {self.current_epoch - 1}/{self.num_epochs}"
         return status
 
-    def set_model_summary(self,
+    def set_model_summary(
+            self,
             variable_names: List[str],
             variable_shapes: List[List[int]],
             variable_trainable: List[bool]):
@@ -111,6 +114,20 @@ class ModelReport:
 
         self.num_params = num_params
         self.num_trainable_params = num_trainable_params
+
+    def save(self):
+        path = os.path.join(self.params.log_dir, f"report_{self.training_idx}.pkl")
+        logger.debug(f"Report saved to {path}")
+        with open(path, "wb") as f:
+            pickle.dump(self, f)
+
+    @classmethod
+    def load(cls, log_dir, training_idx):
+        path = os.path.join(log_dir, f"report_{training_idx}.pkl")
+        if not os.path.exists(path):
+            return None
+        with open(path, "rb") as f:
+            return pickle.load(f)
 
 
 class TrainingProgress:

@@ -15,11 +15,12 @@ def pad_sequence(
         values = []
         lengths = []
         for i in range(len(data)):
-            val_, length_ = pad_sequence(data[i], padding_value, output_tensor, dim=2)
+            val_, length_ = pad_sequence(data[i], padding_value, output_tensor=output_tensor, dim=2)
             values.append(val_)
             lengths.append(length_)
+
         max_len = max(val.shape[1] for val in values)
-        values = [torch.cat([val, maybe_cuda(torch.zeros([val.shape[0], max_len - val.shape[1], val.shape[2]]))], 1) for val in values]
+        values = [torch.cat([val, torch.zeros([val.shape[0], max_len - val.shape[1], val.shape[2]])], 1) for val in values]
         return torch.stack(values), torch.stack(lengths)
     else:
         max_len = max_len or max([len(seq) for seq in data])
@@ -37,7 +38,7 @@ def pad_sequence(
             if type(data[0]) == list:
                 data = [torch.tensor(seq + [padding_value] * (max_len - len(seq))) for seq in data]
             else:
-                data = [torch.cat([seq, maybe_cuda(torch.tensor([padding_value] * (max_len - len(seq))))]) for seq in data]
+                data = [torch.cat([seq, torch.tensor([padding_value] * (max_len - len(seq)))]) for seq in data]
             return data, lengths
         else:
             lengths = [max(len(seq), 1) for seq in data]

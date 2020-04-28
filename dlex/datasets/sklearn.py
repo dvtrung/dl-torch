@@ -1,6 +1,6 @@
 import random
 
-from dlex.utils import logger, set_seed
+from dlex.utils import logger
 from sklearn.model_selection import train_test_split
 
 
@@ -9,8 +9,8 @@ class SklearnDataset:
         self.builder = builder
         self.X = None
         self.y = None
-        self.X_train = self.X_test = None
-        self.y_train = self.y_test = None
+        self.X_train = self.X_test = self.X_valid = None
+        self.y_train = self.y_test = self.y_valid = None
 
     @property
     def configs(self):
@@ -25,6 +25,7 @@ class SklearnDataset:
 
         if self.params.train.cross_validation:
             data = list(zip(X, y))
+            random.seed(self.params.random_seed)
             random.shuffle(data)
             X, y = zip(*data)
 
@@ -37,6 +38,13 @@ class SklearnDataset:
             self.X_test = X[pos_start:pos_end]
             self.y_train = y[:pos_start] + y[pos_end:]
             self.y_test = y[pos_start:pos_end]
+
+            if self.configs.valid_set_ratio:
+                num_valid = int(len(self.X_train) * self.configs.valid_set_ratio)
+                self.X_valid = self.X_train[:num_valid]
+                self.y_valid = self.y_train[:num_valid]
+                self.X_train = self.X_train[num_valid:]
+                self.y_train = self.y_train[num_valid:]
         else:
             self.X_train, self.X_test, self.y_train, self.y_test = \
                 train_test_split(

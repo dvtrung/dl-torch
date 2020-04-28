@@ -1,7 +1,8 @@
 import abc
+import pickle
 from multiprocessing.queues import Queue
 
-from dlex import ModelReport, Params
+from dlex import ModelReport, Params, logger
 from dlex.utils import set_seed
 
 
@@ -18,6 +19,7 @@ class FrameworkBackend:
 
         report = ModelReport(training_idx)
         report.params = params
+        params.training_idx = training_idx
         self.report = report
         self.report_queue = report_queue
 
@@ -33,7 +35,8 @@ class FrameworkBackend:
 
     def update_report(self):
         if self.report_queue:
-            self.report_queue.put(self.report)
+            # self.report_queue.put(self.report)
+            self.report.save()
 
     def set_seed(self):
         set_seed(self.params.random_seed)

@@ -32,7 +32,12 @@ def reporthook(count, block_size, total_size):
     sys.stdout.flush()
 
 
-def maybe_download(download_dir: str, source_url: str, filename: str = None) -> str:
+def maybe_download(
+        download_dir: str,
+        source_url: str,
+        filename: str = None,
+        username: str = None,
+        password: str = None) -> str:
     """Download the data from source url, unless it's already here.
     Returns:
         Path to resulting file.
@@ -54,7 +59,7 @@ def maybe_download(download_dir: str, source_url: str, filename: str = None) -> 
                 "https://drive.google.com/uc?export=download", params={'id': file_id},
                 stream=True, allow_redirects=True)
         else:
-            r = requests.get(source_url, stream=True, allow_redirects=True)
+            r = requests.get(source_url, stream=True, allow_redirects=True, auth=(username, password))
 
         total_length = r.headers.get('content-length')
         if total_length is None:  # no content length header

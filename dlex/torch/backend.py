@@ -3,9 +3,9 @@ import os
 import random
 import sys
 import traceback
-from collections import namedtuple
+from collections import namedtuple, defaultdict
 from datetime import datetime
-from typing import Callable
+from typing import Callable, Dict
 
 import torch
 from dlex import FrameworkBackend, TrainingProgress
@@ -163,6 +163,54 @@ class PytorchBackend(FrameworkBackend):
 
         return model, datasets
 
+    def record_results(
+            self,
+            select_model: str,
+            model,
+            datasets,
+            loss: float,
+            valid_results: Dict[str, float],
+            test_results: Dict[str, Dict[str, float]]):
+        """
+
+        :param select_model:
+        :return:
+        """
+        report = self.report
+        if select_model == "last":
+            report.current_test_results = test_results
+        elif select_model == "best":
+            if not datasets.valid_set:
+                # there's no valid set, report test result with lowest loss
+                if loss <= min(report.epoch_losses):
+                    report.current_test_results = test_results
+                    logger.info("Result updated (lowest loss reached: %.4f) - %s" % (
+                        loss,
+                        ", ".join(["%s: %.2f" % (metric, res) for metric, res in report.current_test_results.items()])
+                    ))
+                    model.save_checkpoint("best")
+            else:
+                for metric in report.metrics:
+                    valid_best_result = max([r[metric] for r in report.epoch_valid_results])
+                    if valid_best_result == valid_results[metric]:
+                        if datasets.test_sets:
+                            # report test result of best model on valid set
+                            # logger.info("Best result: %f", test_result['result'][metric])
+                            for name in datasets.test_sets.keys():
+                                report.current_test_results[name][metric] = test_results[name][metric]
+                                logger.info(f"{name} results updated (better result on valid set: %.4f) - %.4f" % (
+                                    valid_results[metric],
+                                    test_results[name][metric]
+                                ))
+                                # log_result(f"valid_test_{metric}", params, test_result, datasets.builder.is_better_result)
+                                # log_outputs("valid_test", params, test_outputs)
+                        else:
+                            pass
+                            # there's no test set, report best valid result
+                            # log_result(f"valid_{metric}", params, valid_result, datasets.builder.is_better_result)
+                            # report.current_results[metric] = valid_results[metric]
+                            # log_outputs("valid", params, valid_outputs)
+
     def train(
             self,
             model,
@@ -191,7 +239,7 @@ class PytorchBackend(FrameworkBackend):
         report.epoch_losses = []
         report.epoch_valid_results = []
         report.epoch_test_results = []
-        report.current_results = {}
+        report.current_test_results = {name: {} for name in datasets.test_sets.keys()}
 
         # num_samples = 0
         for current_epoch in range(epoch + 1, train_cfg.num_epochs + 1):
@@ -221,53 +269,35 @@ class PytorchBackend(FrameworkBackend):
                 #         logger.info("Best %s for %s set reached: %f", metric, mode, result['result'][metric])
                 return ret.results, best_result, ret.outputs
 
+            # Evaluate test sets
+            test_results = {}
             for name, dataset in datasets.test_sets.items():
                 test_result, test_best_result, test_outputs = _evaluate(name, dataset)
-                report.epoch_test_results.append(test_result['result'])
+                test_results[name] = test_result['result']
                 log_outputs("test", params, test_outputs)
                 log_dict['test_result'] = test_result['result']
                 for metric in test_result['result']:
-                    summary_writer.add_scalar(
-                        f"test_{metric}",
-                        test_result['result'][metric], current_epoch)
+                    summary_writer.add_scalar(f"{name}_{metric}", test_result['result'][metric], current_epoch)
+            report.epoch_test_results.append(test_results)
 
+            # Evaluate valid set
+            valid_result = None
             if datasets.valid_set:
                 valid_result, valid_best_result, valid_outputs = _evaluate("valid", datasets.valid_set)
-                report.epoch_valid_results.append(valid_result['result'])
                 log_outputs("valid", params, valid_outputs)
                 log_dict['valid_result'] = valid_result['result']
                 for metric in valid_result['result']:
                     summary_writer.add_scalar(
                         f"valid_{metric}",
                         valid_result['result'][metric], current_epoch)
+                valid_result = valid_result['result']
+            report.epoch_valid_results.append(valid_result)
 
             # results for reporting
-            if train_cfg.select_model == "last":
-                report.current_results = test_result['result']
-            elif train_cfg.select_model == "best":
-                if not datasets.valid_set:
-                    # there's no valid set, report test result with lowest loss
-                    if loss <= min(report.epoch_losses):
-                        report.current_results = test_result['result']
-                        logger.info("Result updated (lowest loss reached: %.4f) - %s" % (
-                            loss,
-                            ", ".join(["%s: %.2f" % (metric, res) for metric, res in report.current_results.items()])
-                        ))
-                        model.save_checkpoint("best")
-                else:
-                    for metric in valid_best_result:
-                        if valid_best_result[metric] == valid_result:
-                            if datasets.test_sets:
-                                # report test result of best model on valid set
-                                # logger.info("Best result: %f", test_result['result'][metric])
-                                report.current_results[metric] = test_result['result'][metric]
-                                log_result(f"valid_test_{metric}", params, test_result, datasets.builder.is_better_result)
-                                log_outputs("valid_test", params, test_outputs)
-                            else:
-                                # there's no test set, report best valid result
-                                log_result(f"valid_{metric}", params, valid_result, datasets.builder.is_better_result)
-                                report.current_results[metric] = valid_result['result'][metric]
-                                log_outputs("valid", params, valid_outputs)
+            self.record_results(
+                train_cfg.select_model,
+                model, datasets,
+                loss, valid_result, test_results)
 
             if args.output_test_samples:
                 logger.info("Random samples")
@@ -318,7 +348,7 @@ class PytorchBackend(FrameworkBackend):
             if on_epoch_finished:
                 on_epoch_finished()
 
-        return report.current_results
+        return report.current_test_results
 
     def train_epoch(
             self,
@@ -478,7 +508,8 @@ class PytorchBackend(FrameworkBackend):
                         pred, ref, *others = inference_outputs
                         all_preds += pred
                         all_refs += ref
-                        sample_ids += batch.ids
+                        if batch.ids:
+                            sample_ids += batch.ids
 
                         t.update(len(batch))
                         # for metric in params.test.metrics:
@@ -515,7 +546,6 @@ class PytorchBackend(FrameworkBackend):
 
                 for metric in params.test.metrics:
                     results[metric] = dataset.evaluate(all_preds, all_refs, metric, output_path)
-                logger.info(str(results))
 
                 if self.params.test.output and output_path:
                     path = dataset.write_results_to_file(

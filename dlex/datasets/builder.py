@@ -53,7 +53,7 @@ class DatasetBuilder:
         self.maybe_download_and_extract(download)
         self.maybe_preprocess(download or preprocess)
 
-    def _download_and_extract(self, url: str, folder_path: str = None, filename: str = None):
+    def _download_and_extract(self, url: Union[str, Tuple[str, str, str]], folder_path: str = None, filename: str = None):
         """Download and extract from url
 
         :param url: url to download
@@ -61,8 +61,13 @@ class DatasetBuilder:
         :param folder_path: location for the extracted files. If None, value in `get_raw_data_dir` is used.
         :type folder_path: str, optional
         """
-        file_path = maybe_download(self.get_working_dir(), url, filename)
-        maybe_unzip(file_path, folder_path or self.get_raw_data_dir())
+        if isinstance(url, str):
+            file_path = maybe_download(self.get_working_dir(), url, filename)
+            maybe_unzip(file_path, folder_path or self.get_raw_data_dir())
+        elif isinstance(url, tuple):
+            url, username, password = url
+            file_path = maybe_download(self.get_working_dir(), url, filename, username=username, password=password)
+            maybe_unzip(file_path, folder_path or self.get_raw_data_dir())
 
     def download(self, url: str, filename: str = None):
         maybe_download(self.get_raw_data_dir(), url, filename)
@@ -84,9 +89,11 @@ class DatasetBuilder:
             for url in self.downloads:
                 if type(url) == str:
                     self._download_and_extract(url, self.get_raw_data_dir())
-                else:
-                    assert len(url) == 2
-                    self._download_and_extract(url[0], self.get_raw_data_dir(), url[1])
+                elif type(url) == tuple:
+                    if len(url) == 2:
+                        self._download_and_extract(url[0], self.get_raw_data_dir(), url[1])
+                    elif len(url) == 3:
+                        self._download_and_extract(url, self.get_raw_data_dir())
 
     @abc.abstractmethod
     def maybe_preprocess(self, force=False) -> bool:

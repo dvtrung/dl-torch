@@ -132,10 +132,10 @@ class AttrDict(dict):
         return d
 
     def keys(self):
-        return filter(lambda key: key != '_variables', super().keys())
+        return filter(lambda key: key not in ['_variables', '_overridden_params'], super().keys())
 
     def __iter__(self):
-        return filter(lambda key: key != '_variables', super().__iter__())
+        return filter(lambda key: key not in ['_variables', '_overridden_params'], super().__iter__())
 
     def __getstate__(self):
         return self.__dict__
@@ -220,6 +220,7 @@ class Params(AttrDict):
     train: TrainConfig
     test: TestConfig
     gpu: List[int] = None
+    training_idx = None
 
     def __init__(
             self,
@@ -248,7 +249,8 @@ class Params(AttrDict):
         self.env_name = env_name
         self.variable_values = list(_variables.values()) if _variables else None
 
-        self.tag = ",".join(sorted([f"{name}={str(val)}" for name, val in _variables.items()])) if _variables else None
+        # self.tag = ",".join(sorted([f"{name}={str(val)}" for name, val in _variables.items()])) if _variables else None
+        self.tag = str(self.training_idx)
 
     @property
     def args(self):
@@ -606,8 +608,7 @@ class Configs:
                 variables_list = []
                 variable_names = list(env_prop['variables'].keys()) if 'variables' in env_prop else []
                 variable_values = list(env_prop['variables'].values()) if 'variables' in env_prop else []
-                overridden_params = env_prop['params'] if 'params' in env_prop \
-                    else defaultdict(default_factory=lambda: None)
+                overridden_params = env_prop['params'] if 'params' in env_prop else dict()
 
                 # fill default values
                 if 'default' in self.yaml_params['env'] and 'variables' in self.yaml_params['env']['default']:

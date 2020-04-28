@@ -20,6 +20,8 @@ class Batch(dict):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.__dict__ = self
+        if 'ids' not in kwargs:
+            self.ids = None
 
     def item(self, i: int) -> BatchItem:
         try:
@@ -37,7 +39,7 @@ class Batch(dict):
         except Exception:
             Y = None
 
-        return BatchItem(id=self.ids[i], X=X, Y=Y)
+        return BatchItem(id=self.ids[i] if self.ids else None, X=X, Y=Y)
 
     @property
     def batch_size(self):
