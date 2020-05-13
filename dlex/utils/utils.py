@@ -83,24 +83,27 @@ def maybe_unzip(file_path, folder_path):
         return
 
     _, ext = os.path.splitext(file_path)
-    if ext == '.zip':
-        logger.info("Extract %s to %s", file_path, folder_path)
-        zip_ref = zipfile.ZipFile(file_path, 'r')
-        zip_ref.extractall(_dir)
-        zip_ref.close()
-    elif ext in ['.lzma', '.gz', '.tgz']:
-        logger.info("Extract %s to %s", file_path, folder_path)
-        tar = tarfile.open(file_path)
-        tar.extractall(path=_dir)
-        tar.close()
-    elif ext in ['.json']:
-        pass
-    elif ext == '.rar':
-        os.makedirs(folder_path, exist_ok=True)
-        process = subprocess.Popen(['unrar', 'x', file_path, folder_path])
-        process.communicate()
-    else:
-        logger.warning("File type is not supported (%s). Not a zip file?" % ext)
+    try:
+        if ext == '.zip':
+            logger.info("Extract %s to %s", file_path, folder_path)
+            zip_ref = zipfile.ZipFile(file_path, 'r')
+            zip_ref.extractall(_dir)
+            zip_ref.close()
+        elif ext in ['.lzma', '.gz', '.tgz']:
+            logger.info("Extract %s to %s", file_path, folder_path)
+            tar = tarfile.open(file_path)
+            tar.extractall(path=_dir)
+            tar.close()
+        elif ext in ['.json']:
+            pass
+        elif ext == '.rar':
+            os.makedirs(folder_path, exist_ok=True)
+            process = subprocess.Popen(['unrar', 'x', file_path, folder_path])
+            process.communicate()
+        else:
+            logger.warning("File type is not supported (%s). Not a zip file?" % ext)
+    except Exception as e:
+        raise Exception(f"Error unzipping {file_path}: {str(e)}")
 
 
 def load_pkl(filepath: str):

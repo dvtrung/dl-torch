@@ -378,7 +378,7 @@ def refresh_display():
 
 def update_results(report: ModelReport, env_name: str, training_idx: int):
     logger.debug("Results updated (env: %s, process id: %d)", env_name, training_idx)
-    logger.debug(report.current_results)
+    logger.debug(report.current_test_results)
     # all_reports[env_name][training_idx] = report
     write_report()
 

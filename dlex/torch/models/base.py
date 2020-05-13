@@ -117,6 +117,7 @@ class ModelWrapper:
         self._num_samples = 0
         self.epoch_loss_total = 0.
         self.epoch_loss_count = 0
+        self._metrics = {}
 
     def training_step(self, batch):
         self.module.train(True)
@@ -265,7 +266,7 @@ class ClassificationModel(BaseModel):
         preds = torch.max(output, 1)[1]
         accuracy = torch.sum(preds.cpu() == batch.Y)
         return dict(
-            acc=(accuracy.detach().numpy(), len(batch))
+            acc=(accuracy.detach().numpy() * 100, len(batch))
         )
 
 

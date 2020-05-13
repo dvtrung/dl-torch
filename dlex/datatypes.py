@@ -14,7 +14,7 @@ class ModelReport:
 
     params = None
 
-    results: Union[Dict[str, float], List[Dict[str, float]]] = None
+    results: Union[Dict[str, Dict[str, float]], List[Dict[str, Dict[str, float]]]] = None
     epoch_results: Dict[str, List[Dict[str, float]]] = None
     current_test_results: Dict[str, Dict[str, float]] = None
     epoch_valid_results: List[Dict[str, float]] = None
@@ -56,33 +56,36 @@ class ModelReport:
             - Result / Average result ± variance
             - Current epoch
             - Current fold (k-fold cross validation)
+        :param full:
         :param metric:
         :return:
         """
         if not self.results:
-            if self.current_results:
-                res = self.current_results[metric]
-                return "%.2f" % res
+            return "-"
+
+        dataset = self.test_sets[0]
+        res = [r[dataset][metric] for r in self.results]
+        if type(res) == float:
+            return "%.2f" % res
+        elif type(res) == list and len(res) > 0:  # cross validation
+            if full:
+                return "[" + ", ".join(["%.2f" % r for r in res]) + "] -> " + "%.2f ± %.2f" % (
+                np.mean(res), np.std(res))
             else:
-                return "-"
+                return "%.2f ± %.2f" % (np.mean(res), np.std(res))
         else:
-            res = self.results[metric]
-            if type(res) == float:
-                return "%.2f" % res
-            elif type(res) == list and len(res) > 0:  # cross validation
-                if full:
-                    return "[" + ", ".join(["%.2f" % r for r in res]) + "] -> " + "%.2f ± %.2f" % (np.mean(res), np.std(res))
-                else:
-                    return "%.2f ± %.2f" % (np.mean(res), np.std(res))
-            else:
-                return "-"
+            return "-"
 
     def get_status_text(self):
         if self.status == "finished":
             status = "done"
         elif self.params.train.cross_validation is not None:
-            current_fold = len(self.results[self.metrics[0]])
-            status = f"CV {current_fold}/{self.params.train.cross_validation}"
+            dataset = self.test_sets[0]
+            current_fold = len(self.results)
+            status = f"CV {current_fold + 1}/{self.params.train.cross_validation}"
+            if self.current_test_results:
+                metric = self.metrics[0]
+                status += f" (current: {self.current_test_results[dataset][metric]:.2f})" if self.current_test_results else ""
         else:
             pbar = get_progress_bar(10, (self.current_epoch - 1) / self.num_epochs)
             status = f"{pbar} {self.current_epoch - 1}/{self.num_epochs}"
@@ -128,6 +131,14 @@ class ModelReport:
             return None
         with open(path, "rb") as f:
             return pickle.load(f)
+
+    @property
+    def valid_set(self) -> str:
+        return self.params.train.valid_set
+
+    @property
+    def test_sets(self) -> List[str]:
+        return self.params.test.test_sets
 
 
 class TrainingProgress:

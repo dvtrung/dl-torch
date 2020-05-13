@@ -1,6 +1,7 @@
 import abc
 import pickle
 from multiprocessing.queues import Queue
+from typing import List
 
 from dlex import ModelReport, Params, logger
 from dlex.utils import set_seed

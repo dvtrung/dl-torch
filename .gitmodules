@@ -6,6 +6,6 @@
 	url = git@github.com:trungd/question_answering.git
 	branch = master
 [submodule "dlex_impl/visual_reasoning"]
-  path = dlex_impl/visual_reasoning
-  url = git@github.com:trungd/visual_reasoning.git
+	path = dlex_impl/visual_reasoning
+	url = git@github.com:trungd/visual_reasoning.git
   branch = master

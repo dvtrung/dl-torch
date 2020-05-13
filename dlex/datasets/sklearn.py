@@ -21,12 +21,26 @@ class SklearnDataset:
         return self.builder.params
 
     def init_dataset(self, X, y):
+        if -1 in y:  # [-1, 1] -> [0, 1]
+            y = [i if i != -1 else 0 for i in y]
+        elif 0 not in y:  # [1, 2, 3] -> [0, 1, 2]
+            y = [i - 1 for i in y]
+
         self.X, self.y = X, y
 
         if self.params.train.cross_validation:
             data = list(zip(X, y))
             random.seed(self.params.random_seed)
             random.shuffle(data)
+            if True:  # split evenly
+                classes = set(y)
+                data_by_class = {c: [d for d in data if d[1] == c] for c in classes}
+                data = []
+                for i in range(max([len(d) for d in data_by_class.values()])):
+                    for c in classes:
+                        if i < len(data_by_class[c]):
+                            data.append(data_by_class[c][i])
+
             X, y = zip(*data)
 
             logger.info("Initializing fold %d...", self.configs.cv_current_fold)

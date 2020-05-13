@@ -34,9 +34,8 @@ class PytorchBackend(FrameworkBackend):
 
     def run_cross_validation_training(self) -> ModelReport:
         report = self.report
-        report.results = {m: [] for m in self.report.metrics}
+        report.results = []
         train_cfg = self.params.train
-        results = []
         for i in range(train_cfg.cross_validation):
             # Reset random seed so the same order is returned after shuffling dataset
             self.set_seed()
@@ -49,13 +48,11 @@ class PytorchBackend(FrameworkBackend):
 
             model, datasets = self.load_model("train")
 
-            res = self.train(
+            results = self.train(
                 model, datasets, summary_writer=summary_writer,
                 tqdm_desc=f"[{self.params.env_name}-{self.training_idx}] CV {i + 1}/{train_cfg.cross_validation} - ",
                 tqdm_position=self.training_idx)
-            results.append(res)
-            report.results = {
-                metric: [r[metric] for r in results] for metric in results[0]}
+            report.results.append(results)
             self.update_report()
             summary_writer.close()
 
@@ -66,7 +63,7 @@ class PytorchBackend(FrameworkBackend):
     def run_train(self) -> ModelReport:
         logger.info(f"Training started ({self.training_idx})")
         report = self.report
-        report.results = {m: None for m in self.report.metrics}
+        report.results = {name: {m: None for m in self.report.metrics} for name in self.report.test_sets}
 
         if self.params.train.cross_validation:
             return self.run_cross_validation_training()
@@ -167,32 +164,37 @@ class PytorchBackend(FrameworkBackend):
             self,
             select_model: str,
             model,
-            datasets,
-            loss: float,
-            valid_results: Dict[str, float],
-            test_results: Dict[str, Dict[str, float]]):
+            datasets) -> bool:
         """
 
         :param select_model:
-        :return:
+        :return: whether the results are updated
         """
         report = self.report
+        valid_results = report.epoch_valid_results[-1]
+        test_results = report.epoch_test_results[-1]
+        loss = report.epoch_losses[-1]
+        updated = False
         if select_model == "last":
             report.current_test_results = test_results
+            updated = True
         elif select_model == "best":
             if not datasets.valid_set:
                 # there's no valid set, report test result with lowest loss
                 if loss <= min(report.epoch_losses):
+                    dataset = report.test_sets[0]
                     report.current_test_results = test_results
                     logger.info("Result updated (lowest loss reached: %.4f) - %s" % (
                         loss,
-                        ", ".join(["%s: %.2f" % (metric, res) for metric, res in report.current_test_results.items()])
+                        ", ".join(["%s: %.2f" % (metric, res) for metric, res in report.current_test_results[dataset].items()])
                     ))
                     model.save_checkpoint("best")
+                    updated = True
             else:
                 for metric in report.metrics:
                     valid_best_result = max([r[metric] for r in report.epoch_valid_results])
                     if valid_best_result == valid_results[metric]:
+                        updated = True
                         if datasets.test_sets:
                             # report test result of best model on valid set
                             # logger.info("Best result: %f", test_result['result'][metric])
@@ -210,6 +212,7 @@ class PytorchBackend(FrameworkBackend):
                             # log_result(f"valid_{metric}", params, valid_result, datasets.builder.is_better_result)
                             # report.current_results[metric] = valid_results[metric]
                             # log_outputs("valid", params, valid_outputs)
+        return updated
 
     def train(
             self,
@@ -218,7 +221,7 @@ class PytorchBackend(FrameworkBackend):
             summary_writer: SummaryWriter,
             tqdm_desc="",
             tqdm_position=None,
-            on_epoch_finished: Callable[[], None] = None):
+            on_epoch_finished: Callable[[], None] = None) -> Dict[str, Dict[str, float]]:
         """
         :param model:
         :param datasets:
@@ -294,10 +297,8 @@ class PytorchBackend(FrameworkBackend):
             report.epoch_valid_results.append(valid_result)
 
             # results for reporting
-            self.record_results(
-                train_cfg.select_model,
-                model, datasets,
-                loss, valid_result, test_results)
+            if self.record_results(train_cfg.select_model, model, datasets):
+                report.save()
 
             if args.output_test_samples:
                 logger.info("Random samples")
@@ -422,7 +423,7 @@ class PytorchBackend(FrameworkBackend):
                             # loss="%.4f" % loss,
                             loss="%.4f" % model.epoch_loss,
                             # lr=mean(model.learning_rates())
-                            **metrics,
+                            **{metric: "%.2f" % val for metric, val in metrics.items()},
                             # **(report.current_results or {})
                         )
 

@@ -1,5 +1,5 @@
 """Model utils"""
-from typing import List
+from typing import List, Union
 import importlib
 
 import torch
@@ -94,10 +94,21 @@ class MultiLinear(nn.Module):
             self,
             dims,
             embed_dim: int = 0,
-            norm_layer: nn.Module = nn.LayerNorm,
-            dropout=0.0,
-            activation_fn='relu',
-            last_layer_activation_fn=None):
+            norm_layer: Union[nn.Module, None] = nn.LayerNorm,
+            dropout: float = 0.0,
+            activation_fn: str = 'relu',
+            last_layer_activation_fn: str = None,
+            residual_connection=False):
+        """
+
+        :param dims:
+        :param embed_dim:
+        :param norm_layer:
+        :param dropout:
+        :param activation_fn:
+        :param last_layer_activation_fn:
+        :param residual_connection:
+        """
         super().__init__()
 
         layers = []
@@ -116,6 +127,7 @@ class MultiLinear(nn.Module):
                 layers.append(get_activation_fn(last_layer_activation_fn)())
 
         self.layers = nn.ModuleList(layers)
+        self.residual_connection = residual_connection
 
     def __getitem__(self, item):
         return self.layers[item]
@@ -125,9 +137,13 @@ class MultiLinear(nn.Module):
 
     def forward(self, X: torch.FloatTensor, append_emb=None):
         for layer in self.layers:
+            residual = X
             if append_emb is not None and type(layer) == nn.Linear:
                 X = torch.cat([X, append_emb], -1)
             X = layer(X)
+
+            if self.residual_connection and X.shape[-1] == residual.shape[-1]:
+                X += residual
         return X
 
 
@@ -157,4 +173,8 @@ class RNN(nn.Module):
             c, (h, _) = self.rnn(inputs)
             c, _ = nn.utils.rnn.pad_packed_sequence(c, batch_first=True)
             h = h.permute(1, 0, 2).contiguous().view(c.shape[0], -1)
+            return c, h
+        else:
+            c, h = self.rnn(inputs)
+            c, _ = nn.utils.rnn.pad_packed_sequence(c, batch_first=True)
             return c, h
