@@ -8,4 +8,4 @@
 [submodule "dlex_impl/visual_reasoning"]
 	path = dlex_impl/visual_reasoning
 	url = git@github.com:trungd/visual_reasoning.git
-  branch = master
+    branch = master

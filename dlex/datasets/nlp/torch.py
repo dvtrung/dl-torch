@@ -21,7 +21,7 @@ class NLPDataset(Dataset):
 
     def load_embeddings(self, tokens: List[str] = None, specials: List[str] = None) -> Tuple[nn.Embedding, Vocab]:
         """
-        Load pretrained embedding defined in dataset.embeddings
+        Load pre-trained embedding defined in dataset.embeddings
         :param tokens: if specified, only load embeddings of these tokens
         :param specials: special tokens
         :return:

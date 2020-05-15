@@ -34,9 +34,9 @@ class ModelReport:
 
     @property
     def current_epoch(self) -> int:
-        if len(self.epoch_results) == 0:
+        if self.epoch_test_results is None:
             return 1
-        return min(len(res) for res in self.epoch_results.values()) + 1
+        return len(self.epoch_test_results) + 1
 
     @property
     def num_epochs(self) -> int:
@@ -85,7 +85,7 @@ class ModelReport:
             status = f"CV {current_fold + 1}/{self.params.train.cross_validation}"
             if self.current_test_results:
                 metric = self.metrics[0]
-                status += f" (current: {self.current_test_results[dataset][metric]:.2f})" if self.current_test_results else ""
+                status += f" ({self.current_epoch * 100 // self.num_epochs}% - {self.current_test_results[dataset][metric]:.2f})" if self.current_test_results else ""
         else:
             pbar = get_progress_bar(10, (self.current_epoch - 1) / self.num_epochs)
             status = f"{pbar} {self.current_epoch - 1}/{self.num_epochs}"

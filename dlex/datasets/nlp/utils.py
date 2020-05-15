@@ -1,9 +1,11 @@
 """NLP Dataset"""
+import os
 import re
-from typing import List, Union, Dict
+from typing import List, Union, Dict, Tuple
 
 import nltk
 import unicodedata
+import numpy as np
 from dlex.configs import ModuleConfigs
 from dlex.utils.logging import logger
 
@@ -306,3 +308,123 @@ class Vocab:
             return self._token2index['<unk>']
         else:
             raise Exception("<oov> token not found.")
+
+    def get_specials(self):
+        return [token for token in self._index2token if token.startswith('<')]
+
+    def init_pretrained_embeddings(
+            self,
+            pretrained: str,
+            emb_name: str = None,
+            dim: int = None) -> np.ndarray:
+        if pretrained == 'glove':
+            from torchtext.vocab import GloVe
+            dim = dim or 300
+            vocab = GloVe(
+                name=emb_name or '840B', dim=dim,
+                cache=os.path.join(ModuleConfigs.get_tmp_path(), "torchtext"))
+        elif pretrained == 'fasttext':
+            from torchtext.vocab import FastText
+            vocab = FastText()
+        else:
+            raise ValueError("Pre-trained embeddings not found.")
+
+        vectors = vocab.vectors
+        oovs = []
+
+        embeddings = np.zeros([len(self), dim])
+        for idx, t in enumerate(self._index2token):
+            _t = t.lower()
+            if _t in vocab.stoi:
+                embeddings[idx, :] = vectors[vocab.stoi[_t]].cpu().numpy()
+            if all(token in vocab.stoi for token in _t.split(' ')):
+                embeddings[idx, :] = np.sum([vectors[vocab.stoi[token]].cpu().numpy() for token in _t.split(' ')])
+            else:
+                oovs.append(_t)
+
+        if oovs:
+            logger.warning(f"{len(oovs)} tokens not found in pre-trained embeddings: {', '.join(oovs)}")
+
+        logger.debug(f"Load embeddings: {pretrained} (no. embeddings: {len(self) - len(oovs):,})")
+
+        self.embedding_dim = dim
+        self.embeddings = embeddings
+
+    def get_token_embedding(self, token: str) -> np.ndarray:
+        if self.embeddings is None:
+            raise ValueError('Embeddings are not initialized')
+        return self.embeddings[self.get_token_id(token)]
+
+    def embed_token_list(self, ls):
+        emb = np.zeros(self.embedding_dim)
+        for token in ls:
+            emb += self.get_token_embedding(token)
+        return emb
+
+
+def load_embeddings(
+        pretrained: str,
+        emb_name: str = None,
+        dim: int = None,
+        vocab_size: int = None,
+        tokens: List[str] = None,
+        specials: List[str] = None) -> Tuple[np.ndarray, Vocab]:
+    """
+    Load pre-trained embedding defined in dataset.embeddings
+    :param tokens: if specified, only load embeddings of these tokens
+    :param specials: special tokens
+    :return:
+    """
+    if not pretrained:
+        assert dim is not None
+        assert vocab_size is not None
+        return np.random.rand(vocab_size, dim), None
+    elif pretrained.lower() in ["glove", "fasttext"]:
+        if pretrained.lower() == 'glove':
+            from torchtext.vocab import GloVe
+            vocab = GloVe(
+                name=emb_name, dim=dim,
+                cache=os.path.join(ModuleConfigs.get_tmp_path(), "torchtext"))
+        elif pretrained.lower() == 'fasttext':
+            from torchtext.vocab import FastText
+            vocab = FastText()
+        else:
+            raise ValueError("Pre-trained embeddings not found.")
+
+        vectors = vocab.vectors
+        index2token = vocab.itos
+        token2index = None
+        if tokens:  # limit vocabulary to list of tokens
+            num_oovs = 0
+            keep = []
+            index2token = []
+            token2index = {}
+            for t in tokens:
+                _t = t.lower()
+                if _t in token2index:
+                    if t not in token2index:
+                        token2index[t] = token2index[_t]
+                elif _t in vocab.stoi:
+                    keep.append(vocab.stoi[_t.lower()])
+                    token2index[_t] = len(index2token)
+                    token2index[t] = len(index2token)
+                    index2token.append(_t)
+                else:
+                    num_oovs += 1
+            vectors = vectors[keep]
+            if num_oovs:
+                logger.warning(f"{num_oovs} tokens not found in pre-trained embeddings")
+
+        logger.debug(f"Load embeddings: {pretrained} (no. embeddings: {len(index2token):,})")
+
+        if specials is not None:
+            for s in specials:
+                token2index[s] = len(index2token)
+                index2token.append(s)
+            index2token += specials
+            vectors = torch.cat([vectors, torch.rand(len(specials), len(vectors[0]))])
+
+        # return nn.Embedding.from_pretrained(vectors, freeze=emb.freeze or True), Vocab(index2token, token2index)
+        return vectors, Vocab(index2token, token2index)
+    else:
+        raise ValueError(f"{pretrained} is not supported.")

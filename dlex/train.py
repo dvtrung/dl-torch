@@ -250,7 +250,6 @@ def _on_key_pressed(c):
         _on_key_pressed(selection)
     elif c == "r":
         write_report()
-        refresh_display()
     elif c == "q":
         _exit()
 
@@ -267,8 +266,8 @@ def main(scr=None, *args):
 
     def _refresh_display():
         while True:
-            refresh_display()
-            sleep(1)
+            write_report()
+            sleep(5)
     _add_thread("refresh_display", _refresh_display)
 
     if args.num_processes >= 1:
