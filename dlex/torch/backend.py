@@ -56,7 +56,9 @@ class PytorchBackend(FrameworkBackend):
             self.update_report()
             summary_writer.close()
 
-        logger.info(f"Training finished. Results: {str(report.results)}")
+        logger.info(f"Training finished.")
+        for metric in report.metrics:
+            logger.info(f"Results ({metric}): {report.get_result_text()}")
         report.finish()
         return report
 
@@ -171,8 +173,8 @@ class PytorchBackend(FrameworkBackend):
         :return: whether the results are updated
         """
         report = self.report
-        valid_results = report.epoch_valid_results[-1]
-        test_results = report.epoch_test_results[-1]
+        valid_results = report.get_current_valid_results()
+        test_results = report.get_current_test_results()
         loss = report.epoch_losses[-1]
         updated = False
         if select_model == "last":
@@ -239,16 +241,21 @@ class PytorchBackend(FrameworkBackend):
         epoch = model.global_step // len(datasets.train_set)
         num_samples = model.global_step % len(datasets.train_set)
 
+        training_progress = TrainingProgress(params, num_samples=len(datasets.train_set))
+
         report.epoch_losses = []
-        report.epoch_valid_results = []
-        report.epoch_test_results = []
+        report.valid_results = dict()
+        report.test_results = dict()
         report.current_test_results = {name: {} for name in datasets.test_sets.keys()}
+        report.training_progress = training_progress
 
         # num_samples = 0
         for current_epoch in range(epoch + 1, train_cfg.num_epochs + 1):
+            training_progress.new_epoch(current_epoch)
             log_dict = dict(epoch=current_epoch)
             log_dict['total_time'], loss = self.train_epoch(
                 current_epoch, model, datasets, report, num_samples,
+                training_progress=training_progress,
                 tqdm_desc=tqdm_desc + f"Epoch {current_epoch}",
                 tqdm_position=tqdm_position)
             report.epoch_losses.append(loss)
@@ -265,86 +272,82 @@ class PytorchBackend(FrameworkBackend):
                     tqdm_desc=tqdm_desc + f"Epoch {current_epoch}",
                     tqdm_position=None if tqdm_position is None else tqdm_position)
                 best_result = log_result(name, params, ret.results, datasets.builder.is_better_result)
-                # for metric in best_result:
-                #     if best_result[metric] == result:
-                #         model.save_checkpoint(
-                #             "best" if len(params.test.metrics) == 1 else "%s-best-%s" % (mode, metric))
-                #         logger.info("Best %s for %s set reached: %f", metric, mode, result['result'][metric])
                 return ret.results, best_result, ret.outputs
 
-            # Evaluate test sets
-            test_results = {}
-            for name, dataset in datasets.test_sets.items():
-                test_result, test_best_result, test_outputs = _evaluate(name, dataset)
-                test_results[name] = test_result['result']
-                log_outputs("test", params, test_outputs)
-                log_dict['test_result'] = test_result['result']
-                for metric in test_result['result']:
-                    summary_writer.add_scalar(f"{name}_{metric}", test_result['result'][metric], current_epoch)
-            report.epoch_test_results.append(test_results)
+            if training_progress.should_eval() or current_epoch == train_cfg.num_epochs:
+                # Evaluate test sets
+                test_results = {}
+                for name, dataset in datasets.test_sets.items():
+                    test_result, test_best_result, test_outputs = _evaluate(name, dataset)
+                    test_results[name] = test_result['result']
+                    log_outputs("test", params, test_outputs)
+                    log_dict['test_result'] = test_result['result']
+                    for metric in test_result['result']:
+                        summary_writer.add_scalar(f"{name}_{metric}", test_result['result'][metric], current_epoch)
+                report.test_results[current_epoch] = test_results
 
-            # Evaluate valid set
-            valid_result = None
-            if datasets.valid_set:
-                valid_result, valid_best_result, valid_outputs = _evaluate("valid", datasets.valid_set)
-                log_outputs("valid", params, valid_outputs)
-                log_dict['valid_result'] = valid_result['result']
-                for metric in valid_result['result']:
-                    summary_writer.add_scalar(
-                        f"valid_{metric}",
-                        valid_result['result'][metric], current_epoch)
-                valid_result = valid_result['result']
-            report.epoch_valid_results.append(valid_result)
-
-            # results for reporting
-            if self.record_results(train_cfg.select_model, model, datasets):
-                report.save()
-
-            if args.output_test_samples:
-                logger.info("Random samples")
-                for output in random.choices(test_outputs if datasets.test_sets else valid_outputs, k=5):
-                    logger.info(str(output))
-
-            epoch_info_logger.info(json_dumps(log_dict))
-            log_msgs = [
-                "time: %s" % log_dict['total_time'].split('.')[0],
-                "loss: %.4f" % log_dict['loss']
-            ]
-
-            for metric in report.metrics:
+                # Evaluate valid set
+                valid_result = None
                 if datasets.valid_set:
-                    log_msgs.append(f"dev ({metric}): %.2f" % (
-                        log_dict['valid_result'][metric],
-                        # valid_best_result[metric]['result'][metric]
-                    ))
-                if datasets.test_sets:
-                    log_msgs.append(f"test ({metric}): %.2f" % (
-                        log_dict['test_result'][metric],
-                        # test_best_result[metric]['result'][metric],
-                    ))
-            logger.info(f"session {report.training_idx} - epoch {current_epoch}: " + " - ".join(log_msgs))
+                    valid_result, valid_best_result, valid_outputs = _evaluate("valid", datasets.valid_set)
+                    log_outputs("valid", params, valid_outputs)
+                    log_dict['valid_result'] = valid_result['result']
+                    for metric in valid_result['result']:
+                        summary_writer.add_scalar(
+                            f"valid_{metric}",
+                            valid_result['result'][metric], current_epoch)
+                    valid_result = valid_result['result']
+                report.valid_results[current_epoch] = valid_result
 
-            # Early stopping
-            if params.train.early_stop:
-                ne = params.train.early_stop.num_epochs
-                min_diff = params.train.early_stop.min_diff or 0.
-                if datasets.valid is not None:
-                    last_results = report.epoch_valid_results
-                    if len(last_results) > ne:
-                        if all(
-                                max([r[metric] for r in last_results[-ne:]]) <=
-                                max([r[metric] for r in last_results[:-ne]])
-                                for metric in report.metrics):
-                            logger.info("Early stop at epoch %s", current_epoch)
-                            break
-                else:
-                    losses = report.epoch_losses
-                    if len(losses) > ne:
-                        diff = min(losses[:-ne]) - min(losses[-ne:])
-                        logger.debug("Last %d epochs decrease: %.4f", ne, diff)
-                        if diff <= min_diff:
-                            logger.info("Early stop at epoch %s", current_epoch)
-                            break
+                # results for reporting
+                if self.record_results(train_cfg.select_model, model, datasets):
+                    report.save()
+
+                if args.output_test_samples:
+                    logger.info("Random samples")
+                    for output in random.choices(test_outputs if datasets.test_sets else valid_outputs, k=5):
+                        logger.info(str(output))
+
+                epoch_info_logger.info(json_dumps(log_dict))
+                log_msgs = [
+                    "time: %s" % log_dict['total_time'].split('.')[0],
+                    "loss: %.4f" % log_dict['loss']
+                ]
+
+                for metric in report.metrics:
+                    if datasets.valid_set:
+                        log_msgs.append(f"dev ({metric}): %.2f" % (
+                            log_dict['valid_result'][metric],
+                            # valid_best_result[metric]['result'][metric]
+                        ))
+                    if datasets.test_sets:
+                        log_msgs.append(f"test ({metric}): %.2f" % (
+                            log_dict['test_result'][metric],
+                            # test_best_result[metric]['result'][metric],
+                        ))
+                logger.info(f"session {report.training_idx} - epoch {current_epoch}: " + " - ".join(log_msgs))
+
+                # Early stopping
+                if params.train.early_stop:
+                    ne = params.train.early_stop.num_epochs
+                    min_diff = params.train.early_stop.min_diff or 0.
+                    if datasets.valid_set is not None:
+                        last_results = report.epoch_valid_results
+                        if len(last_results) > ne:
+                            if all(
+                                    max([r[metric] for r in last_results[-ne:]]) <=
+                                    max([r[metric] for r in last_results[:-ne]])
+                                    for metric in report.metrics):
+                                logger.info("Early stop at epoch %s", current_epoch)
+                                break
+                    else:
+                        losses = report.epoch_losses
+                        if len(losses) > ne:
+                            diff = min(losses[:-ne]) - min(losses[-ne:])
+                            logger.debug("Last %d epochs decrease: %.4f", ne, diff)
+                            if diff <= min_diff:
+                                logger.info("Early stop at epoch %s", current_epoch)
+                                break
 
             if on_epoch_finished:
                 on_epoch_finished()
@@ -358,6 +361,7 @@ class PytorchBackend(FrameworkBackend):
             datasets: Datasets,
             report: ModelReport,
             num_samples=0,
+            training_progress: TrainingProgress = None,
             tqdm_desc="Epoch {current_epoch}",
             tqdm_position=None):
         """Train."""
@@ -381,10 +385,9 @@ class PytorchBackend(FrameworkBackend):
             batch_sizes[key] *= (len(self.params.gpu) if self.params.gpu else 1) or 1
         assert 0 in batch_sizes
 
-        prog = TrainingProgress(params, num_samples=len(datasets.train_set))
         with tqdm(
                 desc=tqdm_desc.format(current_epoch=current_epoch),
-                total=prog.num_samples, leave=False,
+                total=training_progress.num_samples, leave=False,
                 position=tqdm_position,
                 disable=not args.show_progress) as t:
             t.update(num_samples)
@@ -429,8 +432,8 @@ class PytorchBackend(FrameworkBackend):
 
                     # if args.debug and epoch_step > DEBUG_NUM_ITERATIONS:
                     #    break
-                    t.update(batch_size)
-                    prog.update(batch_size)
+                    t.update(len(batch))
+                    training_progress.update(len(batch))
 
                     model.current_epoch = current_epoch
                     model.global_step = (current_epoch - 1) * len(datasets.train_set) + num_samples
@@ -439,14 +442,14 @@ class PytorchBackend(FrameworkBackend):
                         report.summary_writer.add_scalar("loss", loss, model.global_step)
 
                     # Save model
-                    if prog.should_save():
+                    if training_progress.should_save():
                         if args.save_all:
                             model.save_checkpoint("epoch-%02d" % current_epoch)
                         else:
                             model.save_checkpoint("latest")
 
                     # Log
-                    if prog.should_log():
+                    if training_progress.should_log():
                         logger.info(", ".join([
                             f"epoch: {current_epoch}",
                             f"progress: {int(prog.epoch_progress * 100)}%",

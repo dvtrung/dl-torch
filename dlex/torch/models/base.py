@@ -10,7 +10,7 @@ import torch.nn.functional as F
 from dlex.configs import ModuleConfigs, AttrDict, Params
 from dlex.datasets.torch import Dataset
 from dlex.torch import Batch
-from dlex.torch.utils.model_utils import get_optimizer, get_lr_scheduler
+from dlex.torch.utils.model_utils import get_optimizer, get_lr_scheduler, ExponentialMovingAverage
 from dlex.utils.logging import logger
 
 
@@ -113,6 +113,14 @@ class ModelWrapper:
         self._num_samples = 0
         self._metrics = {}
 
+        if self.params.train.ema_decay_rate:
+            self.ema = ExponentialMovingAverage(self.params.train.ema_decay_rate)
+            for name, param in model.named_parameters():
+                if param.requires_grad:
+                    self.ema.register(name, param.data)
+        else:
+            self.ema = None
+
     def reset_counter(self):
         self._num_samples = 0
         self.epoch_loss_total = 0.
@@ -146,6 +154,11 @@ class ModelWrapper:
 
         for optimizer in self.optimizers:
             optimizer.step()
+
+        if self.ema is not None:
+            for name, param in self.model.named_parameters():
+                if param.requires_grad:
+                    param.data = self.ema(name, param.data)
 
         # log_dict = self.train_log(batch, output, verbose=self.params.verbose)
         # if len(log_dict) > 0:
@@ -256,14 +269,24 @@ class ClassificationModel(BaseModel):
 
     def infer(self, batch):
         logits = self.forward(batch)
-        logits = F.softmax(logits, -1)
-        return torch.max(logits, 1)[1].tolist(), batch.Y.tolist()
+        return self.get_predictions(logits).tolist(), batch.Y.tolist()
+
+    def get_predictions(self, output):
+        if isinstance(output, list):  # ensemble
+            logits = sum(F.softmax(l, -1) for l in output)
+        else:
+            logits = F.softmax(output, -1)
+        return torch.max(logits, 1)[1]
 
     def get_loss(self, batch, output):
-        return self._criterion(output, self.to_cuda_tensors(batch.Y))
+        if isinstance(output, list):  # ensemble
+            y = self.to_cuda_tensors(batch.Y)
+            return sum(self._criterion(o, y) for o in output)
+        else:
+            return self._criterion(output, self.to_cuda_tensors(batch.Y))
 
     def get_metrics(self, batch: Batch, output) -> Dict[str, Tuple[Union[int, float], int]]:
-        preds = torch.max(output, 1)[1]
+        preds = self.get_predictions(output)
         accuracy = torch.sum(preds.cpu() == batch.Y)
         return dict(
             acc=(accuracy.detach().numpy() * 100, len(batch))

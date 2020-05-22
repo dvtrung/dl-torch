@@ -113,18 +113,20 @@ class MultiLinear(nn.Module):
 
         layers = []
         for i, in_dim, out_dim in zip(range(len(dims) - 1), dims[:-1], dims[1:]):
-            layers.append(nn.Linear(in_dim + embed_dim, out_dim))
+            sub_layers = [nn.Linear(in_dim + embed_dim, out_dim)]
             if norm_layer:
-                layers.append(norm_layer(out_dim))
+                sub_layers.append(norm_layer(out_dim))
 
             if dropout > 0.:
-                layers.append(nn.Dropout(dropout))
+                sub_layers.append(nn.Dropout(dropout))
 
             is_last_layer = (i == len(dims) - 2)
             if not is_last_layer and activation_fn:
-                layers.append(get_activation_fn(activation_fn)())
+                sub_layers.append(get_activation_fn(activation_fn)())
             elif is_last_layer and last_layer_activation_fn:
-                layers.append(get_activation_fn(last_layer_activation_fn)())
+                sub_layers.append(get_activation_fn(last_layer_activation_fn)())
+
+            layers.append(nn.Sequential(*sub_layers))
 
         self.layers = nn.ModuleList(layers)
         self.residual_connection = residual_connection
@@ -135,16 +137,18 @@ class MultiLinear(nn.Module):
     def __len__(self):
         return len(self.layers)
 
-    def forward(self, X: torch.FloatTensor, append_emb=None):
+    def forward(self, X: torch.FloatTensor, append_emb=None, output_all=False):
+        outputs = []
         for layer in self.layers:
             residual = X
             if append_emb is not None and type(layer) == nn.Linear:
                 X = torch.cat([X, append_emb], -1)
             X = layer(X)
-
             if self.residual_connection and X.shape[-1] == residual.shape[-1]:
                 X += residual
-        return X
+            outputs.append(X)
+
+        return outputs if output_all else outputs[-1]
 
 
 class RNN(nn.Module):
@@ -178,3 +182,19 @@ class RNN(nn.Module):
             c, h = self.rnn(inputs)
             c, _ = nn.utils.rnn.pad_packed_sequence(c, batch_first=True)
             return c, h
+
+
+class ExponentialMovingAverage(nn.Module):
+    def __init__(self, mu):
+        super().__init__()
+        self.mu = mu
+        self.shadow = {}
+
+    def register(self, name, val):
+        self.shadow[name] = val.clone()
+
+    def forward(self, name, x):
+        assert name in self.shadow
+        new_average = (1.0 - self.mu) * x + self.mu * self.shadow[name]
+        self.shadow[name] = new_average.clone()
+        return new_average

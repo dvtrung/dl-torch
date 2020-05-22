@@ -188,6 +188,7 @@ class TrainConfig:
     max_grad_norm: float = 5.0
     save_every: str = "1e"
     log_every: str = None
+    eval_every: str = "1e"
     cross_validation: int = None
     early_stop: int = None
     select_model: str = "best"

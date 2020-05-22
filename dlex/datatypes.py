@@ -9,6 +9,59 @@ import numpy as np
 from dlex.utils import logger, table2str
 
 
+class TrainingProgress:
+    last_save = 0
+    last_log = 0
+    last_eval = 0
+    current_epoch = 0
+    epoch_num_samples = 0
+
+    def __init__(self, params, num_samples):
+        self.params = params
+        self.num_samples = num_samples
+        self.batch_size = params.train.batch_size
+
+    @property
+    def progress(self) -> float:
+        return self.epoch_num_samples / self.num_samples
+
+    def update(self, num):
+        self.epoch_num_samples += num
+
+    def new_epoch(self, current_epoch):
+        logger.info(f"Training epoch {current_epoch}...")
+        self.current_epoch = current_epoch
+
+    def check_interval_passed(self, last_done: float, interval: str) -> (bool, float):
+        if not interval:
+            return False, last_done
+        unit = interval[-1]
+        value = float(interval[:-1])
+        if unit == "e":  # epoch progress (percentage)
+            if self.progress - last_done >= value:
+                return True, self.progress
+            else:
+                return False, last_done
+        elif unit in ["s", "m", "h"]:
+            d = dict(s=1, m=60, h=3600)[unit]
+            if time.time() / d - last_done > value:
+                return True, time.time() / d
+            else:
+                return False, last_done
+
+    def should_save(self):
+        is_passed, self.last_save = self.check_interval_passed(self.last_save, self.params.train.save_every)
+        return is_passed
+
+    def should_log(self):
+        is_passed, self.last_log = self.check_interval_passed(self.last_log, self.params.train.log_every)
+        return is_passed
+
+    def should_eval(self):
+        is_passed, self.last_eval = self.check_interval_passed(self.last_eval, self.params.train.eval_every)
+        return is_passed
+
+
 class ModelReport:
     launch_time: datetime = None
 
@@ -17,14 +70,15 @@ class ModelReport:
     results: Union[Dict[str, Dict[str, float]], List[Dict[str, Dict[str, float]]]] = None
     epoch_results: Dict[str, List[Dict[str, float]]] = None
     current_test_results: Dict[str, Dict[str, float]] = None
-    epoch_valid_results: List[Dict[str, float]] = None
-    epoch_test_results: List[Dict[str, float]] = None
+    valid_results: Dict[float, Dict[str, float]] = None
+    test_results: Dict[float, Dict[str, float]] = None
     epoch_losses: List[float] = None
     status: str = None
     num_params: int = None
     num_trainable_params: int = None
     param_details: str = None
     summary_writer = None
+    training_progress: TrainingProgress = None
 
     def __init__(self, training_idx):
         self.training_idx = training_idx
@@ -34,9 +88,15 @@ class ModelReport:
 
     @property
     def current_epoch(self) -> int:
-        if self.epoch_test_results is None:
-            return 1
-        return len(self.epoch_test_results) + 1
+        return self.training_progress.current_epoch
+
+    def get_current_test_results(self):
+        key = max(self.test_results.keys())
+        return self.test_results[key]
+
+    def get_current_valid_results(self):
+        key = max(self.valid_results.keys())
+        return self.valid_results[key]
 
     @property
     def num_epochs(self) -> int:
@@ -139,54 +199,6 @@ class ModelReport:
     @property
     def test_sets(self) -> List[str]:
         return self.params.test.test_sets
-
-
-class TrainingProgress:
-    last_save = 0
-    last_log = 0
-    current_epoch = 0
-    epoch_num_samples = 0
-
-    def __init__(self, params, num_samples):
-        self.params = params
-        self.num_samples = num_samples
-        self.batch_size = params.train.batch_size
-
-    @property
-    def epoch_progress(self) -> float:
-        return min(1., self.epoch_num_samples / self.num_samples)
-
-    def update(self, num):
-        self.epoch_num_samples += num
-
-    def new_epoch(self, current_epoch):
-        logger.info(f"Training epoch {current_epoch}...")
-        self.current_epoch = current_epoch
-
-    def check_interval_passed(self, last_done: float, interval: str) -> (bool, float):
-        if not interval:
-            return False, last_done
-        unit = interval[-1]
-        value = float(interval[:-1])
-        if unit == "e":  # epoch progress (percentage)
-            if self.epoch_progress - last_done >= value:
-                return True, self.epoch_progress
-            else:
-                return False, last_done
-        elif unit in ["s", "m", "h"]:
-            d = dict(s=1, m=60, h=3600)[unit]
-            if time.time() / d - last_done > value:
-                return True, time.time() / d
-            else:
-                return False, last_done
-
-    def should_save(self):
-        is_passed, self.last_save = self.check_interval_passed(self.last_save, self.params.train.save_every)
-        return is_passed
-
-    def should_log(self):
-        is_passed, self.last_log = self.check_interval_passed(self.last_log, self.params.train.log_every)
-        return is_passed
 
 
 def get_progress_bar(width, percent):

@@ -32,7 +32,7 @@ class SklearnDataset:
             data = list(zip(X, y))
             random.seed(self.params.random_seed)
             random.shuffle(data)
-            if True:  # split evenly
+            if False:  # split evenly
                 classes = set(y)
                 data_by_class = {c: [d for d in data if d[1] == c] for c in classes}
                 data = []
@@ -45,7 +45,7 @@ class SklearnDataset:
 
             logger.info("Initializing fold %d...", self.configs.cv_current_fold)
 
-            pos_start = len(y) * (self.configs.cv_current_fold - 1) // self.configs.cv_num_folds
+            pos_start = len(y) // self.configs.cv_num_folds * (self.configs.cv_current_fold - 1)
             pos_end = pos_start + len(y) // self.configs.cv_num_folds
 
             self.X_train = X[:pos_start] + X[pos_end:]
